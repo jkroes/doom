@@ -151,3 +151,20 @@ prompt the user for a coding system."
           (setq here (1+ here))) ))
     (and found (goto-char (1+ (car found))))
     found))
+
+(autoload 'doom--help-modules-list (concat-path doom-emacs-dir "core/autoload/help.el"))
+(defun doom/copy-module-to-private (category module)
+  "Copy the module corresponding to the strings category and module as a private
+module."
+  (interactive
+   (nconc
+    (mapcar #'intern
+            (split-string
+             (completing-read "Copy module: "
+                              (doom--help-modules-list)
+                              nil t nil nil
+                              (doom--help-current-module-str))
+             " " t))))
+  (let* ((path (doom-module-locate-path category module))
+         (newpath (replace-regexp-in-string doom-modules-dir (car doom-modules-dirs) path)))
+    (copy-directory path newpath nil t t)))
