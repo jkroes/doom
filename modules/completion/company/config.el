@@ -23,7 +23,8 @@
   (setq company-minimum-prefix-length 2
         company-tooltip-limit 14
         company-tooltip-align-annotations t
-        company-require-match 'never
+        ;; Allow typing chars that don't match candidates
+        company-require-match nil
         company-global-modes
         '(not erc-mode
               circe-mode
@@ -40,8 +41,9 @@
         company-backends nil
 
         ;; These auto-complete the current selection when
-        ;; `company-auto-commit-chars' is typed. This is too magical. We
-        ;; already have the much more explicit RET and TAB.
+        ;; `company-auto-commit-chars' is typed. When disabled, nonmatching
+        ;; characters (see `company-require-match') end completion without
+        ;; inserting a candidate
         company-auto-commit nil
 
         ;; Only search the current buffer for `company-dabbrev' (a backend that
