@@ -15,8 +15,11 @@
     (setq-default mode-line-format nil))
   ;; We display project info in the modeline ourselves
   (setq projectile-dynamic-mode-line nil)
+  ;; Smaller values prevent right side of modeline from being cut off
+  (setq all-the-icons-scale-factor 1.0)
   ;; Set these early so they don't trigger variable watchers
   (setq doom-modeline-bar-width 3
+        doom-modeline-modal-icon nil ; Letter instead of icon for evil state
         doom-modeline-github nil
         doom-modeline-mu4e nil
         doom-modeline-persp-name nil
@@ -68,6 +71,17 @@
     :around #'ws-butler-after-save
     (with-silent-modifications (apply fn args)))
 
+  ;; Adds `modals' to the list of segments for info's modeline. This segment
+  ;; shows evil states, which for some reason are shown for special buffers
+  ;; aside from info.
+  ;; Segments listed here are defined via `doom-modeline-def-segment' in
+  ;; `doom-modeline-segments.el'. Modelines for specific modes are defined via
+  ;; `doom-modeline-def-modeline' in `doom-modeline.el'. The modeline is set by
+  ;; `doom-modeline-set-modeline'.
+  (doom-modeline-def-modeline 'info
+    '(bar window-number modals buffer-info info-nodes buffer-position parrot
+          selection-info)
+    '(misc-info buffer-encoding major-mode))
 
   ;;
   ;;; Extensions
