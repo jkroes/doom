@@ -56,7 +56,13 @@
     (add-hook 'ess-r-mode-hook
               (lambda ()
                 (make-local-variable 'lsp-mode-hook)
-                (remove-hook 'lsp-mode-hook #'+lookup--init-lsp-mode-handlers-h t))))
+                (remove-hook 'lsp-mode-hook #'+lookup--init-lsp-mode-handlers-h t)))
+
+    ;; See my/ess-display-help-on-object and my/company-show-doc-buffer. The R
+    ;; language server (lsp-mode) returns strings without newlines.
+    ;; company-box presents this as a single line. Even with code to wrap
+    ;; box doc childframes, the forattming is a mess.
+    (setq-hook! 'ess-r-mode-hook company-box-doc-enable nil))
 
   (set-repl-handler! 'ess-r-mode #'+ess/open-r-repl)
   (set-repl-handler! 'ess-julia-mode #'+ess/open-julia-repl)
@@ -68,8 +74,11 @@
   (set-eval-handler! 'ess-help-mode #'ess-eval-region-and-go)
   (set-eval-handler! 'ess-r-help-mode #'ess-eval-region-and-go)
 
-  (set-company-backend! 'ess-r-mode
-    '(company-R-args company-R-objects company-dabbrev-code :separate))
+  ;; NOTE Uncomment to use ess-r's company backends instead of lsp and
+  ;; company-capf.
+  ;; (setq-hook! 'ess-r-mode-hook
+  ;;   lsp-completion-provider :none)
+  ;; (set-company-backend! 'ess-r-mode (car ess-r-company-backends))
 
   (setq-hook! 'ess-r-mode-hook
     ;; HACK Fix #2233: Doom continues comments on RET, but ess-r-mode doesn't
