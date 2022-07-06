@@ -224,3 +224,6 @@ module."
 
 (after! evil
   (define-key evil-motion-state-map "go" #'consult-outline))
+
+;; Disable smartparens
+(remove-hook 'doom-first-buffer-hook #'smartparens-global-mode)
