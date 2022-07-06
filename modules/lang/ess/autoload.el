@@ -8,11 +8,16 @@
   (current-buffer))
 
 ;;;###autoload
+;; See set-repl-handler! call in modules/lang/ess/config.el. The function passed
+;; to it (i.e., this one below) should return the REPL buffer, but the use of
+;; current-buffer in the original version of this function returned the R source
+;; code buffer. This incorrect buffer made its way to +popup-buffer; as a
+;; result, the REPL buffer was created but not displayed as a popup. In fact, it
+;; was not displayed in any window.
 (defun +ess/open-r-repl (&optional arg)
   "Open an ESS R REPL"
   (interactive "P")
-  (run-ess-r arg)
-  (current-buffer))
+  (run-ess-r arg))
 
 ;;;###autoload
 (defun my/ess-display-help-on-object (object &optional command)
