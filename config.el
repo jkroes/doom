@@ -233,3 +233,10 @@ module."
       inhibit-field-text-motion nil ; Read-only prompt acts as beginning of line for motions
       comint-scroll-to-bottom-on-input t ; Prevent modifying outside prompt line
       comint-scroll-show-maximum-output t)
+
+;; See core-keybinds.el for additional settings
+(setq which-key-idle-delay 0.3
+      ;; NOTE This is less useful when Doom supplies its own descriptions
+      which-key-compute-remaps t)
+;; Enable which-key paging for help-map
+(general-unbind help-map "C-h")
