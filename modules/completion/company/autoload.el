@@ -1,21 +1,19 @@
 ;;; completion/company/autoload.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defvar +company-backend-alist
-  '((text-mode (:separate company-dabbrev company-yasnippet company-ispell))
-    (prog-mode company-capf company-yasnippet)
-    (conf-mode company-capf company-dabbrev-code company-yasnippet))
+(defvar +company-backend-alist nil
   "An alist matching modes to company backends. The backends for any mode is
 built from this.")
 
 ;;;###autodef
 (defun set-company-backend! (modes &rest backends)
-  "Prepends BACKENDS (in order) to `company-backends' in MODES.
+  "For each mode in MODES, create an element in `+company-backend-alist' with
+car mode and cdr backends.
 
 MODES should be one symbol or a list of them, representing major or minor modes.
 This will overwrite backends for MODES on consecutive uses.
 
-If the car of BACKENDS is nil, unset the backends for MODES.
+If the car of BACKENDS is nil, unset the elements with car in MODES.
 
 Examples:
 
@@ -43,6 +41,9 @@ Examples:
 ;;; Library
 
 (defun +company--backends ()
+  "Merge backends for the current buffer's major-mode, parent modes,
+and minor modes specified in `+company-backend-alist' and the
+`default-value' of `company-backends'."
   (let (backends)
     (let ((mode major-mode)
           (modes (list major-mode)))

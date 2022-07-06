@@ -24,7 +24,7 @@
 
         ;; Buffer-local backends will be computed when loading a major mode, so
         ;; only specify a global default here.
-        company-backends '(company-capf)
+        company-backends nil
 
         ;; These auto-complete the current selection when
         ;; `company-auto-commit-chars' is typed. This is too magical. We
@@ -64,6 +64,13 @@
       :before #'company-begin-backend
       (company-abort)))
 
+  ;; Initialize company backends. `+company-init-backends-h' sets buffer-local
+  ;; `company-backends' to the result of calling `+company--backends', which
+  ;; merges `+company-backend-alist' and default value of `company-backends'.
+  ;; The alist is populated by `set-company-backend!', typically within each
+  ;; module's modules/lang/*/config.el
+  ;; This is also affected by `+lsp-company-backends' (prepended onto
+  ;; `company-backends' even if nil)
   (add-hook 'after-change-major-mode-hook #'+company-init-backends-h 'append)
 
 
