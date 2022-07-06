@@ -273,3 +273,6 @@ module."
 ;; (map! :mode ess-r-mode
 ;;       :gin "C-RET" #'ess-eval-region-line-and-step
 ;;       :gin "<C-return>" #'ess-eval-region-or-line-and-step)
+
+;; Free up "q" in lots of modes
+(general-unbind evil-normal-state-map "q")
