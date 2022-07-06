@@ -75,3 +75,29 @@
 ;;
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
+
+;;; My notes
+
+;;;; emacs-mac server issues
+;; https://gist.github.com/railwaycat/4043945
+
+;;;; Troubleshooting straight
+;; https://github.com/radian-software/straight.el/issues/292
+;; https://github.com/radian-software/straight.el/issues/540
+
+;;;; Working with Doom
+;; After modifying modules or init.el, run doom sync
+;; After modifying packages.el--speifically recipes for existing packages--run
+;; doom sync -u. You need to run this the first time Doom is installed
+;; To upgrade Doom itself, run doom upgrade
+;; After an upgrade, you will have to run pdf-tools-install
+;; Messing with modules may break lazy loading and lead to unexpected results when
+;; trying to defer a package. To see what loads and when, enable force-load-messages
+;; in early-init.el
+;; Install/sync/upgrade fail on work computers, it might be because recipes
+;; clone from gitlab, and gitlab is blocked. Clone the package manually (from
+;; github potentially) while inside ~/.emacs.d/.local/straight/repos, then try
+;; again. Try also disconnecting from the VPN. Alternatively, a package may have
+;; renamed its branch from master to main. Delete the repo at issue and try again.
+;; Before and after install/sync/upgrade, run doom sync
+
