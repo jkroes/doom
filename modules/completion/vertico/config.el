@@ -16,6 +16,8 @@ overrides `completion-styles' during company completion sessions.")
 (use-package! vertico
   :hook (doom-first-input . vertico-mode)
   :init
+  ;; Add prompt indicator to `completing-read-multiple'.
+  ;; We display [CRM<separator>], e.g., [CRM,] if the separator is a comma.
   (defadvice! +vertico-crm-indicator-a (args)
     :filter-args #'completing-read-multiple
     (cons (format "[CRM%s] %s"
@@ -28,6 +30,12 @@ overrides `completion-styles' during company completion sessions.")
   (setq vertico-resize nil
         vertico-count 17
         vertico-cycle t)
+  ;; For those not using corfu--setq-default ensures we don't mess with it
+  ;; if you are--this allows for vertico-based completion when you press
+  ;; M-TAB. See
+  ;; https://with-emacs.com/posts/tutorials/customize-completion-at-point/
+  ;; and the consult README
+  ;; WARNING This does not work with LSP completion
   (setq-default completion-in-region-function
                 (lambda (&rest args)
                   (apply (if vertico-mode
@@ -37,12 +45,14 @@ overrides `completion-styles' during company completion sessions.")
   ;; Cleans up path when moving directories with shadowed paths syntax, e.g.
   ;; cleans ~/foo/bar/// to /, and ~/foo/bar/~/ to ~/.
   (add-hook 'rfn-eshadow-update-overlay-hook #'vertico-directory-tidy)
+  ;; For use with vertico-repeat-select and vertico-repeat-last
   (add-hook 'minibuffer-setup-hook #'vertico-repeat-save)
   (map! :map vertico-map "DEL" #'vertico-directory-delete-char)
 
   ;; These commands are problematic and automatically show the *Completions* buffer
   (advice-add #'tmm-add-prompt :after #'minibuffer-hide-completions)
   (defadvice! +vertico--suppress-completion-help-a (fn &rest args)
+    "Make ffap-menu work with vertico"
     :around #'ffap-menu-ask
     (letf! ((#'minibuffer-completion-help #'ignore))
       (apply fn args))))
@@ -144,6 +154,7 @@ orderless."
    consult-theme
    :preview-key '(:debounce 0.5 any))
   (when (featurep! :lang org)
+    ;; Pressing "o SPC" within consult-buffer will limit candidates to org buffers
     (defvar +vertico--consult-org-source
       (list :name     "Org Buffer"
             :category 'buffer
@@ -169,7 +180,10 @@ orderless."
                          (buffer-list)))))))
     (add-to-list 'consult-buffer-sources '+vertico--consult-org-source 'append)))
 
-
+;; Switch to directory (consult-dir) and recursively find file within dir
+;; (consult-dir-jump-file). In particular, use when within the minibuffer.
+;; consult-dir will replace the prompt of any filepath-completing function
+;; with the selected dir!
 (use-package! consult-dir
   :bind (([remap list-directory] . consult-dir)
          :map vertico-map
