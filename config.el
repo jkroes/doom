@@ -101,3 +101,20 @@
 ;; renamed its branch from master to main. Delete the repo at issue and try again.
 ;; Before and after install/sync/upgrade, run doom sync
 
+;;; My code
+
+;; When Emacs freezes and won't respond to C-g, open a terminal and run ~pkill
+;; -SIGTERM Emacs~ as many times as needed to kill Emacs. Then check
+;; ~doom-cache-dir~ for a file named backtrace. Ignore the lines from the top to
+;; the anonymous function defined below.
+(defun concat-path (&rest parts)
+  "Concatenate unlimited path components"
+  (cl-reduce (lambda (a b) (expand-file-name b a)) parts))
+
+(defun save-backtrace ()
+  (require 'backtrace)
+  (with-temp-file (concat-path doom-cache-dir "backtrace")
+    ;; Pulled from backtrace function
+    (insert (backtrace-to-string
+             (backtrace-get-frames 'backtrace)))))
+(add-hook 'kill-emacs-hook 'save-backtrace)
