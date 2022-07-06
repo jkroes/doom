@@ -168,3 +168,33 @@ module."
   (let* ((path (doom-module-locate-path category module))
          (newpath (replace-regexp-in-string doom-modules-dir (car doom-modules-dirs) path)))
     (copy-directory path newpath nil t t)))
+
+;; Compare private and non-private module file to see your modifications and
+;; any changes Doom has made if you've upgraded it recently
+(autoload #'ediff-read-file-name "ediff")
+(defun doom/ediff ()
+  "Run Ediff on a private Doom module file and its non-private counterpart"
+  (interactive)
+  (let* ((file-A
+          (ediff-read-file-name
+	   "Private module file"
+           (if (string-prefix-p (car doom-modules-dirs) default-directory)
+               default-directory
+             (car doom-modules-dirs))
+           (ediff-get-default-file-name)
+           'no-dirs))
+         (file-B (replace-regexp-in-string (car doom-modules-dirs) doom-modules-dir file-A)))
+    (ediff-files-internal file-A file-B nil nil 'ediff-files)))
+;; TODO Delete this after migrating .doom.d.bck modules
+(defun doom/ediff2 ()
+  (interactive)
+  (let* ((file-A
+          (ediff-read-file-name
+	   "Private module file"
+           (if (string-prefix-p (car doom-modules-dirs) default-directory)
+               default-directory
+             (car doom-modules-dirs))
+           (ediff-get-default-file-name)
+           'no-dirs))
+         (file-B (replace-regexp-in-string (car doom-modules-dirs) "/Users/jkroes/.doom.d.bck/modules/" file-A)))
+    (ediff-files-internal file-A file-B nil nil 'ediff-files)))
