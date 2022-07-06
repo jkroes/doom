@@ -64,7 +64,7 @@
     ;; box doc childframes, the forattming is a mess.
     (setq-hook! 'ess-r-mode-hook company-box-doc-enable nil))
 
-  (set-repl-handler! 'ess-r-mode #'+ess/open-r-repl)
+  (set-repl-handler! 'ess-r-mode #'+ess/open-r-repl :persist t)
   (set-repl-handler! 'ess-julia-mode #'+ess/open-julia-repl)
   ;; This is overridden by lsp-mode. "K" will open an lsp-help buffer
   (set-lookup-handlers! '(ess-r-mode ess-julia-mode)
