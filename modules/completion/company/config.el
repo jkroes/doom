@@ -1,5 +1,15 @@
 ;;; completion/company/config.el -*- lexical-binding: t; -*-
 
+;; The default bindings shadow tab in multiple places, since evil uses
+;; higher precedence emulation maps than the maps of minor modes. It shadows
+;; company-mode-map in particular. See
+;; ~/doom-emacs/modules/config/default/+evil-bindings.el, the comment about
+;; #4548. That has to be disabled for this to work.
+;; (map! :map company-mode-map
+;;       "<tab>" 'company-indent-or-complete-common
+;;       "TAB" 'company-indent-or-complete-common)
+
+
 (use-package! company
   :commands (company-complete-common
              company-complete-common-or-cycle
