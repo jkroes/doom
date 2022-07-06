@@ -219,3 +219,5 @@ module."
 (add-hook 'edebug-mode-hook (defun emacs-state-for-edebug ()
                               (if edebug-mode (evil-emacs-state)
                                 (evil-exit-emacs-state))))
+
+(setq confirm-kill-emacs nil)
