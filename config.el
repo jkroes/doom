@@ -198,3 +198,14 @@ module."
            'no-dirs))
          (file-B (replace-regexp-in-string (car doom-modules-dirs) "/Users/jkroes/.doom.d.bck/modules/" file-A)))
     (ediff-files-internal file-A file-B nil nil 'ediff-files)))
+
+(setq mac-pass-command-to-system nil ; So C-h doesn't hide Emacs
+      mac-pass-control-to-system nil
+      ns-command-modifier 'control ; For Kinesis Advantage 2 keyboard
+      mac-command-modifier 'control
+      ns-right-option-modifier 'left
+      mac-right-option-modifier 'left)
+
+;; NOTE This unbinds +popup/toggle
+;; In line with MacOS shortcut and HYPER-SPC when hammerspoon is active
+(map! "C-`" #'other-frame)
