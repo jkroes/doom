@@ -276,3 +276,6 @@ module."
 
 ;; Free up "q" in lots of modes
 (general-unbind evil-normal-state-map "q")
+
+;; Make "C-h h" do the same thing without a key prefix as with one
+(general-def help-map "h" #'my/embark-bindings)

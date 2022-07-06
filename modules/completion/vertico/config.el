@@ -220,8 +220,16 @@ orderless."
 (use-package! embark
   :defer t
   :init
-  (setq which-key-use-C-h-commands nil
-        prefix-help-command #'embark-prefix-help-command)
+  ;; https://github.com/hlissner/doom-emacs/issues/5564
+  ;; Usage: Type any prefix followed by "C-h" (no which-key popup) or "C-h h"
+  ;; (which-key popup visible) to invoke `embark-prefix-help-command'
+  ;; (technically, `embark-bindings').
+  (add-hook 'which-key-mode-hook
+            (lambda () (setq which-key--prefix-help-cmd-backup
+                             #'my/embark-prefix-help-command)))
+  (advice-add #'which-key-show-standard-help :override #'my/which-key-show-standard-help)
+  (advice-add #'embark-bindings :override #'my/embark-bindings)
+
   (map! [remap describe-bindings] #'embark-bindings
         "C-;"               #'embark-act  ; to be moved to :config default if accepted
         (:map minibuffer-local-map
@@ -236,14 +244,11 @@ orderless."
 
   (set-popup-rule! "^\\*Embark Export:" :size 0.35 :ttl 0 :quit nil)
 
-  (defadvice! +vertico--embark-which-key-prompt-a (fn &rest args)
-    "Hide the which-key indicator immediately when using the completing-read prompter."
-    :around #'embark-completing-read-prompter
-    (which-key--hide-popup-ignore-command)
-    (let ((embark-indicators
-           (remq #'embark-which-key-indicator embark-indicators)))
-      (apply fn args)))
-  (cl-nsubstitute #'+vertico-embark-which-key-indicator #'embark-mixed-indicator embark-indicators)
+  ;; NOTE required after embark loads b/c embark uses with-eval-after-load to modify
+  ;; embark-indicators when vertico is present
+  (setq embark-prompter 'embark-completing-read-prompter
+        embark-indicators '(embark-minimal-indicator embark-highlight-indicator))
+
   ;; add the package! target finder before the file target finder,
   ;; so we don't get a false positive match.
   (let ((pos (or (cl-position
