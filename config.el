@@ -229,3 +229,12 @@ module."
 (remove-hook 'doom-first-buffer-hook #'smartparens-global-mode)
 
 (setq org-element-use-cache nil)
+
+;; Default comint settings for an easy to use, immutable, evil-compliant
+;; comint-based REPL. Some hooks may override these values. In particular, ess-r
+;; overrides comint-use-prompt-regexp and needs to be handled via setq-hook!.
+(setq comint-prompt-read-only t ; Read-only prompt
+      comint-use-prompt-regexp nil ; nil enables evil motions
+      inhibit-field-text-motion nil ; Read-only prompt acts as beginning of line for motions
+      comint-scroll-to-bottom-on-input t ; Prevent modifying outside prompt line
+      comint-scroll-show-maximum-output t)
