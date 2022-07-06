@@ -28,14 +28,34 @@
         ess-use-flymake (not (featurep! :checkers syntax))
         ess-nuke-trailing-whitespace-p t
         ess-style 'DEFAULT
-        ess-history-directory (expand-file-name "ess-history/" doom-cache-dir))
+        ess-history-directory (expand-file-name "ess-history/" doom-cache-dir)
+        ;; Prefer lsp to eldoc signatures for ess-r-mode. Better to have
+        ;; barebones signatures for S3 generic functions like print and
+        ;; data.frame, and some tidyverse functions like select(), than to
+        ;; haphazardly mix arguments from different S3 methods and use that for
+        ;; all object types. (Maybe I just don't understand ess-r-mode's
+        ;; signatures.) Either way, enable only one. Otherwise, there are two
+        ;; signatures.
+        ess-use-eldoc (not (featurep! :tools lsp)))
 
   (set-docsets! 'ess-r-mode "R")
+
+  ;; NOTE: lsp-enable-snippet has no effect on ess-r-mode. Unclear if a bug or
+  ;; intended behavior. Compare to behavior in e.g. python-mode.
   (when (featurep! +lsp)
-    (add-hook 'ess-r-mode-local-vars-hook #'lsp! 'append))
+    (add-hook 'ess-r-mode-local-vars-hook #'lsp! 'append)
+    ;; HACK until ess-r's lsp documentation gets fixed, don't use any lsp
+    ;; lookup functions
+    ;; NOTE I would prefer to only disable the document function, but I couldn't
+    ;; figure out how to do that
+    (add-hook 'ess-r-mode-hook
+              (lambda ()
+                (make-local-variable 'lsp-mode-hook)
+                (remove-hook 'lsp-mode-hook #'+lookup--init-lsp-mode-handlers-h t))))
 
   (set-repl-handler! 'ess-r-mode #'+ess/open-r-repl)
   (set-repl-handler! 'ess-julia-mode #'+ess/open-julia-repl)
+  ;; This is overridden by lsp-mode. "K" will open an lsp-help buffer
   (set-lookup-handlers! '(ess-r-mode ess-julia-mode)
     :documentation #'ess-display-help-on-object)
 
