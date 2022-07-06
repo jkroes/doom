@@ -209,12 +209,15 @@ targets."
        nil nil t (lambda (binding)
                    (not (string-suffix-p "-argument" (cdr binding))))))))
 
+;; BUG consult--regexp-compiler -> consult--default-regexp-compiler added a third
+;; formal argument at some point
+;; HACK Add a third arg to the function call
 ;;;###autoload
 (defun +vertico--consult--fd-builder (input)
   (pcase-let* ((cmd (split-string-and-unquote +vertico-consult-fd-args))
                (`(,arg . ,opts) (consult--command-split input))
                (`(,re . ,hl) (funcall consult--regexp-compiler
-                                      arg 'extended)))
+                                      arg 'extended t)))
     (when re
       (list :command (append cmd
                              (list (consult--join-regexps re 'extended))
