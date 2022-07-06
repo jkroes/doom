@@ -32,9 +32,11 @@
               help-mode
               gud-mode
               vterm-mode)
+        ;; Show more than one candidate in the tooltip and a single candidate
+        ;; as an inline preview of completion. company-box overwrites this.
         company-frontends
-        '(company-pseudo-tooltip-frontend  ; always show candidates in overlay tooltip
-          company-echo-metadata-frontend)  ; show selected candidate docs in echo area
+        '(company-pseudo-tooltip-unless-just-one-frontend
+          company-preview-if-just-one-frontend)
 
         ;; Buffer-local backends will be computed when loading a major mode, so
         ;; only specify a global default here.
