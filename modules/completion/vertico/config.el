@@ -30,6 +30,10 @@ overrides `completion-styles' during company completion sessions.")
   (setq vertico-resize nil
         vertico-count 17
         vertico-cycle t)
+  ;; Emacs 28: Hide commands in M-x which do not work in the current mode.
+  ;; Vertico commands are hidden in normal buffers.
+  (when EMACS28+
+    (setq read-extended-command-predicate #'command-completion-default-include-p))
   ;; For those not using corfu--setq-default ensures we don't mess with it
   ;; if you are--this allows for vertico-based completion when you press
   ;; M-TAB. See
