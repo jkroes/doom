@@ -85,29 +85,35 @@
     ;;      have a sane `comment-line-break-function', so...
     comment-line-break-function nil)
 
-  (map! (:after ess-help
-          (:map ess-help-mode-map
-            :n "q"  #'kill-current-buffer
-            :n "Q"  #'ess-kill-buffer-and-go
-            :n "K"  #'ess-display-help-on-object
-            :n "go" #'ess-display-help-in-browser
-            :n "gO" #'ess-display-help-apropos
-            :n "gv" #'ess-display-vignettes
-            :m "]]" #'ess-skip-to-next-section
-            :m "[[" #'ess-skip-to-previous-section)
-          (:map ess-doc-map
-            "h"    #'ess-display-help-on-object
-            "p"    #'ess-R-dv-pprint
-            "t"    #'ess-R-dv-ctable
-            [up]   #'comint-next-input
-            [down] #'comint-previous-input
-            [C-return] #'ess-eval-line))
+  ;; The ess completion function doesn't invoke company as far as I can tell
+  (general-unbind ess-mode-map "TAB")
 
-        :map ess-mode-map
-        :n [C-return] #'ess-eval-line
+  ;; NOTE: The map for help with R objects (e.g., see C-c C-v and compare this
+  ;; to K, which opens up an (lsp?) help-mode buffer)
+  (map! (:after ess-help
+         ;; NOTE: Some of these are shadowed by evil for some reason, at least
+         ;; with popup enabled. This seems to be a common problem for modules
+         ;; where Doom binds evil states within maps
+         (:map ess-help-mode-map
+          :n "q"  #'kill-current-buffer
+          :n "Q"  #'ess-kill-buffer-and-go
+          :n "K"  #'ess-display-help-on-object
+          :n "go" #'ess-display-help-in-browser
+          :n "gO" #'ess-display-help-apropos
+          :n "gv" #'ess-display-vignettes
+          :m "]]" #'ess-skip-to-next-section
+          :m "[[" #'ess-skip-to-previous-section
+          ;; NOTE: Doom bound this to ess-doc-map by mistake
+          [C-return] #'ess-eval-line)
+         (:map ess-doc-map
+          "h"    #'ess-display-help-on-object
+          "p"    #'ess-R-dv-pprint
+          "t"    #'ess-R-dv-ctable))
         :localleader
         "," #'ess-eval-region-or-function-or-paragraph-and-step
         "'" #'R
+        ;; TODO: Shouldn't this also be bound in the inferior buffer? I've
+        ;; noticed those don't bind to localleader
         [tab]     #'ess-switch-to-inferior-or-script-buffer
         [backtab] #'ess-switch-process
         ;; REPL
