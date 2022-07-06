@@ -12,6 +12,14 @@
   :hook
   ;; NOTE This isn't necessary when using the ligatures feature
   (ess-mode . prettify-symbols-mode) ; pretty ligatures
+  ;; Nice default behavior. Delete delimiter pair when deleting opening paren of
+  ;; empty pair (electric-pair-delete-adjacent-pairs). Skips over closing delim
+  ;; when you try to insert over an existing delim (electric-pair-skip-self).
+  ;; Inserts singles to preserve balance (electric-pair-preserve-balance).
+  ;; Insertion around active region, with point after whichever delim you
+  ;; typed--opening or closing. Example of cool defaults: In lisp comments, `
+  ;; inserts `'.")
+  (ess-r-mode . electric-pair-mode)
   :init
   (unless (featurep! :lang julia)
     (add-to-list 'auto-mode-alist '("\\.jl\\'" . ess-julia-mode)))
