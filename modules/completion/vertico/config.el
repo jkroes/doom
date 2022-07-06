@@ -221,11 +221,6 @@ orderless."
   (add-to-list 'consult-dir-sources 'consult-dir--source-tramp-ssh t)
   (add-to-list 'consult-dir-sources 'consult-dir--source-tramp-local t))
 
-(use-package! consult-flycheck
-  :when (featurep! :checkers syntax)
-  :after (consult flycheck))
-
-
 (use-package! embark
   :defer t
   :init
