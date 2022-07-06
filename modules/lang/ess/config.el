@@ -9,6 +9,9 @@
 
 (use-package! ess
   :commands stata SAS
+  :hook
+  ;; NOTE This isn't necessary when using the ligatures feature
+  (ess-mode . prettify-symbols-mode) ; pretty ligatures
   :init
   (unless (featurep! :lang julia)
     (add-to-list 'auto-mode-alist '("\\.jl\\'" . ess-julia-mode)))
