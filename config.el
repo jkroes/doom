@@ -240,3 +240,36 @@ module."
       which-key-compute-remaps t)
 ;; Enable which-key paging for help-map
 (general-unbind help-map "C-h")
+
+;;; Miscellaneous
+
+;; TODO Bind vertico-repeat-select and/or vertico-repeat-last
+
+;; Configure `consult-outline' as a scaled down TOC in a separate buffer
+;; https://github.com/minad/consult/issues/552
+;; (consult-customize consult-outline :preview-key nil)
+;; (vertico-multiform-mode)
+;; (setq vertico-multiform-commands '((consult-outline buffer)))
+
+
+;; (when (string-match "Linux.*Microsoft.*Linux" (shell-command-to-string "uname -a"))
+
+;; NOTE Keyboards can send either C-m / RET or <return>. <return> is automatically translated
+;; to RET if no <return> binding exists. If a <return> binding exists, it shadows RET. This
+;; seems to take precedence over map precedence. E.g., <return> in any keymap
+;; shadows RET in any keymap. To normalize doom return keybindings, search for C-m,
+;; C-ret, C-<return>, c-m-m, c-m-ret, and c-m-<return>
+;; Safest option is probably to bind RET and <return>.
+;; ;; https://www.fromkk.com/posts/c-m-ret-and-return-key-in-emacs/
+;;
+;; For use with +eval/open-repl-other-window
+;; TODO eval module is a hot mess. Abandoning it for now.
+;; (map! :mode ess-r-mode
+;;       :gin "C-RET" #'+eval/line-or-region
+;;       :gin "<C-return>" #'+eval/line-or-region)
+;; (map! :mode python-mode
+;;       :gin "C-RET" #'+eval/line-or-region
+;;       :gin "<C-return>" #'+eval/line-or-region)
+;; (map! :mode ess-r-mode
+;;       :gin "C-RET" #'ess-eval-region-line-and-step
+;;       :gin "<C-return>" #'ess-eval-region-or-line-and-step)
