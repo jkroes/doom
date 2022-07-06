@@ -157,3 +157,178 @@
     :when (featurep! :checkers syntax)
     :hook (stan-mode . flycheck-stan-stanc2-setup)
     :hook (stan-mode . flycheck-stan-stanc3-setup)))
+
+;; NOTE Code below kept for demonstration of making local copies of
+;; a keymap. Also see https://stackoverflow.com/questions/13102494/buffer-locally-overriding-minor-mode-key-bindings-in-emacs
+;; for minor mode keymaps.
+;; (setq essrca-map (make-sparse-keymap))
+;; (set-keymap-parent essrca-map company-active-map)
+;; (define-key essrca-map (kbd "C-h") #'show-company-doc-as-ess-help)
+;; (add-hook 'ess-r-mode-hook
+;;           (lambda ()
+;;             (make-local-variable 'company-active-map)
+;;             (setq company-active-map essrca-map)))
+
+;;; Leftovers from vanilla Emacs config
+
+  ;; TODO Leftover variable values from vanilla emacs config
+  ;;  electric-pair-pairs '((34 . 34) (8216 . 8217) (8220 . 8221) (123 . 125))
+  ;; ;; Compare behavior with and without in ess-R. Without this, newlines within {}
+  ;; ;; or () inserts two newlines between them, indents the first and moves cursor
+  ;; ;; to it. Setting this seems to interfere with that behavior, which is
+  ;; ;; controlled by ess-roxy-newline-and-indent. This is because ess-r-mode sets
+  ;; ;; electric-layout-rules to insert a newline after {, but doesn't enable
+  ;; ;; electric-layout-mode. Must be an oversight. If setting this globally, disable
+  ;; ;; it in R to keep the desired behavior.
+  ;; electric-layout-mode t
+
+  ;; Override Windows' help_type option of "html", to open help in help buffer,
+  ;; not browser (see contents of .Rprofile)
+  ;; (pcase system-type
+  ;;   ('windows-nt
+  ;;    ;; iESS searches the paths listed in the variable exec-path for inferior-ess-r-program
+  ;;    (add-to-list 'exec-path "c:/Users/jkroes/Documents/R/R-3.6.2/bin")
+  ;;    ;; Sets R_USER and R_LIBS_USER
+  ;;    (setenv "R_USER" "c:/Users/jkroes/Documents")
+  ;;    ;; run-ess-r fails when this is set to Rterm
+  ;;    (setq inferior-ess-r-program "R")
+  ;;    (setenv "R_PROFILE_USER" "C:/Users/jkroes/.emacs.d/.Rprofile")
+  ;;    ;; RStudio downloads pandoc with rmarkdown, but outside of RStudio
+  ;;    ;; you need to notify R of the executable's directory
+  ;;    (setenv "RSTUDIO_PANDOC" "C:/Users/jkroes/AppData/Local/Pandoc"))
+  ;;   ('darwin (setenv "R_PROFILE_USER" (concat user-emacs-directory ".Rprofile"))))
+
+  ;; Disabling this while I render Word documents from Rmarkdown.
+  ;; NOTE: Doom doesn't use customize-package. This is from my vanilla config.
+  ;;(customize-package '(polymode-display-output-file nil))
+
+  ;; TODO Test these out with voc reports. Packages need to be added to packages.el
+  ;;(use-package 'poly-markdown)
+  ;; NOTE: ess-r configuration and bindings are available inside chunks, where R-mode is active
+  ;; I have bound polymode-export (render) to SPC-m-e-k
+  ;;(use-package 'poly-R)
+
+  ;; Prevent window displaying company documentation buffer from vanishing when
+  ;; invoking a binding not in company--electric-commands
+  ;; (defun forget-saved-window-config ()
+  ;;   (setq company--electric-saved-window-configuration nil))
+  ;; (advice-add 'company-pre-command :before 'forget-saved-window-config)
+
+  ;; TODO Get this working in Doom. Do a search. I believe popup overwrites this.
+  ;; (setq display-buffer-alist
+  ;;       `(("\\*company-documentation\\*"
+  ;;          (display-buffer-reuse-mode-window display-buffer-in-side-window)
+  ;;          (mode. ess-r-help-mode)
+  ;;          (side . right)
+  ;;          (slot . 1)
+  ;;          (window-width . 0.33)
+  ;;          (reusable-frames . nil))
+  ;;         ("\\*R Dired"
+  ;;          (display-buffer-reuse-mode-window display-buffer-in-side-window)
+  ;;          (side . right)
+  ;;          (slot . -1)
+  ;;          (window-width . 0.5)
+  ;;          (reusable-frames . nil))
+  ;;         ("\\*R"
+  ;;          (display-buffer-reuse-mode-window display-buffer-below-selected)
+  ;;          (window-height . 0.2)
+  ;;          (reusable-frames . nil))
+  ;;         ("\\*Help\\[R"
+  ;;          (display-buffer-reuse-mode-window display-buffer-in-side-window)
+  ;;          (side . right)
+  ;;          (slot . 1)
+  ;;          (window-width . 0.5)
+  ;;          (reusable-frames . nil))
+  ;;         ;; ("\\*Help\\*" display-buffer-same-window)
+  ;;         ;; ("\\*Apropos\\*" display-buffer-same-window)
+  ;;         )
+  ;;       )
+
+
+  ;; ;;(my-leader :keymaps 'ess-r-mode-map "m" 'hydra-r/body)
+  ;; (defhydra hydra-r (:color pink)
+  ;;   "R"
+  ;;   ("d" hydra-r-debug/body :color blue)
+  ;;   ("e" hydra-r-eval/body :color blue)
+  ;;   ("h" hydra-r-help/body :color blue)
+  ;;   ("r" my/start-r :color blue)
+  ;;   ("s" ess-switch-to-inferior-or-script-buffer :color blue)
+  ;;   ("z" ess-submit-bug-report :color blue)
+  ;;   ;; prog-indent-sexp
+  ;;   ;; ess-indent-exp
+  ;;   ;; ess-indent-new-comment-line
+  ;;   ;; ess-complete-object-name
+  ;;   ("q" nil))
+
+  ;; (defhydra hydra-r-help (:color pink) ; ess-doc-map
+  ;;   "R-help"
+  ;;   ("a" ess-display-help-apropos)
+  ;;   ("e" hydra-r-eval/body :color blue)
+  ;;   ("i" ess-display-package-index)
+  ;;   ("m" ess-manual-lookup)
+  ;;   ("o" ess-display-help-on-object)
+  ;;   ("p" ess-describe-object-at-point)
+  ;;   ("r" hydra-r/body :color blue)
+  ;;   ("t" ess-display-demos)
+  ;;   ("v" ess-display-vignettes)
+  ;;   ("w" ess-help-web-search)
+  ;;   ("q" nil))
+
+  ;; (defhydra hydra-r-eval (:color pink) ; ess-rutils-map and ess-extra-map
+  ;;   "R-eval"
+  ;;   ("<C-return>" ess-eval-region-or-function-or-paragraph-and-step)
+  ;;   ("RET" ess-eval-region-or-line-and-step)
+  ;;   ("b" ess-eval-buffer-from-beg-to-here)
+  ;;   ("e" ess-eval-buffer-from-here-to-end)
+  ;;   ("E" ess-dirs)
+  ;;   ("f" ess-load-file)
+  ;;   ("i" inferior-ess-reload)
+  ;;   ;; ("P" ess-request-a-process) ;; Display selected iESS process and buffer
+  ;;   ("p" ess-switch-process) ;; Switch process attached to script (current process buffer auto-displays if new,
+  ;;   ;; but any script evaluation will auto-display attached process buffer if not already visible
+  ;;   ("s" ess-switch-to-inferior-or-script-buffer)
+  ;;   ("r" hydra-r/body :color blue)
+  ;;   ("R" ess-rdired)
+  ;;   ("u" ess-use-this-dir)
+  ;;   ("w" ess-change-directory)
+  ;;   ("q" nil))
+
+  ;; ;; (defhydra+ hydra-r-eval()
+  ;; ;;   ("k" polymode-export :color blue))
+
+  ;; ;; Note that several commands available in the inferior ess R
+  ;; ;; process while debugging are absent:
+  ;; ;; f (finish)
+  ;; ;; s (step)
+  ;; ;; help
+  ;; ;; where
+  ;; ;; <expr>
+  ;; ;; As such, it is best to debug from the inferior process where
+  ;; ;; the additional, built-in functionality is needed
+  ;; ;; TODO: Add commands here to ess-debug-minor-mode-map
+  ;; (defhydra hydra-r-debug (:color pink) ;; ess-debug-minor-mode-map and ess-dev-map
+  ;;   "R-debug"
+  ;;   ("c" ess-debug-command-continue)
+  ;;   ("f" ess-debug-flag-for-debugging) ;; base:::debug()
+  ;;   ("F" ess-debug-unflag-for-debugging) ;; base:::undebug()
+  ;;   ("g" ess-debug-goto-debug-point)
+  ;;   ("n" ess-debug-command-next)
+  ;;   ("N" next-error)
+  ;;   ("p" previous-error)
+  ;;   ("q" ess-debug-command-quit :color blue) ;; Investigate diff b/w this and ess-debug-stop
+  ;;   ("Q" ess-debug-stop :color blue)
+  ;;   ("s" ess-switch-to-ESS :color blue)
+  ;;   ;; ("t" ess-debug-toggle-error-action) ;; Sets value of error option (e.g. options(error=recover)) for active process
+  ;;   ;; ("u" ess-debug-command-up) ;; NOTE: currently broken. Use recover() from within debugging session (i.e. browse())
+  ;;   ;; ess-debug-goto-input-event-marker
+  ;;   ;; ess-debug-insert-in-forward-ring
+  ;;   ("q" nil))
+
+  ;; (defun my/start-r ()
+  ;;   "Start an R process."
+  ;;   (interactive)
+  ;;   (save-selected-window
+  ;;     (run-ess-r)
+  ;;     ;;(ess-rdired)
+  ;;     )
+  ;;   (ess-force-buffer-current))
