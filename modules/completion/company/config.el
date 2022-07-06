@@ -15,6 +15,9 @@
              company-complete-common-or-cycle
              company-manual-begin
              company-grab-line)
+  ;; TODO If company-mode bindings (e.g., TAB) are shadowing non-prog major mode
+  ;; bindings, consider changing this to (prog-mode . company-mode) or adding
+  ;; excluded modes to company-global-modes
   :hook (doom-first-input . global-company-mode)
   :init
   (setq company-minimum-prefix-length 2
@@ -110,7 +113,9 @@
   ;; Fix `company-files' completion for org file:* links
   (add-to-list 'company-files--regexps "file:\\(\\(?:\\.\\{1,2\\}/\\|~/\\|/\\)[^\]\n]*\\)"))
 
-
+;; The README for this package is incorrect. See
+;; https://github.com/sebastiencs/company-box/issues/143.
+;; TODO Compare to eldoc-box and company-quickhelp.
 (use-package! company-box
   :when (featurep! +childframe)
   :hook (company-mode . company-box-mode)
