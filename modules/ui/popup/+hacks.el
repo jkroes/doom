@@ -73,6 +73,11 @@ override `display-buffer-alist'."
   (let ((+popup--inhibit-select t))
     (apply fn args)))
 
+;;;###package company
+(defadvice! +popup--dont-select-me-a (fn &rest args)
+  :around #'my/company-show-doc-buffer
+  (let ((+popup--inhibit-select t))
+    (apply fn args)))
 
 ;;;###package compile
 (defadvice! +popup--compilation-goto-locus-a (fn &rest args)

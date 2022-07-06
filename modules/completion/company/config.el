@@ -105,6 +105,18 @@
   :when (featurep! +childframe)
   :hook (company-mode . company-box-mode)
   :config
+  ;; Fixes https://github.com/sebastiencs/company-box/issues/165.
+  ;; TODO With or without this fix, when a vertical split exists, in the right
+  ;; window, and not enough space, the doc childframe displays on the left. But
+  ;; it doesn't do this if you have Emacs in a single window in a half-screen
+  ;; frame and not enough space. Should be able to display the doc childframe
+  ;; outside of Emacs.
+  ;; (advice-add 'company-box-doc--set-frame-position
+  ;;             :override 'my/company-box-doc--set-frame-position)
+  ;; (advice-add 'company-box-doc--make-buffer
+  ;;             :override 'my/company-box-doc--make-buffer)
+  (define-key company-active-map (kbd "C-h") #'my/company-show-doc-buffer)
+  ;;(advice-add 'company-show-doc-buffer :override 'my/company-show-doc-buffer)
   (setq company-box-show-single-candidate t
         company-box-backends-colors nil
         company-box-max-candidates 50
@@ -147,7 +159,9 @@
             (ElispFunction . ,(all-the-icons-material "functions"                :face 'all-the-icons-red))
             (ElispVariable . ,(all-the-icons-material "check_circle"             :face 'all-the-icons-blue))
             (ElispFeature  . ,(all-the-icons-material "stars"                    :face 'all-the-icons-orange))
-            (ElispFace     . ,(all-the-icons-material "format_paint"             :face 'all-the-icons-pink)))))
+            (ElispFace     . ,(all-the-icons-material "format_paint"             :face 'all-the-icons-pink))))
+        ;; Enable auto doc display for candidates
+        company-box-doc-enable nil)
 
   ;; HACK Fix oversized scrollbar in some odd cases
   ;; REVIEW `resize-mode' is deprecated and may stop working in the future.
