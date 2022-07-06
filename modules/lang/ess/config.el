@@ -27,8 +27,13 @@
   (setq ess-offset-continued 'straight
         ess-use-flymake (not (featurep! :checkers syntax))
         ess-nuke-trailing-whitespace-p t
-        ess-style 'DEFAULT
+        ess-style 'RStudio
         ess-history-directory (expand-file-name "ess-history/" doom-cache-dir)
+        ess-eldoc-abbreviation-style 'mild
+        ess-eldoc-show-on-symbol t
+        ess-ask-for-ess-directory nil
+        ess-indent-with-fancy-comments nil
+        ess-use-company nil
         ;; Prefer lsp to eldoc signatures for ess-r-mode. Better to have
         ;; barebones signatures for S3 generic functions like print and
         ;; data.frame, and some tidyverse functions like select(), than to
