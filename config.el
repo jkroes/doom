@@ -221,3 +221,6 @@ module."
                                 (evil-exit-emacs-state))))
 
 (setq confirm-kill-emacs nil)
+
+(after! evil
+  (define-key evil-motion-state-map "go" #'consult-outline))
