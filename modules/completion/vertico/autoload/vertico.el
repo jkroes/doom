@@ -248,7 +248,7 @@ key binding (without the prefix)."
   "Call the command in `which-key--prefix-help-cmd-backup'.
 Usually this is `describe-prefix-bindings'.
 
-Unlike the original function, `popup-showing' is passed to
+Unlike the original function, `popup-showing' is passed t
 `which-key--prefix-help-cmd-backup'."
   (interactive)
   (let ((which-key-inhibit t)
@@ -282,3 +282,17 @@ by passing a PREFIX key."
       (user-error "No keybindings found"))
     (when-let (command (embark-completing-read-prompter keymap 'no-default))
       (call-interactively command))))
+
+;; Note that the original command is still called when using
+;; execute-extended-command. Only keybindings are remapped.
+;;;###autoload
+(defun my/marginalia-annotate-binding (cand)
+  "Annotate command CAND with keybinding. If CAND is remapped to
+  OTHER-COMMAND, return [remap OTHER-COMMAND]."
+  (when-let* ((sym (intern-soft cand))
+              (key (and (commandp sym) (where-is-internal sym nil
+                                                          'first-only))))
+    (let ((remap (command-remapping sym)))
+      (propertize (format " (%s)" (if remap remap
+                                    (key-description key)))
+                  'face 'marginalia-key))))

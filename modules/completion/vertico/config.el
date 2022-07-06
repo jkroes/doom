@@ -283,6 +283,7 @@ orderless."
   (when (featurep! +icons)
     (add-hook 'marginalia-mode-hook #'all-the-icons-completion-marginalia-setup))
   (advice-add #'marginalia--project-root :override #'doom-project-root)
+  (advice-add #'marginalia-annotate-binding :override #'my/marginalia-annotate-binding)
   (pushnew! marginalia-command-categories
             '(+default/find-file-under-here . file)
             '(doom/find-file-in-emacsd . project-file)
