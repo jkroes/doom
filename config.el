@@ -227,3 +227,5 @@ module."
 
 ;; Disable smartparens
 (remove-hook 'doom-first-buffer-hook #'smartparens-global-mode)
+
+(setq org-element-use-cache nil)
