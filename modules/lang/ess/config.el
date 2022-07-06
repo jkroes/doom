@@ -85,6 +85,8 @@
     ;;      have a sane `comment-line-break-function', so...
     comment-line-break-function nil)
 
+  (setq-hook! 'inferior-ess-mode-hook comint-use-prompt-regexp nil)
+
   ;; The ess completion function doesn't invoke company as far as I can tell
   (general-unbind ess-mode-map "TAB")
 
