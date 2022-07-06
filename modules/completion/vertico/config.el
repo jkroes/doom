@@ -131,6 +131,7 @@ orderless."
         consult-async-refresh-delay  0.15
         consult-async-input-throttle 0.2
         consult-async-input-debounce 0.1)
+  (when IS-MAC (setq consult-locate-args "mdfind"))
   (unless +vertico-consult-fd-args
     (setq +vertico-consult-fd-args
           (if doom-projectile-fd-binary
