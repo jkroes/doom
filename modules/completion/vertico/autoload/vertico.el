@@ -127,7 +127,10 @@ If INITIAL is non-nil, use as initial input."
          (cmd (split-string-and-unquote +vertico-consult-fd-args " ")))
     (find-file
      (consult--read
-      (split-string (cdr (apply #'doom-call-process cmd)) "\n" t)
+      ;; HACK `call-process' and `fd' return results with leading "./" for
+      ;; unknown reasons, so strip them
+      (mapcar (lambda (x) (replace-regexp-in-string "^\\./" "" x))
+              (split-string (cdr (apply #'doom-call-process cmd)) "\n" t))
       :prompt default-directory
       :sort nil
       :initial (if initial (shell-quote-argument initial))
