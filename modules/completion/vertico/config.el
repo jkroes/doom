@@ -124,7 +124,7 @@ orderless."
     :before #'consult-recent-file
     (recentf-mode +1))
 
-  (setq consult-project-root-function #'doom-project-root
+  (setq consult-project-function #'doom-project-root
         consult-narrow-key "<"
         consult-line-numbers-widen t
         consult-async-min-input 2
