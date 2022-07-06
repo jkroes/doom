@@ -46,6 +46,10 @@ employed so that flycheck still does *some* helpful linting.")
                ("it" "xit")
                ("describe" "xdescribe")))
 
+  ;; Due to alterations to private company module, emacs-lisp otherwise has
+  ;; empty `company-backends'
+  (set-company-backend! 'emacs-lisp-mode '(company-capf))
+
   (setq-hook! 'emacs-lisp-mode-hook
     ;; Emacs' built-in elisp files use a hybrid tab->space indentation scheme
     ;; with a tab width of 8. Any smaller and the indentation will be
