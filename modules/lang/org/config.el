@@ -822,8 +822,93 @@ between the two."
   (setq org-special-ctrl-a/e t)
 
   (setq org-M-RET-may-split-line nil
-        ;; insert new headings after current subtree rather than inside it
-        org-insert-heading-respect-content t)
+        ;; When disabled, M-RET and C-M-RET insert (sub)heading above
+        ;; when called at beginning of line; else directly below
+        org-insert-heading-respect-content nil)
+
+  (defadvice! my/org-insert-heading (&optional arg invisible-ok top)
+    "Make M-RET and C-M-RET respect property drawers when inserting
+(sub)heading below current heading, assuming that
+`org-insert-heading-respect-content' is nil."
+    :override #'org-insert-heading
+    (interactive "P")
+    (let* ((blank? (org--blank-before-heading-p (equal arg '(16))))
+	   (level (org-current-level))
+	   (stars (make-string (if (and level (not top)) level 1) ?*)))
+      (cond
+       ((or org-insert-heading-respect-content
+	    (member arg '((4) (16)))
+	    (and (not invisible-ok)
+	         (invisible-p (max (1- (point)) (point-min)))))
+        ;; Position point at the location of insertion.  Make sure we
+        ;; end up on a visible headline if INVISIBLE-OK is nil.
+        (org-with-limited-levels
+         (if (not level) (outline-next-heading) ;before first headline
+	   (org-back-to-heading invisible-ok)
+	   (when (equal arg '(16)) (org-up-heading-safe))
+	   (org-end-of-subtree)))
+        (unless (bolp) (insert "\n"))
+        (when (and blank? (save-excursion
+                            (backward-char)
+                            (org-before-first-heading-p)))
+          (insert "\n")
+          (backward-char))
+        (when (and (not level) (not (eobp)) (not (bobp)))
+          (when (org-at-heading-p) (insert "\n"))
+          (backward-char))
+        (unless (and blank? (org-previous-line-empty-p))
+	  (org-N-empty-lines-before-current (if blank? 1 0)))
+        (insert stars " ")
+        ;; When INVISIBLE-OK is non-nil, ensure newly created headline
+        ;; is visible.
+        (unless invisible-ok
+	  (pcase (get-char-property-and-overlay (point) 'invisible)
+	    (`(outline . ,o)
+	     (move-overlay o (overlay-start o) (line-end-position 0)))
+	    (_ nil))))
+       ;; At a headline...
+       ((org-at-heading-p)
+        (cond ((bolp)
+	       (when blank? (save-excursion (insert "\n")))
+	       (save-excursion (insert stars " \n"))
+	       (unless (and blank? (org-previous-line-empty-p))
+	         (org-N-empty-lines-before-current (if blank? 1 0)))
+	       (end-of-line))
+	      ((and (org-get-alist-option org-M-RET-may-split-line 'headline)
+		    (org-match-line org-complex-heading-regexp)
+		    (org-pos-in-match-range (point) 4))
+	       ;; Grab the text that should moved to the new headline.
+	       ;; Preserve tags.
+	       (let ((split (delete-and-extract-region (point) (match-end 4))))
+	         (if (looking-at "[ \t]*$") (replace-match "")
+		   (org-align-tags))
+	         (end-of-line)
+	         (when blank? (insert "\n"))
+	         (insert "\n" stars " ")
+	         (when (org-string-nw-p split) (insert split))))
+              ;; --- insert heading AFTER property drawer
+	      (t
+               (re-search-forward org-property-end-re
+                                  (save-excursion
+                                    (outline-next-heading)
+                                    (point))
+                                  t)
+	       (end-of-line)
+	       (when blank? (insert "\n"))
+	       (insert "\n" stars " "))))
+       ;; On regular text, turn line into a headline or split, if
+       ;; appropriate.
+       ((bolp)
+        (insert stars " ")
+        (unless (and blank? (org-previous-line-empty-p))
+          (org-N-empty-lines-before-current (if blank? 1 0))))
+       (t
+        (unless (org-get-alist-option org-M-RET-may-split-line 'headline)
+          (end-of-line))
+        (insert "\n" stars " ")
+        (unless (and blank? (org-previous-line-empty-p))
+          (org-N-empty-lines-before-current (if blank? 1 0))))))
+    (run-hooks 'org-insert-heading-hook))
 
   (add-hook! 'org-tab-first-hook
              #'+org-yas-expand-maybe-h
