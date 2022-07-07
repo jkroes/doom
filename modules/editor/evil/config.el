@@ -48,6 +48,8 @@ directives. By default, this only recognizes C directives.")
         ;; Only do highlighting in selected window so that Emacs has less work
         ;; to do highlighting them all.
         evil-ex-interactive-search-highlight 'selected-window
+        evil-ex-search-persistent-highlight nil
+        evil-want-keybinding nil
         ;; It's infuriating that innocuous "beginning of line" or "end of line"
         ;; errors will abort macros, so suppress them:
         evil-kbd-macro-suppress-motion-error t
