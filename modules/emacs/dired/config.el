@@ -104,6 +104,13 @@ Fixes #3939: unsortable dired entries on Windows."
   ;; BUG There was a typo in the original function
   (advice-add 'ranger-disable :override 'my/ranger-disable)
 
+  ;; HACK ranger is unstable. It breaks at random times, as observed in
+  ;; https://github.com/syl20bnr/spacemacs/issues/13129. Sometimes
+  ;; splitting a window, then trying to open a buffer spawns an
+  ;; error from delete-window about deleting the sole window or
+  ;; minibuffer and falls back to a single window.
+  ;; (add-hook 'window-configuration-change-hook #'temp-ranger-hack)
+
   (unless (file-directory-p image-dired-dir)
     (make-directory image-dired-dir))
 

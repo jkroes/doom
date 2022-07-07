@@ -69,3 +69,16 @@ in Windows."
              (delete-window ranger-preview-window))
     (ranger-revert)))
 
+;;;###autoload
+;; (defun temp-ranger-hack ()
+;;   "ranger-mode modifies window-configuration-change-hook but fails to clean
+;; it up. This results in repeat messages about how 'All ranger frames have been
+;; killed.' This hack may interfere with legit ranger functionality and/or likely
+;; fails to clean up other changes ranger makes."
+;;   (require 'dash)
+;;   (when (and (length> (-filter
+;;                        (lambda (x) (with-current-buffer x (eq major-mode 'ranger-mode)))
+;;                        (buffer-list))
+;;                       0)
+;;              (memq #'ranger-window-check (default-value 'window-configuration-change-hook)))
+;;     (remove-hook 'window-configuration-change-hook #'ranger-window-check)))
