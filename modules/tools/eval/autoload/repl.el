@@ -105,6 +105,9 @@ If ARG (universal argument), prompt for a specific REPL to open."
   (interactive "P")
   (+eval-open-repl arg #'pop-to-buffer))
 
+;; TODO The docstring is wrong: this does not open a REPL if one is not already
+;; open. To do so insert a call to +eval/open-repl-other-window befre the let
+;; statement
 ;;;###autoload
 (defun +eval/send-region-to-repl (beg end &optional inhibit-auto-execute-p)
   "Execute the selected region in the REPL.
@@ -112,33 +115,63 @@ Opens a REPL if one isn't already open. If AUTO-EXECUTE-P, then execute it
 immediately after."
   (interactive "rP")
   (let ((selection (buffer-substring-no-properties beg end))
-        (buffer (+eval--ensure-in-repl-buffer)))
+        (buffer (+eval--ensure-in-repl-buffer))
+        (mode major-mode))
     (unless buffer
       (error "No REPL open"))
     (let ((origin-window (selected-window))
           (selection
            (with-temp-buffer
              (insert selection)
+             ;; Delete leading empty lines
              (goto-char (point-min))
              (when (> (skip-chars-forward "\n") 0)
                (delete-region (point-min) (point)))
-             (indent-rigidly (point) (point-max)
-                             (- (skip-chars-forward " \t")))
-             (concat (string-trim-right (buffer-string))
-                     "\n"))))
-      (with-selected-window (get-buffer-window buffer)
-        (with-current-buffer buffer
-          (dolist (line (split-string selection "\n"))
-            (insert line)
-            (if inhibit-auto-execute-p
-                (insert "\n")
-              ;; Can't use `comint-send-input' b/c there's no guarantee the
-              ;; current REPL uses comint. Even if it did, no telling if they
-              ;; have their own `comint-send-input' wrapper, so to be safe, I
-              ;; simply emulate the keypress.
-              (call-interactively (doom-lookup-key (kbd "RET"))))
-            (sit-for 0.001)
-            (redisplay 'force)))
+             ;; NOTE This may have a purpose but it prevents using
+             ;; +eval/line-or-region with Python multiline statements
+             ;; (indent-rigidly (point) (point-max)
+             ;;                 (- (skip-chars-forward " \t")))
+             ;; Trim trailing newline, carriage return, and tabs at end of
+             ;; buffer, then add back a single newline
+             ;; (concat (string-trim-right (buffer-string))
+             ;;         "\n")
+             (buffer-string))))
+        (with-selected-window (get-buffer-window buffer)
+          (with-current-buffer buffer
+            (let* ((lines (split-string selection "\n"))
+                   (len (length lines))
+                   line)
+              ;; split-string has an option to remove all empty strings, but
+              ;; we want to preserve ones that represent empty lines. With
+              ;; multiple lines, however, split-string adds a trailing empty
+              ;; string. Remove this.
+              (when (and (> len 1)
+                         (string= (nth (- len 1) lines) ""))
+                (setq lines (butlast lines)
+                      len (length lines)))
+              (dotimes (i len)
+                (setq line (pop lines))
+                ;; Hack to avoid read-only prompt warnings and failure to insert
+                ;; lines. (The cursor starts on read-only prompts.)
+                (call-interactively 'comint-next-prompt)
+                  (insert line)
+                  (if inhibit-auto-execute-p
+                      (insert "\n")
+                    ;; Can't use `comint-send-input' b/c there's no guarantee the
+                    ;; current REPL uses comint. Even if it did, no telling if they
+                    ;; have their own `comint-send-input' wrapper, so to be safe, I
+                    ;; simply emulate the keypress.
+                    (call-interactively (doom-lookup-key (kbd "RET"))))
+
+                  ;; Python requires an extra return to execute multiple lines
+                  ;; automatically, though there are reasons not to do so. You can
+                  ;; simply include a trailing empty line in the region
+                  ;; (when (and (eq mode 'python-mode)
+                  ;;            (> len 1)
+                  ;;            (= i (- len 1)))
+                  ;;   (call-interactively (doom-lookup-key (kbd "RET"))))
+                  (sit-for 0.001)
+                  (redisplay 'force))))
         (when (and (eq origin-window (selected-window))
                    (bound-and-true-p evil-local-mode))
           (call-interactively #'evil-append-line))))))

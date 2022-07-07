@@ -12,6 +12,11 @@ buffer rather than an overlay on the line at point or the minibuffer.")
 ;;
 ;;; Packages
 
+;; Modified to hide when ESC or C-g are used within the REPL.
+;; TODO There needs to be a way to close REPL windows without navigating to
+;; them to run quit-window or C-g. And C-g shouldn't have to be used to quit
+;; a REPL popup since you might be pressing it a lot there. Create a function
+;; to toggle REPL windows rather than simply opening or focusing them.
 (set-popup-rule!
   (lambda (bufname _)
     (when (boundp '+eval-repl-mode)
@@ -22,7 +27,7 @@ buffer rather than an overlay on the line at point or the minibuffer.")
              (set-process-query-on-exit-flag process nil)
              (kill-process process)
              (kill-buffer buf))))
-  :size 0.25 :quit nil)
+  :size 0.25 :quit 'current)
 
 
 (after! quickrun

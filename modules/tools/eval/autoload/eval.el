@@ -114,7 +114,8 @@
   (interactive)
   (if (use-region-p)
       (call-interactively #'+eval/region)
-    (+eval/region (line-beginning-position) (line-end-position))))
+    (+eval/region (line-beginning-position) (line-end-position)))
+  (forward-line))
 
 ;;;###autoload
 (defun +eval/buffer-or-region ()
