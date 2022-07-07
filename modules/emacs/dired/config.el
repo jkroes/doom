@@ -246,37 +246,9 @@ we have to clean it up ourselves."
         "h" #'dired-omit-mode))
 
 
-(use-package! fd-dired
-  :when doom-projectile-fd-binary
-  :defer t
-  :init
-  (global-set-key [remap find-dired] #'fd-dired)
-  (set-popup-rule! "^\\*F\\(?:d\\|ind\\)\\*$" :ignore t))
-
 (use-package! dired-aux
   :defer t
   :config
   (setq dired-create-destination-dirs 'ask
         dired-vc-rename-file t))
 
-;;;###package dired-git-info
-(map! :after dired
-      :map (dired-mode-map ranger-mode-map)
-      :ng ")" #'dired-git-info-mode)
-(setq dgi-commit-message-format "%h %cs %s"
-      dgi-auto-hide-details-p nil)
-(after! wdired
-  ;; Temporarily disable `dired-git-info-mode' when entering wdired, due to
-  ;; reported incompatibilities.
-  (defvar +dired--git-info-p nil)
-  (defadvice! +dired--disable-git-info-a (&rest _)
-    :before #'wdired-change-to-wdired-mode
-    (setq +dired--git-info-p (bound-and-true-p dired-git-info-mode))
-    (when +dired--git-info-p
-      (dired-git-info-mode -1)))
-  (defadvice! +dired--reactivate-git-info-a (&rest _)
-    :after '(wdired-exit
-             wdired-abort-changes
-             wdired-finish-edit)
-    (when +dired--git-info-p
-      (dired-git-info-mode +1))))
