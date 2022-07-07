@@ -127,13 +127,14 @@ This is performed with an asyncronous Emacs process, except when
   "Enable literate-compiling-on-save in the current buffer."
   (add-hook 'after-save-hook #'+literate-recompile-maybe-h nil 'local))
 
+;; NOTE I changed this to tangle only when saving config.org, not any org file
+;; within doom-private-dir. For some reason org-babel-tangle is really slow
+;; in WSL but not MacOS
 ;;;###autoload
 (defun +literate-recompile-maybe-h ()
   "Recompile literate config to `doom-private-dir'.
 
 We assume any org file in `doom-private-dir' is connected to your literate
 config, and should trigger a recompile if changed."
-  (and (file-in-directory-p
-        (buffer-file-name (buffer-base-buffer))
-        (file-name-directory +literate-config-file))
+  (and (equal buffer-file-name (expand-file-name +literate-config-file))
        (+literate-tangle-h)))
