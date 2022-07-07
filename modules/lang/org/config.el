@@ -630,12 +630,13 @@ relative to `org-directory', unless it is an absolute path."
             (mathjax . t)
             (variable . "revealjs-url=https://revealjs.com"))))
 
-  (defadvice! +org--dont-trigger-save-hooks-a (fn &rest args)
-    "Exporting and tangling trigger save hooks; inadvertantly triggering
-mutating hooks on exported output, like formatters."
-    :around '(org-export-to-file org-babel-tangle)
-    (let (before-save-hook after-save-hook)
-      (apply fn args)))
+  ;; This creates huge lags for org-babel-tangle
+;;   (defadvice! +org--dont-trigger-save-hooks-a (fn &rest args)
+;;     "Exporting and tangling trigger save hooks; inadvertantly triggering
+;; mutating hooks on exported output, like formatters."
+;;     :around '(org-export-to-file org-babel-tangle)
+;;     (let (before-save-hook after-save-hook)
+;;       (apply fn args)))
 
   (defadvice! +org--fix-async-export-a (fn &rest args)
     :around '(org-export-to-file org-export-as)
