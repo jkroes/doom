@@ -64,17 +64,19 @@ Fixes #3939: unsortable dired entries on Windows."
 (use-package! dired-rsync
   :general (dired-mode-map "C-c C-r" #'dired-rsync))
 
-
+;; Extra font locking for dired
 (use-package! diredfl
   :hook (dired-mode . diredfl-mode))
 
-
-(use-package! diff-hl
-  :hook (dired-mode . diff-hl-dired-mode-unless-remote)
-  :hook (magit-post-refresh . diff-hl-magit-post-refresh)
-  :config
-  ;; use margin instead of fringe
-  (diff-hl-margin-mode))
+;; diff-hl indicators are incorrect when you navigate to,
+;; from, and back to a directory. note that ranger-refresh
+;; fixes the issue temporarily but takes a while to run
+;; (use-package! diff-hl
+;;   :hook (dired-mode . diff-hl-dired-mode-unless-remote)
+;;   :hook (magit-post-refresh . diff-hl-magit-post-refresh)
+;;   :config
+;;   ;; use margin instead of fringe
+;;   (diff-hl-margin-mode))
 
 
 (use-package! ranger
