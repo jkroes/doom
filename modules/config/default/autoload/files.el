@@ -55,6 +55,7 @@ If prefix ARG is non-nil, prompt for the search path."
                 (message "%S was inaccessible and couldn't be searched" dir)
               (projectile-discover-projects-in-directory dir depth))))))))
 
+(autoload 'dired-read-dir-and-switches "dired")
 ;;;###autoload
 (defun +default/dired (arg)
   "Open a directory in dired.
