@@ -318,14 +318,16 @@ directives. By default, this only recognizes C directives.")
          :left-regexp "\\[[{(]"
          :right-regexp "\\[]})]")))
 
-
 (use-package! evil-escape
   :commands evil-escape
   :hook (doom-first-input . evil-escape-mode)
   :init
+  ;; One example of where this is useful: In visual state, holding down "k" to
+  ;; expand the region followed by "j" to correct overexpansion. Without exclusion,
+  ;; the visual region is lost.
   (setq evil-escape-excluded-states '(normal visual multiedit emacs motion)
         evil-escape-excluded-major-modes '(neotree-mode treemacs-mode vterm-mode)
-        evil-escape-key-sequence "jk"
+        evil-escape-key-sequence "kj"
         evil-escape-delay 0.15)
   (evil-define-key* '(insert replace visual operator) 'global "\C-g" #'evil-escape)
   :config
