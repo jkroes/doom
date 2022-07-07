@@ -25,13 +25,13 @@
 
   (let ((args (list "-ahl" "-v" "--group-directories-first")))
     (when IS-BSD
-      ;; Use GNU ls as `gls' from `coreutils' if available. Add `(setq
-      ;; dired-use-ls-dired nil)' to your config to suppress the Dired warning
-      ;; when not using GNU ls.
+      ;; Use GNU ls as `gls' from `coreutils' if available.
       (if-let (gls (executable-find "gls"))
           (setq insert-directory-program gls)
         ;; BSD ls doesn't support -v or --group-directories-first
-        (setq args (list (car args)))))
+        (setq args (list (car args))
+              ;; or --dired
+              dired-use-ls-dired nil)))
     (setq dired-listing-switches (string-join args " "))
 
     (add-hook! 'dired-mode-hook
