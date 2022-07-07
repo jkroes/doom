@@ -96,6 +96,11 @@ Fixes #3939: unsortable dired entries on Windows."
         ;; dired-do-copy.
         dired-dwim-target #'dired-dwim-target-ranger)
   :config
+  ;; Modified to open WSL files in Windows
+  ;; NOTE Bound to "we" in ranger-mode-map
+  (advice-add 'ranger-open-in-external-app
+              :override 'my/ranger-open-in-external-app)
+
   (unless (file-directory-p image-dired-dir)
     (make-directory image-dired-dir))
 

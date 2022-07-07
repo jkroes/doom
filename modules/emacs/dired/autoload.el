@@ -27,3 +27,35 @@ or ranger-mode buffers."
                                    (next-window nil 'nomini all-frames)
                                    'nomini all-frames))))
 
+(defun open-in-windows (path _)
+  (let ((browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe")
+        (browse-url-generic-args '("/c" "start" "")))
+    (browse-url-generic
+     (substring
+      (shell-command-to-string
+       (format "wslpath -w '%s'" path))
+      0 -1))))
+
+;;;###autoload
+(defun my/ranger-open-in-external-app ()
+  "Open the current file or dired marked files in external app. Open WSL files
+in Windows."
+  (interactive)
+  (let ((marked-files (dired-get-marked-files)))
+    (cond ((string-equal system-type "windows-nt")
+           (mapc
+            (lambda (f) (w32-shell-execute "open" (replace-regexp-in-string "/" "\\" f t t)) )
+            marked-files) )
+          ((string-equal system-type "darwin")
+           (mapc
+            (lambda (f) (shell-command (format "open \"%s\"" f)))
+            marked-files))
+          ;; WSL1 has "-Microsoft", WSL2 has "-microsoft-standard"
+          ((string-match "-[Mm]icrosoft" operating-system-release)
+           (lambda (f) (open-in-windows f nil)))
+          ((string-equal system-type "gnu/linux")
+           (mapc
+            (lambda (f) (let ((process-connection-type nil)) (start-process "" nil "xdg-open" f)))
+            marked-files))
+          (t (message "System type not supported.")))))
+
