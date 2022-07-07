@@ -82,7 +82,19 @@ Fixes #3939: unsortable dired entries on Windows."
 (use-package! ranger
   :when (featurep! +ranger)
   :after dired
-  :init (setq ranger-override-dired t)
+  :init
+  (setq ranger-override-dired t
+        ranger-excluded-extensions '("mkv" "iso" "mp4")
+        ranger-preview-file nil
+        ;; The ranger header is ugly and has odd indentation
+        ranger-modify-header nil
+        ;; The docs for this variable are wrong.
+        ranger-show-hidden 'format
+        ;; Commands that prompt for a directory (dired commands,
+        ;; org-attach-attach, etc.) will prompt for the directory in the
+        ;; (possibly second) dired buffer. E.g. this is useful for
+        ;; dired-do-copy.
+        dired-dwim-target #'dired-dwim-target-ranger)
   :config
   (unless (file-directory-p image-dired-dir)
     (make-directory image-dired-dir))
