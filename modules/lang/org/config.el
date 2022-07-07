@@ -227,13 +227,17 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
         ;; You don't need my permission (just be careful, mkay?)
         org-confirm-babel-evaluate nil
         org-link-elisp-confirm-function nil
-        ;; Show src buffer in popup, and don't monopolize the frame
-        org-src-window-setup 'other-window
+        org-src-window-setup 'current-window
+        org-src-ask-before-returning-to-edit-buffer nil
         ;; Our :lang common-lisp module uses sly, so...
         org-babel-lisp-eval-fn #'sly-eval)
 
+  (add-hook! 'org-src-mode-hook #'evil-normalize-keymaps)
+
   ;; I prefer C-c C-c over C-c ' (more consistent)
   (define-key org-src-mode-map (kbd "C-c C-c") #'org-edit-src-exit)
+
+  (map! :map org-src-mode-map :n "q" #'my/org-edit-src-save-and-exit)
 
   ;; Don't process babel results asynchronously when exporting org, as they
   ;; won't likely complete in time, and will instead output an ob-async hash

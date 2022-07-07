@@ -256,7 +256,8 @@ If on a:
          (save-excursion (org-update-statistics-cookies arg)))
 
         ((or `src-block `inline-src-block)
-         (org-babel-execute-src-block arg))
+         ;;(org-babel-execute-src-block arg)
+         (org-edit-src-code))
 
         ((or `latex-fragment `latex-environment)
          (org-latex-preview arg))
