@@ -427,6 +427,10 @@ directives. By default, this only recognizes C directives.")
 (map! :v  "@"     #'+evil:apply-macro
       :m  [C-i]   #'evil-jump-forward
 
+      ;; Easier scrolling
+      :m "zh"     #'evil-scroll-left
+      :m "zl"     #'evil-scroll-right
+
       ;; implement dictionary keybinds
       ;; evil already defines 'z=' to `ispell-word' = correct word at point
       (:when (featurep! :checkers spell)
@@ -500,8 +504,7 @@ directives. By default, this only recognizes C directives.")
        :nv "gd"  #'+lookup/definition
        :nv "gD"  #'+lookup/references
        :nv "gf"  #'+lookup/file
-       :nv "gI"  #'+lookup/implementations
-       :nv "gA"  #'+lookup/assignments)
+       :nv "gI"  #'+lookup/implementations)
       (:when (featurep! :tools eval)
        :nv "gr"  #'+eval:region
        :n  "gR"  #'+eval/buffer
@@ -602,13 +605,15 @@ directives. By default, this only recognizes C directives.")
       ;; evil-surround
       :v "S" #'evil-surround-region
       :o "s" #'evil-surround-edit
+      ;; NOTE: This explicitly does not work with delete or change, so I only
+      ;; know of yS. What other operators are there?
       :o "S" #'evil-Surround-edit
 
       ;; evil-lion
-      :n "gl" #'evil-lion-left
-      :n "gL" #'evil-lion-right
-      :v "gl" #'evil-lion-left
-      :v "gL" #'evil-lion-right
+      ;; NOTE: gA was reserved for lookup/assignments, which doesn't exist.
+      ;; This frees up gl for evil-org bindings
+      :nv "ga" #'evil-lion-left
+      :nv "gA" #'evil-lion-right
 
       ;; Omni-completion
       (:when (featurep! :completion company)
