@@ -1138,7 +1138,7 @@ between the two."
 
 
 (use-package! evil-org
-  :when (featurep! :editor evil +everywhere)
+  :when (featurep! :editor evil)
   :hook (org-mode . evil-org-mode)
   :hook (org-capture-mode . evil-insert-state)
   :init
@@ -1219,7 +1219,7 @@ between the two."
 
 
 (use-package! evil-org-agenda
-  :when (featurep! :editor evil +everywhere)
+  :when (featurep! :editor evil)
   :hook (org-agenda-mode . evil-org-agenda-mode)
   :config
   (evil-org-agenda-set-keys)

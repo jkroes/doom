@@ -42,7 +42,7 @@
 (package! toc-org :pin "bf2e4b358efbd860ecafe6e74776de0885d9d100")
 (package! org-cliplink :pin "13e0940b65d22bec34e2de4bc8cba1412a7abfbc")
 
-(when (featurep! :editor evil +everywhere)
+(when (featurep! :editor evil)
   (package! evil-org
     :recipe (:host github :repo "hlissner/evil-org-mode")
     :pin "a9706da260c45b98601bcd72b1d2c0a24a017700"))
