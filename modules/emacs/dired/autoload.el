@@ -59,3 +59,13 @@ in Windows."
             marked-files))
           (t (message "System type not supported.")))))
 
+;;;###autoload
+(defun my/ranger-disable ()
+  "Interactively disable ranger-mode."
+  (interactive)
+  ;; don't kill ranger buffer if open somewhere else
+  (if (> (length (get-buffer-window-list)) 1)
+      (progn (delete-window)
+             (delete-window ranger-preview-window))
+    (ranger-revert)))
+

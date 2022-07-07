@@ -101,6 +101,9 @@ Fixes #3939: unsortable dired entries on Windows."
   (advice-add 'ranger-open-in-external-app
               :override 'my/ranger-open-in-external-app)
 
+  ;; BUG There was a typo in the original function
+  (advice-add 'ranger-disable :override 'my/ranger-disable)
+
   (unless (file-directory-p image-dired-dir)
     (make-directory image-dired-dir))
 
