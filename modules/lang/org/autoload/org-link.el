@@ -246,3 +246,42 @@ exist, and `org-link' otherwise."
   "TODO"
   (+org--describe-kbd
    (+org-read-link-description-at-point default context)))
+
+
+;;;###autoload
+(defun org-store-link-to-filepath (arg)
+  "I use this to grab the filepath of org files without context about the line
+where this is called in the link and without an ID (being created). Also grabs
+other files without context."
+  (interactive "P")
+  (let ((org-link-context-for-files nil)
+        major-mode)
+    ;; No way to store a link to an org-mode file without an ID, either
+    ;; preexisting or created anew. We only want the filepath in the link, which
+    ;; we can get if we mask the `major-mode' from `derived-mode-p' within
+    ;; `org-store-link'.
+    (and (derived-mode-p 'org-mode)
+         (setq major-mode 'text-mode))
+    ;; Need to call with `interactive?' set to `t' to store link for
+    ;; `org-insert-link'
+    (org-store-link nil t))
+  ;; Without this, the description portion of the newly created element of
+  ;; org-stored-links will be the same as the filepath and avoids the
+  ;; org-insert-link prompt to enter or accept the description text. Instead,
+  ;; the link is inserted without a description. (Some users may prefer this.)
+  ;; Any non-nil description value that doesn't match the link portion will pull
+  ;; up the prompt with the value as a suggestion.
+  (let ((desc (cdr (nth 0 org-stored-links))))
+    (setcar desc (if (equal arg '(4))
+                     nil
+                   (file-name-nondirectory (car desc))))))
+
+;;;###autoload
+(defun org-compress-link (arg)
+  "Convert URL to a compressed org link. Useful for shortening links you don't
+want to add a descrption to"
+  (interactive "P")
+  (let ((url (thing-at-point 'url))
+    (bounds (bounds-of-thing-at-point 'url)))
+    (kill-region (car bounds) (cdr bounds))
+    (insert (format "[[%s][%s]]" url (truncate-string-to-width url (if arg (prefix-numeric-value arg) 40) nil nil "...")))))

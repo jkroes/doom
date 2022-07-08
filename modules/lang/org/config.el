@@ -1059,13 +1059,15 @@ between the two."
          "x" #'org-capture-goto-last-stored)
         (:prefix ("l" . "links")
          "c" #'org-cliplink
+         "C" #'org-compress-link
          "d" #'+org/remove-link
          "i" #'org-id-store-link
          "l" #'org-insert-link
          "L" #'org-insert-all-links
          "s" #'org-store-link
          "S" #'org-insert-last-stored-link
-         "t" #'org-toggle-link-display)
+         "t" #'org-toggle-link-display
+         "y" #'org-store-link-to-filepath)
         (:prefix ("P" . "publish")
          "a" #'org-publish-all
          "f" #'org-publish-current-file
@@ -1093,6 +1095,8 @@ between the two."
          "n" #'org-narrow-to-subtree
          "r" #'org-refile
          "s" #'org-sparse-tree
+         ;; TODO org-yank shouldn't split text if not called at beginning of a heading
+         "y" #'org-yank ; See org-cut-subtree
          "A" #'org-archive-subtree
          "N" #'widen
          "S" #'org-sort)
@@ -1256,14 +1260,16 @@ between the two."
             :ni [C-return]   #'+org/insert-item-below
             :ni [C-S-return] #'+org/insert-item-above
             ;; navigate table cells (from insert-mode)
-            :i Cright (cmds! (org-at-table-p) #'org-table-next-field
-                             #'org-end-of-line)
-            :i Cleft  (cmds! (org-at-table-p) #'org-table-previous-field
-                             #'org-beginning-of-line)
-            :i Cup    (cmds! (org-at-table-p) #'+org/table-previous-row
-                             #'org-up-element)
-            :i Cdown  (cmds! (org-at-table-p) #'org-table-next-row
-                             #'org-down-element)
+            ;; NOTE: I don't like that these override C-h and C-l outside of
+            ;; tables. There should be a more comprehensive dwim cmds! binding
+            ;; :i Cright (cmds! (org-at-table-p) #'org-table-next-field
+            ;;                  #'org-end-of-line)
+            ;; :i Cleft  (cmds! (org-at-table-p) #'org-table-previous-field
+            ;;                  #'org-beginning-of-line)
+            ;; :i Cup    (cmds! (org-at-table-p) #'+org/table-previous-row
+            ;;                  #'org-up-element)
+            ;; :i Cdown  (cmds! (org-at-table-p) #'org-table-next-row
+            ;;                  #'org-down-element)
             :ni CSright   #'org-shiftright
             :ni CSleft    #'org-shiftleft
             :ni CSup      #'org-shiftup
