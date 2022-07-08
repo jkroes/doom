@@ -1230,6 +1230,10 @@ between the two."
             t))))))
 
 
+;; NOTE: evil-want-integration overrides gj/gk bindings by evil-org when
+;; evil-respect-visual-line is active, due to use of evil-define-minor-mode-key.'
+;; But the evil-org commands don't work as intended in that case anyway, since
+;; they fail to skip blank lines.
 (use-package! evil-org
   :when (featurep! :editor evil)
   :hook (org-mode . evil-org-mode)
