@@ -1,5 +1,7 @@
 ;;; lang/org/config.el -*- lexical-binding: t; -*-
 
+(defvar +org-resolve-attachment-links-recursively t)
+
 (defvar +org-babel-native-async-langs '(python)
   "Languages that will use `ob-comint' instead of `ob-async' for `:async'.")
 
@@ -507,7 +509,14 @@ relative to `org-directory', unless it is an absolute path."
 (defun +org-init-attachments-h ()
   "Sets up org's attachment system."
   (setq org-attach-store-link-p t     ; store link after attaching files
-        org-attach-use-inheritance t) ; inherit properties from parent nodes
+        org-attach-use-inheritance
+        (if +org-resolve-attachment-links-recursively nil t))
+
+  (when +org-resolve-attachment-links-recursively
+    (advice-add #'org-attach-follow :override #'my/org-attach-follow)
+    (advice-add #'org-attach-expand :override #'my/org-attach-expand)
+    (advice-add #'org-attach-dir :override #'my/org-attach-dir)
+    (advice-add #'org-entry-get-with-inheritance :override #'my/org-entry-get-with-inheritance))
 
   ;; Autoload all these commands that org-attach doesn't autoload itself
   (use-package! org-attach
