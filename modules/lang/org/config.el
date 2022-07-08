@@ -681,11 +681,17 @@ relative to `org-directory', unless it is an absolute path."
 
 (defun +org-init-hacks-h ()
   "Getting org to behave."
+  ;; HACK org-element throws a lot of errors about invalidated cache
+  ;; Unclear if this will fix things
+  (setq org-element-use-cache nil)
   ;; Open file links in current window, rather than new ones
   (setf (alist-get 'file org-link-frame-setup) #'find-file)
   ;; Open directory links in dired
   (add-to-list 'org-file-apps '(directory . emacs))
   (add-to-list 'org-file-apps '(remote . emacs))
+  ;; Open file links to WSL mounts to Windows files in Windows
+  (after! org
+    (add-to-list 'org-file-apps-gnu '("^/mnt/" . open-in-windows)))
 
   ;; Open help:* links with helpful-* instead of describe-*
   (advice-add #'org-link--open-help :around #'doom-use-helpful-a)
