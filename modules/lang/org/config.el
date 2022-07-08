@@ -1251,11 +1251,11 @@ between the two."
   :config
   (add-hook 'evil-org-mode-hook #'evil-normalize-keymaps)
   (evil-org-set-key-theme)
-  (add-hook! 'org-tab-first-hook :append
-             ;; Only fold the current tree, rather than recursively
-             #'+org-cycle-only-current-subtree-h
-             ;; Clear babel results if point is inside a src block
-             #'+org-clear-babel-results-h)
+  ;; (add-hook! 'org-tab-first-hook :append
+  ;;            ;; Only fold the current tree, rather than recursively
+  ;;            #'+org-cycle-only-current-subtree-h
+  ;;            ;; Clear babel results if point is inside a src block
+  ;;            #'+org-clear-babel-results-h)
   (let-alist evil-org-movement-bindings
     (let ((Cright  (concat "C-" .right))
           (Cleft   (concat "C-" .left))
