@@ -71,8 +71,9 @@
   (package! org-pomodoro :pin "3f5bcfb80d61556d35fc29e5ddb09750df962cc6"))
 (when (featurep! +pretty)
   (package! org-appear :pin "8dd1e564153d8007ebc4bb4e14250bde84e26a34")
-  (package! org-superstar :pin "03be6c0a3081c46a59b108deb8479ee24a6d86c0")
-  (package! org-fancy-priorities :pin "7f677c6c14ecf05eab8e0efbfe7f1b00ae68eb1d"))
+  (package! org-visual-outline
+    :recipe (:host github :repo "legalnonsense/org-visual-outline")
+    :pin "681cae2a3fb445322d01a79be9e5104e11575669"))
 (when (featurep! +present)
   (package! centered-window
     :recipe (:host github :repo "anler/centered-window-mode")
