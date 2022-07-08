@@ -315,15 +315,6 @@ Ugh, such an ugly hack."
           (apply fn args))
       (apply fn args)))
 
-  (defadvice! +popup--org-edit-src-exit-a (fn &rest args)
-    "If you switch workspaces or the src window is recreated..."
-    :around #'org-edit-src-exit
-    (let* ((window (selected-window))
-           (popup-p (+popup-window-p window)))
-      (prog1 (apply fn args)
-        (when (and popup-p (window-live-p window))
-          (delete-window window)))))
-
   ;; Ensure todo, agenda, and other minor popups are delegated to the popup system.
   (defadvice! +popup--org-pop-to-buffer-a (fn buf &optional norecord)
     "Use `pop-to-buffer' instead of `switch-to-buffer' to open buffer.'"
