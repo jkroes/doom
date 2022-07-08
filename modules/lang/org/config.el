@@ -1149,6 +1149,8 @@ between the two."
   ;; Disable the slow defaults
   (provide 'smartparens-org))
 
+(defun +org-init-todo-h ()
+  (add-hook 'org-after-todo-statistics-hook 'my/org-summary-todo))
 
 ;;
 ;;; Packages
@@ -1400,7 +1402,8 @@ between the two."
              #'+org-init-hacks-h
              #'+org-init-keybinds-h
              #'+org-init-popup-rules-h
-             #'+org-init-smartparens-h)
+             #'+org-init-smartparens-h
+             #'+org-init-todo-h)
 
   ;; Wait until an org-protocol link is opened via emacsclient to load
   ;; `org-protocol'. Normally you'd simply require `org-protocol' and use it,
