@@ -701,11 +701,6 @@ relative to `org-directory', unless it is an absolute path."
   ;; Open directory links in dired
   (add-to-list 'org-file-apps '(directory . emacs))
   (add-to-list 'org-file-apps '(remote . emacs))
-  ;; Open certain files with system default
-  (add-to-list 'org-file-apps '("xlsx" . system))
-  ;; Open file links to WSL mounts to Windows files in Windows
-  (after! org
-    (add-to-list 'org-file-apps-gnu '("^/mnt/" . open-in-windows)))
 
   ;; Open help:* links with helpful-* instead of describe-*
   (advice-add #'org-link--open-help :around #'doom-use-helpful-a)

@@ -32,43 +32,44 @@ of org-mode to properly utilize ID links.")
   ;; Don't display warning message dedicated for v1 users. Need to be set early.
   (setq org-roam-v2-ack t)
 
-  (defadvice! +org-roam-suppress-sqlite-build-a (fn &rest args)
-    "Suppress automatic building of sqlite3 binary when loading `org-roam'.
-This is a blocking operation that can take a while to complete
-and better be deferred when there will be an actual demand for
-the database. See `+org-init-roam-h' for the launch process."
-    :around #'emacsql-sqlite-ensure-binary
-    (if (not (boundp 'org-roam-db-version))
-        (apply fn args)
-      (advice-remove #'emacsql-sqlite-ensure-binary #'+org-roam-suppress-sqlite-build-a)
-      nil))
+;;   (defadvice! +org-roam-suppress-sqlite-build-a (fn &rest args)
+;;     "Suppress automatic building of sqlite3 binary when loading `org-roam'.
+;; This is a blocking operation that can take a while to complete
+;; and better be deferred when there will be an actual demand for
+;; the database. See `+org-init-roam-h' for the launch process."
+;;     :around #'emacsql-sqlite-ensure-binary
+;;     (if (not (boundp 'org-roam-db-version))
+;;         (apply fn args)
+;;       (advice-remove #'emacsql-sqlite-ensure-binary #'+org-roam-suppress-sqlite-build-a)
+;;       nil))
 
   :config
   (defun +org-init-roam-h ()
     "Setup `org-roam' but don't immediately initialize its database.
 Instead, initialize it when it will be actually needed."
-    (letf! ((#'org-roam-db-sync #'ignore))
-      (org-roam-db-autosync-enable)))
+    ;; (letf! ((#'org-roam-db-sync #'ignore))
+    ;;   (org-roam-db-autosync-enable)))
+    (org-roam-db-autosync-mode))
 
-  (defadvice! +org-roam-try-init-db-a (&rest _)
-    "Try to initialize org-roam database at the last possible safe moment.
-In case of failure, fail gracefully."
-    :before #'org-roam-db-query
-    (message "Initializing org-roam database...")
-    (let ((run-cleanup-p t))
-      (unwind-protect
-          ;; Try to build the binary if it doesn't exist. In case of failure
-          ;; this will error, run the cleanup and exit, and in case of success
-          ;; this will return nil and sync the database.
-          (setq run-cleanup-p (emacsql-sqlite-ensure-binary))
-        (when run-cleanup-p
-          (setq org-roam--sqlite-available-p nil)
-          (org-roam-teardown)
-          (message (concat "EmacSQL failied to build SQLite binary for org-roam; "
-                           "see *Compile-Log* buffer for details.\n"
-                           "To try reinitialize org-roam, run \"M-x org-roam-setup\"")))))
-    (advice-remove 'org-roam-db-query #'+org-roam-try-init-db-a)
-    (org-roam-db-sync))
+;;   (defadvice! +org-roam-try-init-db-a (&rest _)
+;;     "Try to initialize org-roam database at the last possible safe moment.
+;; In case of failure, fail gracefully."
+;;     :before #'org-roam-db-query
+;;     (message "Initializing org-roam database...")
+;;     (let ((run-cleanup-p t))
+;;       (unwind-protect
+;;           ;; Try to build the binary if it doesn't exist. In case of failure
+;;           ;; this will error, run the cleanup and exit, and in case of success
+;;           ;; this will return nil and sync the database.
+;;           (setq run-cleanup-p (emacsql-sqlite-ensure-binary))
+;;         (when run-cleanup-p
+;;           (setq org-roam--sqlite-available-p nil)
+;;           (org-roam-teardown)
+;;           (message (concat "EmacSQL failied to build SQLite binary for org-roam; "
+;;                            "see *Compile-Log* buffer for details.\n"
+;;                            "To try reinitialize org-roam, run \"M-x org-roam-setup\"")))))
+;;     (advice-remove 'org-roam-db-query #'+org-roam-try-init-db-a)
+;;     (org-roam-db-sync))
 
   (setq org-roam-directory
         (thread-first (or org-roam-directory "roam")
@@ -80,7 +81,7 @@ In case of failure, fail gracefully."
                 "${doom-hierarchy:*}"
                 (propertize "${doom-type:40}" 'face 'font-lock-keyword-face)
                 ;; Zero-width componenets can still be filtered on
-                (propertize "${doom-tags:10}" 'face 'org-tag))
+                (propertize "${doom-tags:0}" 'face 'org-tag))
         org-roam-completion-everywhere t
         org-roam-db-gc-threshold most-positive-fixnum
         ;; Reverse the default to favor faster searchers over slower ones.

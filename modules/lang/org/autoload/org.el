@@ -218,10 +218,13 @@ If on a:
                 (image-overlays
                  (cl-find-if (lambda (o) (overlay-get o 'org-image-overlay))
                              overlays)))
-           (+org--toggle-inline-images-in-subtree beg end)
+           ;; BUG This throws an error and ends execution
+           ;; (+org--toggle-inline-images-in-subtree beg end)
            (if (or image-overlays latex-overlays)
                (org-clear-latex-preview beg end)
-             (org--latex-preview-region beg end))))
+             (org--latex-preview-region beg end)))
+         (when (member "ATTACH" (org-get-tags nil t))
+           (org-attach-open)))
 
         (`clock (org-clock-update-time-maybe))
 

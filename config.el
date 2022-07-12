@@ -251,8 +251,6 @@ module."
 ;; (setq vertico-multiform-commands '((consult-outline buffer)))
 
 
-;; (when (string-match "Linux.*Microsoft.*Linux" (shell-command-to-string "uname -a"))
-
 ;; For use with +eval/open-repl-other-window
 ;; TODO eval module is a hot mess. Abandoning it for now.
 ;; (map! :mode ess-r-mode
@@ -422,6 +420,11 @@ module."
 
 ;;; notes
 
+;; Exclude ATTACH tags from org-roam database
+(setq org-roam-db-node-include-function
+      (lambda ()
+        (not (member org-attach-auto-tag (org-get-tags nil t)))))
+
 ;; Use org-directory as org-roam-directory
 (setq org-roam-directory "")
 (after! org-roam
@@ -437,12 +440,13 @@ module."
 
 ;; See https://retorque.re/zotero-better-bibtex/exporting/pull/
 ;; Right click a Zotero collection and select "Download Betterbibtex export" to get the URL
-;; TODO Will this work within WSL or does it have to be run on the host OS to communicate over http?
+;; TODO This doesn't work on WSL because firewall rules must be disabled to allow WSL to connect to Windows
 (defun update-bib-file ()
   (interactive)
   (let ((root_url (shell-quote-argument
+                   ;; Use $(hostname).local in lieu of the IP for localhost on WSL
                    "http://127.0.0.1:23119/better-bibtex/export/collection?/1/org-cite.biblatex"))) ; &exportNotes=true
-    (shell-command (format "/opt/homebrew/bin/wget %s -O %s" root_url citar-bibliography))))
+    (shell-command (format "wget %s -O %s" root_url citar-bibliography))))
 
 
 ;; Delete values for extensions.zotero.annotations.noteTemplates.title and
@@ -474,8 +478,19 @@ comments underneath, and display the buffer"
     (org-mode))
   (pop-to-buffer buf))
 
-;; Follow zotero links
-;; TODO Will this work within WSL
+;; Setup within WSL Ubuntu (based on zotero.org/support/installation
+;; and "create a custom url protocol with xdg in ubuntu" and
+;; "url protocol handlers in basic ubuntu desktop"
+;; 1. Create ~/.local/share/applications/Zotero.desktop
+;; 2. Add the following to the file:
+;; [Desktop Entry]
+;; Name=Zotero
+;; Exec="/mnt/c/Users/jkroes/AppData/Local/Zotero/zotero.exe" -url %U
+;; Terminal=false
+;; Type=Application
+;; MimeType=x-scheme-handler/zotero
+;; 3. Run (without quotes) "xdg-mime default Zotero.desktop x-scheme-handler/zotero
+;; NOTE This last step might not be necessary
 (after! ol
   (org-link-set-parameters "zotero" :follow
                            (lambda (zpath)
@@ -483,9 +498,58 @@ comments underneath, and display the buffer"
                               ;; we get the "zotero:"-less url, so we put it back.
                               (format "zotero:%s" zpath)))))
 
-;; https://forums.zotero.org/discussion/78550/getting-zotero-to-work-under-ubuntu-linux#latest
-;; https://www.reddit.com/r/emacs/comments/jza1uk/notmuch_how_do_i_specify_which_browser_to_use_for/
-;; https://www.reddit.com/r/emacs/comments/m7pe6c/wsl2emacsvcxsrv_open_everything_with_native/
-;; https://superuser.com/questions/1679757/how-to-access-windows-localhost-from-wsl2
-;; https://askubuntu.com/questions/514125/url-protocol-handlers-in-basic-ubuntu-desktop
-;; https://medium.com/@pcbowers/wsl-windows-10-allow-web-links-to-open-automatically-27bdc53d6f86
+(setq IS-WSL (and (string-match "-[Mm]icrosoft" operating-system-release)
+                  (eq system-type 'gnu/linux)))
+(when IS-WSL
+  ;; TODO Migrate attachments?
+  (setq org-attach-id-dir "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation/org-attach")
+  ;; (setq browse-url-generic-program "wslview"
+  ;;       browse-url-browser-function 'browse-url-generic)
+  ;; (setf (alist-get 'system org-file-apps-gnu) "wslview \"%s\"")
+  ;; (setf (alist-get t org-file-apps-gnu) "wslview \"%s\""))
+  ;; NOTE open-in-windows is faster than wslview and seems to work more consistently
+  ;; Not sure why wslview doesn't open PDFs at all, let alone in windows
+  (setq browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe"
+        browse-url-generic-args '("/c" "start" "")
+        browse-url-browser-function 'browse-url-generic)
+  (after! org
+    (setf (alist-get "\\.pdf\\'" org-file-apps nil nil #'string=) #'open-in-windows)
+    ;; (add-to-list 'org-file-apps '("^/mnt/" . #'open-in-windows))
+    (add-to-list 'org-file-apps '("\\.xlsx?\\'" . open-in-windows) t)
+    (add-to-list 'org-file-apps '("\\.docx?\\'" . open-in-windows) t)
+    (add-to-list 'org-file-apps '("\\.pptx?\\'" . open-in-windows) t)))
+
+;;(add-to-list 'marginalia-command-categories (cons 'org-attach-open 'file))
+;; HACK Configure org-attach-open to work with embark-act
+;; embark-act identifies the target (file) to act on via embark--vertico-selected.
+;; org-attach-open only makes the attachment filename available, so embark-act
+;; tries files actions on the relative name and fails
+;; TODO There has to be a less invasive way of doing this than replacing
+;; completing-read with read-file-name.
+(after! org
+  (defun org-attach-open (&optional in-emacs)
+    "Open an attachment of the current outline node.
+If there are more than one attachment, you will be prompted for the file name.
+This command will open the file using the settings in `org-file-apps'
+and in the system-specific variants of this variable.
+If IN-EMACS is non-nil, force opening in Emacs."
+    (interactive "P")
+    (let ((attach-dir (org-attach-dir)))
+      (if attach-dir
+	  (let* ((file (pcase (org-attach-file-list attach-dir)
+		         (`(,file) file)
+		         (files (read-file-name "Open attachment: " (file-name-as-directory attach-dir) nil t))))
+	         (path (expand-file-name file attach-dir)))
+	    (run-hook-with-args 'org-attach-open-hook path)
+	    (org-open-file path in-emacs))
+        (error "No attachment directory exist")))))
+
+;; TODO Replace attach and properies with icons
+;; https://thibautbenjamin.github.io/emacs/org-icons
+;; Smaller org drawers
+;; (custom-set-faces! '(org-drawer :height 100))
+
+;; Don't truncate results when using edebug
+(setq edebug-print-length 1000)
+
+;; TODO Checkout shortdoc-display-group! It's a cheatsheet!

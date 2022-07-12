@@ -41,6 +41,8 @@ If there's none, return an empty string."
     (file-relative-name org-roam-directory)
     (file-name-directory)))
 
+;; NOTE This filters out tags from display and search for org-roam-node functions, but to exclude
+;; nodes with certain tags see `org-roam-db-node-include-function'
 ;;;###autoload (autoload 'org-roam-node-doom-tags "lang/org/autoload/contrib-roam2" nil t)
 (cl-defmethod org-roam-node-doom-tags ((node org-roam-node))
   "Return tags formatted in the same way how they appear in org files."

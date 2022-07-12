@@ -1952,3 +1952,71 @@ Giving up on this. It's honestly too difficult to get things working with popper
 (custom-set-faces!
   '(aw-leading-char-face :height 3.0))
 #+end_src
+
+* zotero
+#+begin_src emacs-lisp
+
+;; Ensure you install rg, rga, and any adapters for filetypes you want to search listed by rga --rga-list-adapters.
+;; E.g., pdf requires poppler and docx requires pandoc.  Modify consult-ripgrep-args below to accommodate desired
+;; filetypes. See also rg --type-list and the -t flag.
+;; Docs for rg: https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md
+;; Docs for rga: rga --help
+
+(defvar zotero-storage "/Users/jkroes/Zotero/storage/")
+
+;; Based on +vertico-file-search. A separate function is needed b/c consult-ripgrep-args is overridden rather than
+;; modified.
+;; TODO Are there any Zotero-specific text search tools that allow e.g. filtering on tags? I might have to write a
+;; custom tool...
+;; Also replace literal filename with zotero item name
+(cl-defun +vertico-zotero-search (&key query)
+  "Conduct a Zotero file search using ripgrep-all.
+
+:query STRING
+  Determines the initial input to search for."
+  (interactive)
+  (declare (indent defun))
+  (unless (executable-find "rg")
+    (user-error "Couldn't find ripgrep in your PATH"))
+  (require 'consult)
+  (setq deactivate-mark t)
+  (let* ((directory zotero-storage)
+         (consult-ripgrep-args
+          (concat "rga "
+                  "--null --line-buffered --color=never --max-columns=1000 "
+                  "--path-separator /   --smart-case --no-heading --line-number "
+                  ;; NOTE "\"*.docx\"" translates to ".*.docx" on the command line,
+                  ;; and rg allows extended globbing alternatives via "{,}"
+                  ;; NOTE rga does not yet support PowerPoint, even though pandoc does
+                  "-g \"*.{txt,docx,pdf}\" "
+                  " ."))
+         (prompt "Search Zotero")
+         (query (or query
+                    (when (doom-region-active-p)
+                      (regexp-quote (doom-thing-at-point-or-region)))))
+         (consult-async-split-style consult-async-split-style)
+         (consult-async-split-styles-alist consult-async-split-styles-alist))
+    ;; Change the split style if the initial query contains the separator.
+    (when query
+      (cl-destructuring-bind (&key type separator initial)
+          (consult--async-split-style)
+        (pcase type
+          (`separator
+           (replace-regexp-in-string (regexp-quote (char-to-string separator))
+                                     (concat "\\" (char-to-string separator))
+                                     query t t))
+          (`perl
+           (when (string-match-p initial query)
+             (setf (alist-get 'perlalt consult-async-split-styles-alist)
+                   `(:initial ,(or (cl-loop for char in (list "%" "@" "!" "&" "/" ";")
+                                            unless (string-match-p char query)
+                                            return char)
+                                   "%")
+                     :type perl)
+                   consult-async-split-style 'perlalt))))))
+    (consult--grep prompt #'consult--ripgrep-builder directory query)))
+
+
+;; Disable auto-preview since files are typically binary
+(consult-customize +vertico-zotero-search :preview-key (kbd "C-SPC"))
+#+end_src
