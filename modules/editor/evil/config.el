@@ -53,6 +53,8 @@ directives. By default, this only recognizes C directives.")
         ;; It's infuriating that innocuous "beginning of line" or "end of line"
         ;; errors will abort macros, so suppress them:
         evil-kbd-macro-suppress-motion-error t
+        evil-split-window-below t
+        evil-vsplit-window-right t
         evil-undo-system
         (cond ((featurep! :emacs undo +tree) 'undo-tree)
               ((featurep! :emacs undo) 'undo-fu)

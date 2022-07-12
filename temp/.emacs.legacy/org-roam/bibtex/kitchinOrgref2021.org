@@ -1,0 +1,7 @@
+:PROPERTIES:
+:ID:       C03DB997-0224-4690-9227-FC2487E12715
+:ROAM_REFS: cite:kitchinOrgref2021
+:END:
+#+title: Org-Ref
+
+See the [[file:~/.emacs.d/straight/repos/org-ref/org-ref.org][manual]].

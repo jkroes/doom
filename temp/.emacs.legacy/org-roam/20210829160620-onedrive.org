@@ -1,0 +1,9 @@
+:PROPERTIES:
+:ID:       98535E02-768B-46F1-88AC-1E081B9D6CDB
+:END:
+#+title: onedrive
+#+category: onedrive
+
+Certain filetypes are prohibited, including executable files. Others may be blocked by CDPR sharepoint site. This is one reason hosting custom apps on OneDrive may not be possible.
+
+Source: https://support.microsoft.com/en-us/office/restrictions-and-limitations-in-onedrive-and-sharepoint-64883a5d-228e-48f5-b3d2-eb39e07630fa#invalidblockedfiletypes

@@ -1,0 +1,16 @@
+:PROPERTIES:
+:ID:       392D2EFE-655F-4FCC-9D69-DE095E95234E
+:ROAM_REFS: cite:BetterBibTeXZotero
+:END:
+#+title: Better BibTeX for Zotero
+
+* Automatic export
+** Create rule
+1. Right-click a library or collection in the left Zotero pane.
+2. Select "Export Collection".
+3. Set the export "Format" to "Better BibLaTeX" and check "Keep updated". Any changes to the library or collection will trigger automatic re-export.
+   1. Note that Better BibLaTeX supports "software" items (Better BibTeX exports them as "misc") such as are created when archiving a GitHub page.
+4. Set ~bibtex-completion-bibliography~ to the export path.
+5. To ensure subcollections are included in the export, in Zotero's advanced configuration set extensions.zotero.recursiveCollections to true.
+6. To edit existing export rules, navigate to: "Zotero", "Preferences", "Better BibTeX", "Automatic export".
+   1. To export URLs, check "Export unicode as plain-text latex commands (recommended)".

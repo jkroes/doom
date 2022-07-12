@@ -38,35 +38,9 @@
 ;;; Global keybindings
 
 ;; Smart tab, these will only work in GUI Emacs
-(map! :i [tab] (cmds! (and (featurep! :editor snippets)
-                           (yas-maybe-expand-abbrev-key-filter 'yas-expand))
-                      #'yas-expand
-                      (and (bound-and-true-p company-mode)
-                           (featurep! :completion company +tng))
-                      #'company-indent-or-complete-common)
-      :m [tab] (cmds! (and (featurep! :editor snippets)
-                           (evil-visual-state-p)
-                           (or (eq evil-visual-selection 'line)
-                               (not (memq (char-after) (list ?\( ?\[ ?\{ ?\} ?\] ?\))))))
-                      ;;#'yas-insert-snippet
-                      (and (featurep! :editor fold)
+(map! :m [tab] (cmds! (and (featurep! :editor fold)
                            (save-excursion (end-of-line) (invisible-p (point))))
-                      #'+fold/toggle
-                      ;; Fixes #4548: without this, this tab keybind overrides
-                      ;; mode-local ones for modes that don't have an evil
-                      ;; keybinding scheme or users who don't have :editor (evil
-                      ;; +everywhere) enabled.
-                      (or (doom-lookup-key
-                           [tab]
-                           (list (evil-get-auxiliary-keymap (current-local-map) evil-state)
-                                 (current-local-map)))
-                          (doom-lookup-key
-                           (kbd "TAB")
-                           (list (evil-get-auxiliary-keymap (current-local-map) evil-state)))
-                          (doom-lookup-key (kbd "TAB") (list (current-local-map))))
-                      it
-                      (fboundp 'evil-jump-item)
-                      #'evil-jump-item)
+                      #'+fold/toggle)
 
       (:after help :map help-mode-map
        :n "o"       #'link-hint-open-link)

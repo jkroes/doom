@@ -105,8 +105,8 @@ orderless."
         ;; note that despite override in the name orderless can still be used in
         ;; find-file etc.
         completion-category-overrides '((file (styles +vertico-basic-remote orderless partial-completion)))
-        orderless-style-dispatchers '(+vertico-orderless-dispatch)
-        orderless-component-separator "[ &]")
+        orderless-component-separator #'orderless-escapable-split-on-space)
+  (add-hook 'orderless-style-dispatchers #'+vertico-orderless-dispatch)
   ;; ...otherwise find-file gets different highlighting than other commands
   (set-face-attribute 'completions-first-difference nil :inherit nil))
 

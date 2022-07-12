@@ -1,0 +1,56 @@
+:PROPERTIES:
+:ID:       7E6E6719-2BC0-47FA-A622-F0880AD3B23F
+:END:
+#+title: WSL
+#+category: WSL
+
+* Mounting drvfs drives
+
+[[https://devblogs.microsoft.com/commandline/chmod-chown-wsl-improvements/][drvfs]]
+
+Mounting drives is easy, even if they're shared. Contrary to my expectations,
+use the drive letters on Windows (H:) rather than the UNC path
+(\\dprhq01\EMON_USERS\jkroes). Note that this may have to be run every time you
+open a new shell or disconnect from the network.
+
+#+begin_src sh
+sudo mount -t drvfs 'A:\VOC' /mnt/voc
+sudo mount -t drvfs 'H:' /mnt/h
+#+end_src
+
+* Curl
+
+Curl does not work in WSL by default. Run the following code, extract
+the last certificate in cacert.pem, and copy it over to
+/etc/ssl/certs/ca-certificates.crt:
+
+```{sh, eval=F}
+echo quit| openssl s_client -showcerts -servername api.github.com -connect api.github.com:443 > cacert.pem
+```
+
+Note that this will fail over the VPN if connected on your laptop. It works in remote desktop and with VPN disabled.
+
+Alternatively, you might be able to alias curl as
+> curl -cacert /mnt/c/Program\ Files/Git/mingw64/ssl/certs/ca-bundle.crt
+
+As a last resort, run curl insecurely.
+
+[[https://unix.stackexchange.com/questions/451207/how-to-trust-self-signed-certificate-in-curl-command-line][Source]]
+
+** Resetting certificates
+From https://stackoverflow.com/questions/35821245/github-server-certificate-verification-failed
+
+#+begin_example
+sudo apt-get install --reinstall ca-certificates
+sudo mkdir /usr/local/share/ca-certificates/cacert.org
+sudo wget -P /usr/local/share/ca-certificates/cacert.org http://www.cacert.org/certs/root.crt http://www.cacert.org/certs/class3.crt
+sudo update-ca-certificates
+git config --global http.sslCAinfo /etc/ssl/certs/ca-certificates.crt
+#+end_example
+
+** flextable
+The R package flextable's dev version (install_github) requires pandoc 2. To get
+this you need to run curl -L --ouput <name>.deb
+https://github.com/jgm/pandoc/releases/download/2.10.1/pandoc-2.10.1-1-amd64.deb
+
+The -L is needed because of redirection.

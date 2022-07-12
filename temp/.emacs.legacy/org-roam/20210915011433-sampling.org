@@ -1,0 +1,91 @@
+:PROPERTIES:
+:ID:       9a64cbc2-1a0b-4984-ba3a-10a3cb1d5aa6
+:END:
+#+title: Sampling
+#+filetags: :work:
+#+category: work
+
+* Sampling
+:PROPERTIES:
+:DIR:      ../../../../mnt/c/Users/jkroes/Documents/Sampling/
+:END:
+**  [[https://caldpr-my.sharepoint.com/:x:/g/personal/kelly_heal_cdpr_ca_gov/EVb1lyaiBUpClWB_J0Uw6P4BMzYJ_HSdqKsOpGNuuqFPzg?e=4%3AjrwsHu&at=9][Schedule (Studies 257 & 309)]]
+Kelly is requesting that staff no longer directly edit the schedule.
+This is only a heading currently b/c org-open-at-point opens this instead of the attachment directory otherwise.
+*** TODO Fix the above issue or use org-attach-reveal-in-emacs
+** WAITING 8/29 - 8/31/21                                          :oxnard:
+- State "WAITING"    from "DONE"       [2021-10-29 Fri 16:12] \\
+  Outstanding TEC
+** WAITING 9/9 - 9/10/21 (Canister duplicate)                      :ohlone:
+- State "WAITING"    from "DONE"       [2021-10-29 Fri 16:12] \\
+  Outstanding TEC
+** DONE 10/4 - 10/5/21                                             :ohlone:
+CLOSED: [2021-10-29 Fri 16:12]
+** WAITING 10/19 - 10/21/21                                        :merced:
+- State "WAITING"    from              [2021-10-29 Fri 16:13] \\
+  Outstanding TEC
+** CANCELED 10/26 - 10/28/21                                       :oxnard:
+CLOSED: [2021-10-29 Fri 15:09]
+** TODO 11/2 - 11/7/21                                            :rio_oso:
+Submit TEC after trip.
+** TODO 11/18 - 11/19/21                                         :shafter:
+** TODO 12/1 - 12/2/21                                           :shafter:
+** TODO 12/8 - 12/10/21                                           :oxnard:
+** TODO 12/22 - 12/23/21                                          :ohlone:
+* COVID
+1. Sampling for 1,3-D has been restricted to once per week. Samples are set, left, and picked up by staff the following week when they set a new sample. COCs for previous samples should be attached to the clipboard and finalized by collecting staff. Twice per month, exchange with Clarice happen. Staff must fill out the "sample transport" field on the COCs given us. The storage location for canisters is "cabinet #3" (adjacent to the walk-in fridge). Notify the study lead of invalid sample, do not check them in (cabinet or forms), and leave a note on the canister saying it needs to be sent to CDFA for cleaning.
+* Prep
+- Alarm code: 541004
+- Dry ice pickup:
+  - Pull into Airgas' gated yard, stop in front of the rollup door next to the stairway to the office. ted or Dave will help you if you mention CDPR and/or Jesse. Oxnard required a single 33lb sliced block of ice. Return any receipts to Jesse, though a receipt may simply be emailed by them to jesse. No need to sign for anything.
+- Alert Chris if there are 12 or fewer multi-residue cartridges left at BRO.
+* Travel
+- Vehicle logs should have one line per day in the field.
+- Fuel cards
+  - WEX fuel cards require you to enter 00 followed by the last 4 digits of the license plate. Next you will be prompted to enter the odmoeter reading.
+  - If this does not work, you will need to try the card in-person with the cashier. Give them an amount, fill up your vehicle, then return to the cashier for a receipt for the amount purchased.
+  - If the card is denied 3 times, it will lock itself until reactivated by Jesse.
+- For more information on vehicle use, see [[http://admin/docs/directives/ad-04-21-vehicles.pdf][Vehicle Use Guidelines]]. As of 7/13/21, the guidelines reference the discontinued Voyager cards.
+* Sampling Events
+** Calibration logs
+- Calibration log books should be filled out for each calibration with:
+  - Date
+  - Time
+  - Sampler iD
+  - Xonteck-displayed flow
+  - Measured flow (prev)
+  - Slope (prev)
+  - Intercept (prev)
+  - Measured flow (post)
+  - Slope (post)
+  - Intercept (post)
+  - Serial number on the back
+  - Calibration date
+  - Notes
+** Met One
+*** Label Placement
+Label stickers on Met One sorbent tubes should be plac3ed between the white cotton-like separating materials so that labels are not cut in half when samples are cut.
+*** Flow readings
+The flow meters are used as a flow standard to ensure the MetOne is operating within set tolerances for each channel. The recorded flow rates come from the MetOne "Current event Status" screen.
+** Ohlone
+- The Met one machine on the right is now the primary due to the former primary malfunctioning. The left Met One is still being used for blanks.
+- The Xontecks are malfunctioning as of 9/30/21. Regulator may be needed.
+- If sampling during the last week of any month, you need to renew the Chualar key.
+** Oxnard
+- The location of the site is 454 Central Ave, Oxnard, CA 93036
+** Parlier
+- Clarice is the sole staff assigned to Parlier.
+** Delhi
+* Check-out
+- Code for the key lock box is 2354. The key is labeled "file room".
+- Copies of COCs should be attached with the pink copy of the check-in sheet.
+- Fill out the digital [[wsl:/mnt/c/Users/jkroes/Documents/org-links/Check_in Sheet.xlsx][check-in sheet]] within 48 hours of checking in samples. Email to study lead (Kelly for AMN, Jazmin for Study 309), and CC Maziar and Juan.
+- Travel Expense
+  - Trip # for 2021 is DPR-20-002
+* Lab & Equipment
+** [[wsl:/mnt/c/Users/jkroes/Documents/org-links/QAQC001.01.pdf][Chemistry Lab QC]]
+** Results of flow meter calibration A:\Air Monitoring Network\Field Coordinator\Equipment\Flow Meters\Calibration_2019 During calibration: - Disassembly and inspection of the instrument for wear, defect, contaminants and damage - Full cleaning, repair and/or replacement of parts as needed - Battery test/replacement - Upgraded firmware and hardware - Temperature and pressure sensor calibration if required - Multi-point flow calibration with adjustment - NIST traceable calibration certificate with As-Found (pre) and As-Left (post ) data
+
+Ohlone and Shafter weekend trips. Xonteck issues at Ohlone. MetOne on the right is still working. Next week bring 4 canisters. Set up 2 on xonteck. S
+
+facetime on Monday to set up the regulator. Strung the lines up for the regulator samples already. Take flow after starting sample. Bring a step ladder. Take off one piece of the PVC. Smallets tube is what we put in the flow metter with an adapter tubing. 2.8-3.2. Put Xontecks on regulator in back. Kelly will notify me how many samples to set up.

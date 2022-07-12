@@ -70,7 +70,7 @@
 (when (featurep! +pomodoro)
   (package! org-pomodoro :pin "3f5bcfb80d61556d35fc29e5ddb09750df962cc6"))
 (when (featurep! +pretty)
-  (package! org-appear :pin "8dd1e564153d8007ebc4bb4e14250bde84e26a34")
+  (package! org-appear :pin "60ba267c5da336e75e603f8c7ab3f44e6f4e4dac")
   (package! org-visual-outline
     :recipe (:host github :repo "legalnonsense/org-visual-outline")
     :pin "681cae2a3fb445322d01a79be9e5104e11575669"))

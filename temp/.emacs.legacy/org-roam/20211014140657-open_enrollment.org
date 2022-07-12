@@ -1,0 +1,20 @@
+:PROPERTIES:
+:ID:       6E2CB2E5-5908-4E96-818C-2F7C5C17A234
+:END:
+#+title: open_enrollment
+
+* Timeline
+Enrollment runs September 20 to October 15. Changes in coverage begin on January 1 the following year.
+* 2022
+** Delays
+A CAPS update mentions that enrollment in Dental Insurance may be delayed. Following open enrollment, your departmental personnel specialist may be able to manually vertify that you are covered under the new insurance by calling the insurance company. Your paystub may reflect the wrong amount, resulting in Accounts Receivable later on to deduct from the difference from your paycheck if the employee portion was more than you pay. After manual verification, you should schedule your dental appointments. Reach out to CAPS if you have issues.
+** New CalHR benefits website
+Located at calhr.benefitsprograms.info. There is an open enrollment page, including a virtual enrollment fair located at https://www.calhrwellness.com/en/welcome-california-state-employees/. The form to fill out is STD 692. You can prepopulate the form and save to PDF/print through the https://eservices.calhr.ca.gov/BenefitsCalculatorExternal/. It has you fill in health information, but none of it is used to populate the form. Email the form to HRBTransactions@cdpr.ca.gov. I changed insurance from Premier Access to Dental Dental PPO plus Premier Basic.
+** Delta Dental
+*** Pre-treatment estimates
+According to the enrollment fair webinar for Dental Dental, pre-treatment estimates are available. Ask your dentist for an estimate. They send the details to Delta Dental, which sends back a cost estimate. There is also an online cost estimator that's based on your specific benedits.
+*** Dentist while traveling
+Worldwide coverage. Requires a reimbursement submission.
+*** Hearing aid discounts
+*** Partnership with Sonicare
+Through the BrushSmart program.

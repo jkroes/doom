@@ -1,0 +1,9 @@
+:PROPERTIES:
+:ID:       5A05CF82-D634-4EBC-BADE-8B45EB13964A
+:END:
+#+title: travel
+#+category: travel
+
+* United States
+** Connecticut
+*** [[https://www.edwardtufte.com/tufte/hogpen-hill-farms][Hogpen Hill Farms by Edward Tufte]]

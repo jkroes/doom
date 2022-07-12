@@ -49,6 +49,10 @@ If there's none, return an empty string."
                            nil (append
                                 (list (bound-and-true-p org-archive-tag)
                                       (bound-and-true-p org-attach-auto-tag))
+                                ;; Omit vulpea tag
+                                ;; TODO Update this when you create a variable to customize
+                                ;; the vulpea tag
+                                (list "project")
                                 (bound-and-true-p org-num-skip-tags))))
                 (org-roam-node-tags node)))
 

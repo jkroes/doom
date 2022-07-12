@@ -1,0 +1,1954 @@
+#+title: Config.org
+#+PROPERTY: header-args :tangle yes
+
+* File header
+
+#+begin_src emacs-lisp
+  ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+#+end_src
+
+* Utility
+#+begin_src emacs-lisp
+
+(defun diredp-parent-dir (file &optional relativep)
+  "Return the parent directory of FILE, or nil if none.
+Optional arg RELATIVEP non-nil means return a relative name, that is,
+just the parent component."
+  (let ((parent  (file-name-directory (directory-file-name (expand-file-name file))))
+        relparent)
+    (when relativep
+      (setq relparent  (file-name-nondirectory (directory-file-name parent))))
+    (and (not (equal parent file))  (or relparent  parent))))
+
+
+(after! projectile
+  ;; Modified so that straight repos are not ignored as projects
+  (defun my/doom-project-ignored-p (project-root)
+    "Return non-nil if temporary file or a straight package."
+    (unless (file-remote-p project-root)
+      (file-in-directory-p project-root temporary-file-directory)))
+  (setq projectile-ignored-project-function #'my/doom-project-ignored-p
+        ;; TODO This doesn't work. Check out core-projects.el to figure out
+        ;; how to show straight files in projectile-find-files from within the
+        ;; doom-emacs project. These files can be viewed for now by navigating
+        ;; to a straight repo and running projectile-find-files
+        ;; projectile-globally-ignored-directories
+        ;; (remove (abbreviate-file-name doom-local-dir)
+        ;;         projectile-globally-ignored-directories)
+        ))
+
+;; M-x org-capture o n/p/c
+;; Add non-roam central files like projects.org to org-agenda-files via vulpea
+;; Make functions for C-u and C-u C-u M-x org-capture
+;; Add headings for modules and packages under .doom.d and doom-emacs
+;; NOTE using central project files via org-capture gets around the issue
+;; created by doom-emacs/.dir-locals.el, which makes org-mode buffers read-only.
+;; projects.org will be stored in .doom.d instead
+;; Bind specific capture templates to a key as follows:
+;; https://orgmode.org/manual/Capture-templates.html
+
+
+#+end_src
+
+* doom-emacs-dir
+
+The typical load order according to print statements and reading source code is:
+
+1) early-init
+2) core/core
+3) core/core-lib
+4) init
+5) core/core-modules
+6) core/core-keybinds
+7) core/core-ui
+8) core/core-projects
+9) core/core-editor
+10) init (private)
+11) init (modules)
+12) ~doom-before-init-modules-hook~
+13) config (modules)
+14) ~doom-init-modules-hook~
+15) config (private)
+16) ~doom-after-init-modules-hook~ (a ~defvaralias~ of ~after-init-hook~)
+17) ~doom-init-ui-hook~
+18) core/autoload/
+19) core/core-packages
+
+See also ~emacs-startup-hook~ and ~window-setup-hook~
+
+Note that the documented load order in the source and doc files is currently incorrect or incomplete.
+
+** early-init
+
+1) Loads ~core~
+
+** core/core
+
+1) Loads ~core-lib~
+2) Defines ~doom-initialize~
+   A) Loads autoloads (which ones?)
+   B) Loads ~core-modules~
+   C) When using ~straight.el~, calls ~doom-initialize-packages~ which autoloads ~core-packages~
+
+#+begin_src emacs-lisp
+(setq enable-local-variables :safe) ; Process if safe; no prompt
+#+end_src
+
+** core/core-lib
+
+** init
+
+1) Loads ~early-init~ if unloaded (e.g., Chemacs)
+2) Calls ~doom-initialize~
+3) Calls ~doom-initialize-modules~
+
+** core/core-modules
+
+1) Defines ~doom-initialize-modules~, which calls ~doom-initialize-core-modules~,
+   loads the private ~init~, loads each module's ~init~, runs
+   ~doom-before-init-modules-hook~, loads each module's ~config~, runs
+   ~doom-init-modules-hook~, loads the private ~config~, then loads ~custom-file~.
+2) Defines ~doom-initialize-core-modules~
+   A) Loads ~core-keybinds~, ~core-ui~, ~core-projects~, and ~core-editor~
+
+** core/core-keybinds
+** core/core-ui
+
+#+begin_src emacs-lisp
+(setq confirm-kill-emacs nil)
+
+;; Potential solution to continuation lines not showing up in fringes
+;; https://github.com/hlissner/doom-emacs/issues/1547
+(after! git-gutter-fringe
+  (fringe-mode 12))
+;; Assumes a fringe of 12
+(setq-default fill-column 79)
+
+(add-hook 'org-mode-hook (lambda () (highlight-indent-guides-mode -1)))
+
+;; TODO Settings for module to implement
+;; (setq org-startup-indented t
+;;       org-hide-emphasis-markers t
+;;       org-hide-leading-stars t
+;;       org-bullets-bullet-list '(" ") ;; no bullets, needs org-bullets package
+;;       org-pretty-entities t
+;;       ;; show actually italicized text instead of /italicized text/
+;;       org-agenda-block-separator ""
+;;       org-fontify-whole-heading-line t
+;;       org-fontify-done-headline t
+;;       org-fontify-quote-and-verse-blocks t)
+;; org-bullets package
+;; org-num package
+;; prettify-symbols-alist and pretttify-symbols-unprettify-at-point
+
+
+(setq org-list-demote-modify-bullet
+      '(("1)" . "A)")
+        ("A)" . "a)")
+        ("a)" . "1)"))
+      org-list-allow-alphabetical t)
+
+;; https://github.com/hlissner/doom-emacs/issues/1988.
+(custom-set-faces!
+  '((hl-line solaire-hl-line-face org-indent
+     outline-1 outline-2 outline-3 outline-4 outline-5 outline-6 outline-7 outline-8)
+    :extend t))
+
+;; Hack. Primitive `vertical-motion' should go to the start of the visual line
+;; but doesn't unless it is passed a cons cell. I've commented this out since
+;; so much code relies on this function, but you should be aware of the issue.
+;; (defun beginning-of-visual-line (&optional n)
+;;   "Move point to beginning of current visual line.
+;; With argument N not nil or 1, move forward N - 1 visual lines first.
+;; If point reaches the beginning or end of buffer, it stops there.
+;; \(But if the buffer doesn't end in a newline, it stops at the
+;; beginning of the last visual line.)
+;; To ignore intangibility, bind `inhibit-point-motion-hooks' to t."
+;;   (interactive "^p")
+;;   (or n (setq n 1))
+;;   (let ((opoint (point)))
+;;     (if (/= n 1)
+;; 	(let ((line-move-visual t))
+;; 	  (line-move (1- n) t)))
+;;     ;;(vertical-motion (cons 0 0)))
+;;     (vertical-motion (cons 0 0)))
+;;     ;; Constrain to field boundaries, like `move-beginning-of-line'.
+;;     (goto-char (constrain-to-field (point) opoint (/= n 1)))))
+
+;; Override Doom defaults for window splitting with find-file-other-window.
+;; See split-window-sensibly.
+(setq split-height-threshold 80
+      ;; window-total-width is 180 on vertical monitor.
+      split-window-threshold 181)
+#+end_src
+
+** core/core-projects
+** core/core-editor
+
+#+begin_src emacs-lisp
+;; Somehow text-mode-hook affects org-mode. This disables visual-line-mode
+;; in org-mode
+;; (remove-hook 'text-mode-hook #'visual-line-mode)
+;; NOTE To deal with tables in org-mode with visual-line-mode, use width
+;; indicators for columns and org-startup-shrink-all-tables. If you call
+;; display-local-help over the dots (or hover the mouse) that show the column
+;; is shrunk, you will see the full text in the echo area.
+
+;; Make org-mode emphasis delimiters work across more than 2lines
+;; (setcar (nthcdr 4 org-emphasis-regexp-components) 3)
+;; (org-set-emph-re 'org-emphasis-regexp-components
+;;                  org-emphasis-regexp-components)
+
+;; Deeply embedded in Doom and might cause issues. A new issue has cropped up
+;; where smartparens in lsp ess-r-mode causes an extra closing paren to be
+;; inserted each time tab is pressed. May be releated to yasnippet (used by lsp)
+;; and the fact that I've disabled the snippet module, which has some
+;; customizations for smartparens
+(remove-hook 'doom-first-buffer-hook #'smartparens-global-mode)
+#+end_src
+
+** core/autoload/
+#+begin_src emacs-lisp
+;; Disable echo area messages about garbage collection during doom-debug-mode
+(setq doom-debug-variables
+      (remq 'gcmh-verbose
+            (remq 'garbage-collection-messages doom-debug-variables)))
+#+end_src
+** core/core-packages
+
+1) Loads and initializes ~straight.el~
+   A) Sets ~straight-built-in-pseudo-packages~
+   B) Defines ~doom-initialize-packages~
+      a) Loads "core" packages (listed in ~core/packages~?)
+
+** TODO Finish the description of DOOM's non-module files
+* Modules
+* Uncategorized
+
+#+begin_src emacs-lisp
+
+;; Here are some additional functions/macros that could help you configure Doom:
+;;
+;; - `load!' for loading external *.el files relative to this one
+;; - `use-package!' for configuring packages
+;; - `after!' for running code after a package has loaded
+;; - `add-load-path!' for adding directories to the `load-path', relative to
+;;   this file. Emacs searches the `load-path' when you load packages with
+;;   `require' or `use-package'.
+;; - `map!' for binding new keys
+;;
+;; To get information about any of these functions/macros, move the cursor over
+;; the highlighted symbol at press 'K' (non-evil users must press 'C-c c k').
+;; This will open documentation for it, including demos of how they are used.
+;;
+;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
+;; they are implemented.
+
+;; Some functionality uses this to identify you, e.g. GPG configuration, email
+;; clients, file templates and snippets.
+(setq user-full-name "Justin Kroes"
+      user-mail-address "jkroes14@ucsbalum.com")
+
+;; Requires disabling "Show spotlight search" in MacOS System Preferences, or
+;; change its keybinding to e.g. SHIFT-CMD-SPC.
+(setq doom-leader-alt-key "C-SPC"
+      doom-localleader-alt-key "C-SPC m")
+
+;; Doom exposes five (optional) variables for controlling fonts in Doom. Here
+;; are the three important ones:
+;;
+;; + `doom-font'
+;; + `doom-variable-pitch-font'
+;; + `doom-big-font' -- used for `doom-big-font-mode'; use this for
+;;   presentations or streaming.
+;;
+;; They all accept either a font-spec, font string ("Input Mono-12"), or xlfd
+;; font string. You generally only need these two:
+;; (setq doom-font (font-spec :family "monospace" :size 12 :weight 'semi-light)
+;;       doom-variable-pitch-font (font-spec :family "sans" :size 13))
+;; The default font for MacOS/emacs-mac is something like mac-ct, and it doesn't
+;; have all the glyphs needed by org-visual-outline
+(setq doom-font (font-spec :family "Hack" :size 14))
+
+;; There are two ways to load a theme. Both assume the theme is installed and
+;; available. You can either set `doom-theme' or manually load a theme with the
+;; `load-theme' function. This is the default:
+(setq doom-theme 'doom-one)
+(custom-theme-set-faces!
+  'doom-one
+  ;; highlighting symbol under point (see lsp-toggle-symbol-highlight)
+  '(lsp-face-highlight-textual :foreground "red")
+  ;; face for lsp-rename
+  '(lsp-face-rename :foreground "red")
+  ;; face for lsp-iedit-highlights
+  ;; The current yasnippet field
+  '(yas-field-highlight-face :foreground "red"))
+
+;; undo-fu history is corrupted with the message discussed here:
+;; https://emacs.stackexchange.com/questions/28794/emacs-history-invalid-read-syntax
+;; Investigate and disable packages if needed
+
+;; Ignore warning messages about grep and pcre when running `doom doctor'. See doom-emacs/modules/completion/vertico/doctor.el
+
+;; https://stackoverflow.com/questions/13530025/emacs-scroll-automatically-when-inserting-text
+;; Auto scroll buffer only when at its bottom. And start at the bottom via the
+;; mode hook.
+;; NOTE This only works when text is added to a buffer that is not the current
+;; buffer.
+(add-hook 'messages-buffer-mode-hook 'auto-scroll)
+(defun auto-scroll ()
+  (set (make-local-variable 'window-point-insertion-type) t)
+  (end-of-buffer))
+
+;; See https://www.reddit.com/r/emacs/comments/f3vncl/package_config_before_or_after_loading/
+
+;; (when (string-match "Linux.*Microsoft.*Linux" (shell-command-to-string "uname -a"))
+(cond ((eq system-type 'gnu/linux)
+       ;;(set-frame-font "Hack 12" nil t)
+       (setq browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe"
+             browse-url-generic-args '("/c" "start" "")
+             browse-url-browser-function 'browse-url-generic))
+      ((eq system-type 'darwin)
+       (add-to-list 'exec-path "/opt/homebrew/bin")
+       ;; (when (display-graphic-p)
+         ;; System Preferences > Displays > Display > Scaled > 2048x1152
+         ;; (if (equal (cons (x-display-pixel-height) (x-display-pixel-width))
+         ;;            (cons 1152 2048))
+         ;;     (set-frame-font "Hack 12" nil t)
+           ;; System Preferences > Displays > Display > Default for display
+           ;; (set-frame-font "Hack 14" nil t)))
+       (setq mac-command-modifier 'control
+             mac-option-modifier 'meta ; E.g., M-RET instead of A-RET
+             ;; Prevent MacOS from processing system shortcuts such as C-h for emacs-mac distro
+             mac-pass-command-to-system nil
+             mac-pass-control-to-system nil)
+       (general-define-key :states '(normal insert emacs)
+                           ;; HYPER-SPC (hammerspoon) is bound to S-`
+                           "C-`" 'other-frame)))
+
+;; (add-hook 'prog-mode-hook 'turn-on-auto-fill)
+(add-hook 'prog-mode-hook 'display-fill-column-indicator-mode)
+(add-hook 'helpful-mode-hook 'visual-line-mode)
+
+;; See also:
+;; ~/doom-emacs/modules/config/default/+evil-bindings.el ->
+;;      Adds description for prefix under "SPC w"
+;; ~/doom-emacs/modules/completion/vertico/config.el ->
+;;      Replaces `which-key' C-h with `embark-prefix-help-command' and
+;;      adds a which-key indicator to `embark-indicators'
+;; ~/doom-emacs/modules/ui/popup/+hacks.el ->
+;;      Configures `which-key-popup-*'
+;; ~/doom-emacs/modules/config/default/config.el ->
+;;      Bindings for `which-key' commands. Adds description for each prefix under
+;;      "SPC h"
+;; ~/doom-emacs/core/packages.el
+;;      Declares `which-key' package
+;; ~/doom-emacs/core/core-keybinds.el
+;;      `doom--define-leader-key' apparently provides the `:desc' keyword for
+;;      `map!'.
+;;      `use-package!' declaration for `which-key'
+;; NOTE: (map! ... :desc ...) provides `which-key' descriptions
+
+;; For `:desc' to work when binding under leader, use `:leader' rather than
+;; `:map' with any leader-*-map
+(map! :leader
+      :desc "Switch project" "SPC" 'projectile-switch-project
+      (:when (not (featurep! :ui workspaces))
+       :desc "M-x" ";" 'execute-extended-command
+       ;; Just shortening the description, not changing binding
+       :desc "Search project symbol"
+       "*" #'+default/search-project-for-symbol-at-point
+       :desc "Find project file" "." 'projectile-find-file
+       :desc "Switch project buffer" "," 'projectile-switch-to-buffer
+       :desc "Switch buffer" "<" 'switch-to-buffer)
+      :prefix "f"
+      :desc "Find directory" "d" 'dired-default-directory
+      :prefix "h"
+      "h" 'helpful-at-point
+      "x" 'helpful-command
+      "X" 'Info-goto-emacs-command-node)
+
+;; Don't truncate messages, esp. when debugging
+(setq eval-expression-print-length nil
+      eval-expression-print-level nil
+      edebug-print-level nil
+      edebug-print-length nil)
+
+;; TODO Use frame parameters to set `(fullscreen . fullheight)' and half the
+;; width of the screen, rather than maximized
+;;(add-to-list 'initial-frame-alist '(fullscreen . maximized))
+
+;; From my vanilla Emacs custom-file. Some of these settings may not play well
+;; with Doom
+(setq backward-delete-char-untabify-method 'hungry
+      ;;confirm-kill-processes nil ; e.g. inferior ess terminals
+      )
+
+#+end_src
+
+* :tools lookup
+
+#+begin_src emacs-lisp
+
+(when (featurep! :tools lookup)
+  ;; BUG: Fix for `+lookup/references', which doesn't work out of the box
+  (advice-add '+lookup--xref-show :override 'my/+lookup--xref-show)
+  (defun my/+lookup--xref-show (fn identifier &optional show-fn)
+    (let ((xrefs (funcall fn
+                          (xref-find-backend)
+                          identifier)))
+      (when xrefs
+        ;; BUG: The original definition uses `xref--marker-ring',
+        ;; likely the same as the more recent `xref-marker-ring' that is expicitly
+        ;; obsolete in xref.el. I replace it with `xref--history'
+        (let ((marker-ring (ring-copy xref--history)))
+          (funcall (or show-fn #'xref--show-defs)
+                   (lambda () xrefs)
+                   nil)
+          (if (cdr xrefs)
+              'deferred
+            ;; xref will modify its marker stack when it finds a result to jump to.
+            ;; Use that to determine success.
+            (not (equal xref--history marker-ring))))))))
+
+
+;; Doesn't need to run all the time
+;; (when IS-MAC
+;;   ;; Update system and user locate databases in the background, early so that
+;;   ;; they are hopefully updated before `consult-locate' is first invoked.
+;;   (let ((async-shell-command-buffer 'new-buffer)
+;;         (display-buffer-alist '(("^\\*Async Shell Command\\*"
+;;                                  (display-buffer-no-window)))))
+;;     (async-shell-command "LOCATE_CONFIG=$HOME/.doom.d/etc/locate.rc \
+;; /usr/libexec/locate.updatedb")
+;;     (async-shell-command "LOCATE_CONFIG=$HOME/.doom.d/etc/locate.users.rc \
+;; /usr/libexec/locate.updatedb")))
+
+#+end_src
+
+* :config default
+
+#+begin_src emacs-lisp
+  (setq +default-want-RET-continue-comments nil)
+#+end_src
+
+* info
+
+** TODO C-h i g requires an opening paren, deletion of the closing paren, tab, then typing the node to match. Provide an opening paren without a closing paren, or at least don't insert a closing paren when typing an opening paren.
+
+#+begin_src emacs-lisp
+
+;; This function is called by `Info-read-node-name', which calls
+;; `completing-read' with `Info-read-node-name-1' as a function completion
+;; table. This in turn uses `Info-read-node-name-2' to generate a completion
+;; table whenever you press "g" within an info node and type an opening "(". You
+;; can them complete a filename, type a closing paren, and travel to the TOP
+;; node within that info file.
+;; See https://github.com/hlissner/doom-emacs/issues/5745 and
+;; https://github.com/minad/vertico/issues/69. TODO @minad recommended an
+;; improvement that I have yet to implement.
+;; NOTE: Does overriding functions in files that may be compiled ever present an
+;; issue?
+(advice-add 'Info-read-node-name-2 :override 'my/Info-read-node-name-2)
+(defun my/Info-read-node-name-2 (dirs suffixes string pred action)
+  "Modifies the origina
+nodes and to delete duplicates by replacing `push' with `add-to-list'"
+  (setq suffixes (remove "" suffixes))
+  (when (file-name-absolute-p string)
+    (setq dirs (list (file-name-directory string))))
+  (let ((names nil)
+	(names-sans-suffix nil)
+        (suffix (concat (regexp-opt suffixes t) "\\'"))
+        (string-dir (file-name-directory string)))
+    (dolist (dir dirs)
+      (unless dir
+	(setq dir default-directory))
+      (if string-dir (setq dir (expand-file-name string-dir dir)))
+      (when (file-directory-p dir)
+        ;; User mod: Don't complete string to "./" or "../"
+	(dolist (file (delete "../"
+                              (delete "./"
+                                      (file-name-all-completions
+                                       (file-name-nondirectory string) dir))))
+	  ;; If the file name has no suffix or a standard suffix,
+	  ;; include it.
+	  (and (or (null (file-name-extension file))
+		   (string-match-p suffix file))
+	       ;; But exclude subfiles of split Info files.
+	       (not (string-match-p "-[0-9]+\\'" file))
+	       ;; And exclude backup files.
+	       (not (string-match-p "~\\'" file))
+               ;; User mod: Don't add duplicates
+	       (add-to-list 'names (if string-dir
+                                       (concat string-dir file)
+                                     file)))
+	  ;; If the file name ends in a standard suffix,
+	  ;; add the unsuffixed name as a completion option.
+	  (when (string-match suffix file)
+	    (setq file (substring file 0 (match-beginning 0)))
+            ;; User mod: don't add duplicates
+	    (add-to-list 'names-sans-suffix (if string-dir
+                                                (concat string-dir file)
+                                              file))))))
+    ;; If there is just one file, don't duplicate it with suffixes,
+    ;; so `Info-read-node-name-1' will be able to complete a single
+    ;; candidate and to add the terminating ")".
+    (if (and (= (length names) 1) (= (length names-sans-suffix) 1))
+	(setq names names-sans-suffix)
+      (setq names (append names-sans-suffix names)))
+    (complete-with-action action names string pred)))
+
+#+end_src
+
+* vertico
+
+** read-from-minibuffer (DONE)
+
+#+begin_src emacs-lisp
+
+;; See https://github.com/minad/consult/issues/368 and the commands in
+;; ~/doom-emacs/modules/config/default/autoload/search.el. These commands call
+;; minibuffer input functions like `completing-read', which calls
+;; `completing-read-default', which calls `read-from-minibuffer', which sets
+;; `this-command' to the command used to exit the minibuffer. With vertico, this
+;; is often `vertico-exit'. When `consult--read' is later called, it gets the
+;; wrong configuration from `consult--read-config'. See `consult-customize'
+;; for configuring commands.
+;;
+;; HACK This may have unintended consequences, since it modifies a lower-level
+;; function used widely in Emacs. I am restricting it to vertico since other
+;; completion frameworks may have their own fixes for this issue.
+;; NOTE This broke marginlia for projectile commands. I wrote this a while ago
+;; and just upgraded doom. On testing, the issue with this-command seems to have
+;; disappeared.
+;; (when (featurep! :completion vertico)
+;;   (advice-add 'read-from-minibuffer :around 'preserve-this-command)
+;;   (defun preserve-this-command (func &rest args)
+;;     "Preserve the value of this-command when a command leads to input from the
+;; minibuffer (e.g., through completing-read or read-directory-name)"
+;;     (let (this-command)
+;;       (apply func args))))
+
+#+end_src
+
+** sorting (DONE)
+#+begin_src emacs-lisp
+;; NOTE vertico-multiform-categories will not work for all commands, because not
+;; all commands that rely on completing-read specify categories. Case in point:
+;; projectile. See
+;; 1. https://github.com/minad/marginalia
+;; 2. https://www.gnu.org/software/emacs/manual/html_node/elisp/Programmed-Completion.html
+;; 3. https://github.com/bbatsov/projectile/issues/1664
+;; 4. https://github.com/minad/marginalia/issues/110
+;; 5. https://github.com/minad/vertico/issues/202
+;; marginlia and
+;; [[file:~/doom-emacs/modules/completion/vertico/config.el::(pushnew! marginalia-command-categories]]
+;; use the project-file category from project.el to
+;; display projectile commands with anotations, but these marginalia categories
+;; don't seem to be available to vertico in the same way they are apparently
+;; available to consult.
+;; Instead, specify the sorting to use for specific commands with
+;; vertico-multiform-commands
+(use-package! vertico-multiform
+  :config
+  (vertico-multiform-mode)
+  ;; See vertico-sort-function variable for default sorting command used by
+  ;; vertico
+  (setq vertico-multiform-commands
+        '((projectile-switch-project
+           (vertico-sort-function . vertico-sort-alpha)))))
+#+end_src
+
+
+* yasnippet
+
+#+begin_src emacs-lisp
+  ;; NOTE yas-minor-mode must be enabled in lsp buffers to avoid errors when
+  ;; completing, even if company-yasnippet is disabled, because company-capf
+  ;; eventually executes yas-expand-snippet
+
+
+  (use-package! yasnippet
+    :defer t
+    ;;   :init
+    ;;   (setq yas-wrap-around-region t) ;Insert region as $0 field if present
+    :hook
+    ;;   (company-mode . prioritize-yas-keymap-bindings)
+    ;;   ;; The default use-package! uses `:defer-incrementally', and `:hook' here
+    ;;   ;; implies `:defer' t. Since we are adding a hook function to `prog-mode' to
+    ;;   ;; set `yas-buffer-local-condition' to `yas-not-string-or-comment-condition',
+    ;;   ;; we need this constant to be defined (and thus yasnippet loaded) before we
+    ;;   ;; open a buffer derived from `prog-mode'. We can do this by adding a hook
+    ;;   ;; function to do this first, then adding one for `yas-minor-mode'. Hooks
+    ;;   ;; added later are run first, and `yas-minor-mode' is an autoload.
+    ;;   (prog-mode . set-yas-buffer-local-condition)
+    ;;   ;; TODO This causes errors when visiting snippet-mode snippet files
+    (prog-mode . yas-minor-mode)
+    ;;   :config
+    ;;   ;; TODO This might be an incomplete fix based on funcion tracing
+    ;;   ;; because of yas-maybe-expand changing the funciton calls. You can test the
+    ;;   ;; difference by the difference between typing "SPC" and M-x yas-expand at the
+    ;;   ;; same point. I also ahven't tested every scenario described in the doc of
+    ;;   ;; yas-buffer-local-condition. See issue #1122.
+    ;;   (advice-add 'yas--template-can-expand-p
+    ;;               :override 'my/yas--template-can-expand-p)
+
+    ;;   ;; TODO Remapped commands don't work. See
+    ;;   ;; https://github.com/hlissner/doom-emacs/issues/4127.
+    ;;   (map! :map yas-minor-mode-map
+    ;;         "SPC" yas-maybe-expand
+    ;;         [remap yas-new-snippet]        nil
+    ;;         [remap yas-visit-snippet-file] nil)
+
+    ;;   ;; TODO Why do new and existing snippets open in a capture buffer, and how do
+    ;;   ;; I banish that buffer when I abort via C-c C-k? The answer to the first is
+    ;;   ;; `+snippets-enable-project-modes-h'. To the second, the answer may be
+    ;;   ;; `+snippet--abort', but perhaps the behavior is different with popups
+    ;;   ;; enabled
+    ;;   (map! :leader
+    ;;         :prefix ("y" . "snippet")
+    ;;         "i" 'yas-insert-snippet
+    ;;         "r" 'yas-reload-all
+    ;;         "n" 'yas-new-snippet
+    ;;         "e" 'yas-visit-snippet-file)
+    )
+
+  ;; (defun my/yas--template-can-expand-p (condition requirement)
+  ;;   "Apparent fix for https://github.com/joaotavora/yasnippet/issues/1122.
+  ;; Tested with current setting for `yas-buffer-local-condition' and
+  ;; doom-provided snippets. In particular, without this fix try typing
+  ;; space after \"(mode|\", where \"|\" indicates point. Without
+  ;; this,it is expanded even though `yas-buffer-local-condition should
+  ;; evaluate to `nil'."
+  ;;   (when requirement
+  ;;     (let* ((result (or (null condition)
+  ;;                        (yas--eval-condition condition))))
+  ;;       (cond ((eq requirement t)
+  ;;              result)
+  ;;             (t
+  ;;              (eq requirement result))))))
+
+  ;; (defun set-yas-buffer-local-condition ()
+  ;;   "Disable snippet expansion in strings and comments for all modes, and
+  ;; immediately after a colon or opening paren."
+  ;;   (setq yas-buffer-local-condition
+  ;;         `(let (prohibited-char)
+  ;;            (save-excursion
+  ;;              (skip-syntax-backward "w")
+  ;;              (setq prohibited-char (memq (char-before) '(40 58))))
+  ;;            (unless prohibited-char
+  ;;              (save-excursion
+  ;;                (skip-syntax-backward "w_")
+  ;;                (setq prohibited-char (memq (char-before) '(40 58)))))
+  ;;            (if (and (eq major-mode 'emacs-lisp-mode) prohibited-char)
+  ;;                nil
+  ;;              ,yas-not-string-or-comment-condition))))
+
+  ;; (defun prioritize-yas-keymap-bindings ()
+  ;;   "Undo company-mode changes to yas-keymap-disable-hook that prioritize
+  ;; company-active-map tooltip bindings over yas-keymap snippet completion bindings.
+  ;; E.g., C-g will abort snippet completion before the company tooltip,and yas
+  ;; next-field-or-maybe-expand will take precedence over company-complete-common,
+  ;; assuming the default bindings for <tab> and TAB in both maps in vanilla Emacs"
+  ;;   (remove-hook 'yas-keymap-disable-hook 'company--active-p t))
+
+#+end_src
+
+* evil
+
+#+begin_src emacs-lisp
+
+;; NOTE: ~/doom-emacs/modules/editor/evil/config.el demands loading of evil and
+;; runs evil-mode on doom-init-modules-hook. Since :init can't be used,
+;; variables that need to be set early must be set in init.el, or else the
+;; module needs to be altered.
+(use-package! evil
+  ;; TODO Set up a better evil minibuffer (e.g., with next-line or vertico-next)
+  ;; :init
+  ;; (setq evil-want-minibuffer t)
+  :config
+  (setq evil-echo-state nil
+        evil-vsplit-window-right t
+        evil-split-window-below t)
+
+  (map! :n "q" nil ; Disable accidential q: and don't shadow q in major modes
+        :m "RET" nil)
+  ;; Experimenting with this. It may be disorienting where multiple matches
+  ;; are present in the initially visible buffer
+  (defun my-center-line (&rest _)
+    (evil-scroll-line-to-center nil))
+  (advice-add 'evil-ex-search-next :after #'my-center-line)
+  (advice-add 'evil-ex-search-previous :after #'my-center-line)
+
+  ;; As noted in
+  ;; https://github.com/noctuid/evil-guide#why-dont-keys-defined-with-evil-define-key-work-immediately,
+  ;; keymap normalization may be required in some cases. One seems to be use of
+  ;; edebug-mode-map as an evil-intercept map. Without normalization, if in normal
+  ;; mode SPC will trigger leader until you first switch to another evil state.
+  (add-hook 'edebug-mode-hook #'evil-normalize-keymaps)
+
+  ;; Initial states for major modes
+  ;; TODO I accidentally press h in info buffers in emacs mode, which triggers
+  ;; windows fuckery Either see if the +all flag to popup handles info windows
+  ;; better or setup desirable evil bindings for info
+  ;;(evil-set-initial-state 'Info-mode 'emacs)
+
+  ;; TODO Is this responsible for SPC-m unbinding after exiting edebug mode? Also
+  ;; this needs to be updated to change the state of the buffer where edebug
+  ;; enters and exits. Test it once modeline is enabled in info buffers where I
+  ;; was last debugging completion.
+  (add-hook 'edebug-mode-hook
+            (lambda () (emacs-state-for-minor-mode edebug-mode))))
+
+(defun emacs-state-for-minor-mode (mode)
+  "A hook function for minor modes with bindings for emacs states used within
+major modes that use evil states"
+  (if mode
+      (evil-emacs-state)
+    (evil-exit-emacs-state)))
+#+end_src
+
+* evil-escape
+
+#+begin_src emacs-lisp
+
+(use-package! evil-escape
+  :defer t
+  :init
+  (setq evil-escape-key-sequence "kj"))
+
+#+end_src
+
+* hydra
+
+#+begin_src emacs-lisp
+
+;; TODO Why does remapping through define-key! in doom redefine the leader
+;; binding for switch-to-buffer to consult-buffer but not in this hydra?
+
+(after! hydra
+  (defhydra hydra-buffer (:color pink)
+    "Buffer"
+    ("b" switch-to-buffer :color blue)
+    ("d" kill-buffer :color blue)
+    ("D" doom/kill-other-buffers :color blue)
+    ("l" evil-switch-to-windows-last-buffer :color blue)
+    ("m" bookmark-set :color blue)
+    ("M" bookmark-delete :color blue)
+    ("n" next-buffer)
+    ("p" previous-buffer)
+    ("r" revert-buffer :color blue)
+    ("s" basic-save-buffer :color blue)
+    ;; ("S" evil-write-all)
+    ("w" hydra-window/body :color blue)
+    ("x" doom/switch-to-scratch-buffer :color blue)
+    ("z" bury-buffer :color blue)
+    ("Z" doom/kill-buried-buffers :color blue)
+    ("q" nil))
+
+  (defhydra hydra-window (:color pink)
+    "Window"
+    ("=" balance-windows :color blue)
+    ("-" evil-window-decrease-height)
+    ("+" evil-window-increase-height)
+    ("<" evil-window-decrease-width)
+    (">" evil-window-increase-width)
+    ("a" ace-window :color blue)
+    ("b" hydra-buffer/body :color blue)
+    ("d" evil-window-delete :color blue)
+    ("D" delete-other-windows :color blue)
+    ("h" evil-window-left :color blue)
+    ("j" evil-window-down :color blue)
+    ("k" evil-window-up :color blue)
+    ("l" evil-window-right :color blue)
+    ("H" evil-window-move-far-left :color blue)
+    ("J" evil-window-move-very-bottom :color blue)
+    ("K" evil-window-move-very-top :color blue)
+    ("L" evil-window-move-far-right :color blue)
+    ("r" evil-window-rotate-downwards)
+    ("R" evil-window-rotate-upwards)
+    ("s" ace-swap-window :color blue)
+    ("v" +evil/window-vsplit-and-follow :color blue)
+    ("x" +evil/window-split-and-follow :color blue)
+    ("V" evil-window-vsplit :color blue)
+    ("X" evil-window-split :color blue)
+    ("u" winner-undo)
+    ("C-r" winner-redo)
+    ("q" nil))
+
+  ;; TODO Binding hydra bodies to prefix keys removes the prefix key's
+  ;; face  and "+" prefix.
+  (map! :leader
+        :desc "window" "w" 'hydra-window/body
+        :desc "buffer" "b" 'hydra-buffer/body))
+
+#+end_src
+
+* outline
+
+#+begin_src emacs-lisp
+
+;; See ~/doom-emacs/modules/editor/fold/ and
+;; ~/doom-emacs/modules/lang/emacs-lisp/config.el.
+
+;; outline.el is broken in Emacs 27. Even adding the version from Emacs 28
+;; doesn't fix org-promote and org-demote. There may be more information on
+;; emacs-mirror.
+;; (add-to-list 'load-path (concat doom-private-dir "packages"))
+
+;; TODO Update this as Emacs updates its stable releases and you update the
+;; versions of Emacs you use.
+;; NOTE: Untested in Emacs 28. See if mappings below bind when you do switch to
+;; a higher version.
+(defun emacs-dev-p ()
+  (let ((string (emacs-version)))
+    (when (string-match "gnu emacs.*?\\([1-9.]+\\)" string)
+      ;; Technically the last stable release is 27.2, but
+      ;; 27.1 installs on Ubuntu 20.04.3 LTS.
+      (> (string-to-number (match-string 1 string)) 27.1))))
+
+(use-package! outline
+  :defer t
+  :init
+  (when (emacs-dev-p)
+    (setq outline-minor-mode-cycle t
+          outline-minor-mode-highlight 'override)
+    (add-hook 'outline-minor-mode-hook #'outline-display-heading-links))
+
+  (add-hook 'emacs-lisp-mode-hook #'outline-minor-mode)
+  (add-hook 'emacs-lisp-mode-hook #'set-outline-heading-alist)
+  ;; The value in lisp-mode.el additionally matches on the first nonspace
+  ;; character, so outline-demote will remove the first character of the heading
+  ;; text. outline-regexp "*\\(;* [^ \t\n]\\|###autoload\\)\\|(")) doom-emacs
+  ;; has the same issue in ~/doom-emacs/modules/lang/emacs-lisp/config.el
+  (setq-hook! 'emacs-lisp-mode-hook outline-regexp ";;;;* ")
+
+  :config
+
+  ;; NOTE: Some symbols here are only defined in the Emacs 28 version of
+  ;; outline.el. See `user-emacs-directory'/lisp/packages/outline.el.
+  (if (emacs-dev-p)
+      (progn
+        (advice-add 'org-roam-node-insert
+                    :after 'outline-display-line-as-heading-link)
+        (map! :map outline-minor-mode-cycle-map
+              ;; Both states need to be bound. Otherwise, the normal state binding
+              ;; isn't available until you manually call evil-normalize-keymaps (I
+              ;; couldn't get it to work with any hooks). No idea why, as this only
+              ;; affects Doom emacs in my experience.
+              :n "RET" 'outline-open-heading-link
+              :i "RET" 'newline-and-indent
+              ;; On MacOS, the tab key is <tab>. If unbound, it translates to TAB. The
+              ;; only way to reliably ensure the tab key can be used to cycle outline
+              ;; headings is to also bind "<tab>" in the text property keymap used for
+              ;; outline headings, or to unbind it in all other keymaps. When bound
+              ;; here, it has higher precedence than any other keymap.
+              "<tab>" 'outline-cycle)
+        (map! :map outline-minor-mode-map
+              ;; Only defined in Emacs 28
+              "<backtab>" 'outline-cycle-buffer)))
+  (map! :map outline-minor-mode-map
+        ;; Change heading level
+        "M-h" 'outline-promote-heading
+        "M-l" 'outline-demote-heading
+        ;; Change subtree level
+        "M-H" 'outline-promote
+        "M-L" 'outline-demote
+        ;; No commands to move headings, just subtrees
+        "M-J" 'outline-move-subtree-down
+        "M-K" 'outline-move-subtree-up
+        ;; Insert heading at current level
+        "M-RET" 'outline-insert-heading
+        :prefix "g"
+        :n "h" 'outline-previous-visible-heading
+        :n "H" 'outline-up-heading
+        :n "l" 'outline-next-visible-heading
+        :n "j" 'outline-forward-same-level
+        :n "k" 'outline-backward-same-level
+        ;; TODO Is evil motion "g o" useful? If so, consider a different binding
+        ;; TODO Implement counsel-outline-face-style for consult-outline to
+        ;; remove highlighting from results and show full heading path
+        :n "o" 'consult-outline
+        :map org-mode-map
+        :prefix "g"
+        :n "o" 'consult-org-heading)
+  ;; Unbind outline-mode-prefix-map
+  ;; TODO How to use a variable in place of a key string in map!
+  (define-key outline-minor-mode-map outline-minor-mode-prefix nil))
+
+(defun set-outline-heading-alist ()
+  (setq-local outline-heading-alist nil)
+  (dotimes (i 49)
+    (add-to-list 'outline-heading-alist
+                 ;; Level-one heading should be three semicolons, plus a space
+                 (cons (concat (make-string (+ 3 i) ?\;) " ") (1+ i))
+                 t)))
+
+(defun outline-promote-heading ()
+  (interactive)
+  (setq current-prefix-arg '(4))
+  (call-interactively 'outline-promote))
+
+(defun outline-demote-heading ()
+  (interactive)
+  (setq current-prefix-arg '(4))
+  (call-interactively 'outline-demote))
+
+(defvar outline-heading-link-regexp "\\(\\[\\[.*]\\[\\(.*\\)]]\\)"
+  "Regexp that provides two capture groups: the entire link and the
+description text")
+
+(defun outline-open-heading-link ()
+  (interactive)
+  (if (outline-on-heading-p)
+      (progn
+        (beginning-of-line)
+        (re-search-forward outline-heading-link-regexp (line-end-position) t)
+        ;; If we go too far, we are pushed to the other side of the display
+        ;; text. Either way, I can't seem to make save-excursion or line
+        ;; movements work after org-open-at-point-global
+        (goto-char (match-beginning 0))
+        (org-open-at-point-global)
+        (org-tree-to-indirect-buffer))))
+
+(defun outline-display-heading-links ()
+  "Hook funciton to display outline heading links as the link description text.
+Based on outline-minor-mode-highlight-buffer."
+  "Display heading links as regular text"
+  ;; outline-minor-mode-hook runs when entering AND leaving mode
+  (save-excursion
+    (goto-char (point-min))
+    ;; Display only the non-default portion of the description
+    (let ((regexp (concat "^\\(?:"
+                          outline-regexp
+                          "\\)"
+                          outline-heading-link-regexp
+                          "$")))
+      (if outline-minor-mode
+          (while (re-search-forward regexp nil t)
+            (put-text-property (match-beginning 1)
+                               (match-end 1)
+                               'display
+                               (match-string-no-properties 2)))
+        (while (re-search-forward regexp nil t)
+          (remove-list-of-text-properties
+           (match-beginning 1)
+           (match-end 1)
+           '(display)))))))
+
+(defun outline-display-line-as-heading-link (&rest args)
+  "Advice function that can be used to display a newly inserted outline heading
+link on the current line as the link description text."
+  ;; outline-minor-mode-hook runs when entering AND leaving mode
+  (if outline-minor-mode ; Since this runs as a hook for org-roam-node-insert
+      (save-excursion
+        (beginning-of-line)
+        ;; Display only the non-default portion of the description
+        (let ((regexp (concat "^\\(?:"
+                              outline-regexp
+                              "\\)"
+                              outline-heading-link-regexp
+                              "$")))
+          (and (outline-on-heading-p)
+               ;; Since return value of match-beginning is undefined if the
+               ;; previous match failed, it shouldn't run if the search fails
+               (re-search-forward outline-heading-link-regexp
+                                  (line-end-position) t)
+               (put-text-property (match-beginning 1)
+                                  (match-end 1)
+                                  'display
+                                  (match-string-no-properties 2)))))))
+
+;; (use-package! outline-minor-faces
+;;   :after outline
+;;   :hook (outline-minor-mode . outline-minor-faces-add-font-lock-keywords)
+;;   :config
+;;   ;; TODO Use doom commands to modify the active theme
+;;   (set-face-background 'outline-minor-0 "snow"))
+
+;; (use-package! backline
+;;   :after outline
+;;   :config (advice-add 'outline-flag-region :after 'backline-update))
+
+#+end_src
+
+* projectile
+
+#+begin_src emacs-lisp
+
+;; Tried of zombie file suggestions and missing real files when running
+;; Doom commands to find files
+(setq projectile-enable-caching nil)
+
+;; Projectile refs are scattered throughout doom, but the use-package is in
+;; ~/doom-emacs/core/core-projects.el
+
+;; (map! :leader
+;;       :prefix "p"
+;;       ;; doom-find-file-in-other-project does the same thing as
+;;       ;; projectile-switch-project when projectile-switch-project-action is
+;;       ;; projectile-find-file.
+;;       "F" 'projectile-find-other-file
+;;       ;; Sometimes an entire buffer is easier to view than the minibuffer with
+;;       ;; +default/search-project. Of course, you can export to occur or wgrep
+;;       ;; buffers via C-c C-; or C-c C-e, so that may be a better option. See
+;;       ;; vertico-map and the consult and vertico READMEs
+;;       "o" 'projectile-multi-occur)
+
+#+end_src
+
+* org
+#+begin_src emacs-lisp
+;; Make org-open-at-point able to follow zotero links
+;; TODO Adjust for WSL
+;; https://orgmode-exocortex.com/2020/05/13/linking-to-zotero-items-and-collections-from-org-mode/
+(with-eval-after-load "ol"
+  (org-link-set-parameters "zotero" :follow
+                           (lambda (zpath)
+                             (browse-url
+                              ;; we get the "zotero:"-less url, so we put it back.
+                              (format "zotero:%s" zpath)))))
+
+;; org-cycle has different behaviors based on where the cursor is. If nothing
+;; else, it executes org-back-to-heading and calls itself recursively. The
+;; first thing that executes are the functions in org-tab-first-hook. This
+;; includes +org-indent-maybe-h. If, however, org-cycle-emulate-tab is non-nil,
+;; it can short-circuit this, because org-cycle will try to call the global
+;; binding for TAB, which is typically indent-for-tab-command. The latter
+;; behavior is probably less surprising. Note that in prog-mode I have enabled
+;; company-mode, so tab there will call company-indent-or-complete-common (as
+;; of right now). Note that company-complete is broken when lsp and R are combined.
+;; The presence of the data.frame will lead to "a" being inserted when pressing tab
+;; where the cursor ("|") is:
+;; x <- data.frame(a=2)
+;; |
+;; In general, variables within data.frame seem to be treated as completion candidates
+;; for empty lines or after a dollar sign. There is no contextual awareness.
+
+(setq org-cycle-emulate-tab t)
+
+;; If you notice that src code blocks at the top of the buffer are not syntax
+;; highlighted, it may be the result of jit fontification settings. No idea how to tweak
+;; them, but this does the trick without slowing things down too much.
+;; TODO Does hook order (e.g., see org-visual-outline package hooks) affect when this should
+;; be added?
+(add-hook! 'org-mode-hook #'font-lock-ensure)
+
+;; visual-line-mode is the default for org-mode in Doom. It works flawessly
+;; except for tables. The only solution is to truncate tables with width
+;; specifications.
+;; org-mode will echo the contents of truncated table cells when cursor is on
+;; the dots at the end of the truncated cell, or with tooltip-mode show the
+;; contents in a tooltip. This isn't ideal. The contents should be shown
+;; automatically when moving cursor into a cell. The following starts up with
+;; tables columns truncated to width <N> and echoes the propertized table
+;; contents when cursor is within a truncated cell. (To see the raw contents
+;; string, call echo-shrunk-table-contents yourself after commenting out
+;; add-hook and restarting Emacs.)
+;; NOTE There might be a more efficient means of doing this than using
+;; post-command-hook or scanning forward. I hacked this together over half an
+;; hour.
+(setq org-startup-shrink-all-tables t)
+(defun echo-shrunk-table-contents ()
+  (when (org-table-p)
+    (save-excursion
+      (skip-chars-forward "^|" (line-end-position))
+      (display-local-help t))))
+;; Not sure why this works, but it does. TODO Investigate local-vars-hook
+(add-hook! 'org-mode-hook
+  (defun org-init-echo ()
+    (add-hook 'post-command-hook #'echo-shrunk-table-contents nil t)))
+
+;; TODO Bind...
+;; org-emphasize
+;; something like counsel-org-file (see doom's attachment system)
+;; outline-show-children/branches/subtree/all
+;; org-insert-heading/subheading/heading-after-current
+;; (general-define-key
+;;  :prefix-command 'my/org-subtree-map
+;;  ;; "a" ; toggle archive tag
+;;  ;; "A" ; archive subtree
+;;  "*" 'org-toggle-heading
+;;  "d" 'org-cut-subtree
+;;  "y" 'org-copy-subtree
+;;  "p" 'org-yank
+;;  "h" 'org-promote-subtree
+;;  "l" 'org-demote-subtree
+;;  "j" 'org-move-subtree-down
+;;  "k" 'org-move-subtree-up
+;;  ;; TODO Compare narrowing and widening to foldout
+;;  "n" 'org-narrow-to-subtree
+;;  "w" 'widen
+;;  "s" 'org-sparse-tree
+;;  "S" 'org-sort-entries
+;;  )
+
+(setq org-directory (expand-file-name "org/" doom-private-dir))
+
+;; (after! org
+;;   (setq org-attach-method 'mv))
+
+
+;; NOTE To change the prompt for e.g. org-attach-attach (see org-attach-commands),
+;; open dired to the desired directory in another window. One easy way of doing
+;; this is to set a bookmark in dired, then return to it via consult-bookmark.
+;; Note that you will want to unmap +dired-quit-all from "q" b/c it will kill
+;; all dired buffers after you enter dired to open an attachment
+;; TODO Migrate files from laptop to HQ PC once you get that setup
+;; TODO Make org-attach-* use consult multi selection. This will also allow
+;; you to specify an initial input path without dired
+;; TODO Make org-attach-open open externally on WSL. See code on my personal
+;; laptop
+(setq org-attach-id-dir
+      (cond ((eq system-type 'gnu/linux)
+             "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation/org-attach"))
+      org-attach-method 'mv)
+
+#+end_src
+
+** utlity functions
+
+#+begin_src emacs-lisp
+  ;; TODO Insert a newline after ~#+end_src~
+  ;; TODO Skip headings with no text entries to avoid empty src blocks
+  (defun my/org-entries-to-blocks ()
+    "Inspired loosely by `org-agenda-get-some-entry-text'.
+
+  When converting from outline to org docs, the first step is to convert comments
+  to asterisks. The next step is to demarcate as a src block everything under the
+  newly created org headings. This function does the second step."
+    (with-current-buffer "config.org"
+      (goto-char (point-min))
+      (save-match-data
+        (while (re-search-forward org-heading-regexp nil t)
+          (end-of-line)
+          (setq beg (min (1+ (point)) (point-max))
+                end (progn (outline-next-heading) (point))
+                ;;text (kill-region beg end))
+                )
+          (goto-char beg)
+          (set-mark end)
+          (org-babel-demarcate-block)))))
+
+
+;; TODO Bind to something. This is a dumb replacement for counsel-org-entity,
+;; which has actions to insert the different forms an org entity takes (name,
+;; latex, html, and utf-8). This function only inserts the latex version, which
+;; displays as utf-8 when `org-pretty-entities'
+(defun insert-org-entity ()
+  (interactive)
+  (let* ((str (completing-read
+               "Entity: "
+               (cl-loop for element in (append org-entities org-entities-user)
+                        unless (stringp element)
+                        collect (cons
+                                 (format "%s | %s | %s"
+                                         (cl-first element)    ; name
+                                         (cl-second element)   ; latex
+                                         (cl-seventh element)) ; utf-8
+                                 element))))
+         (latex (nth 1 (split-string str "|" t " "))))
+    (insert latex)))
+#+end_src
+
+** org-super-agenda
+
+#+begin_src emacs-lisp
+
+(use-package! org-super-agenda
+  :defer t
+  :init
+  (setq org-super-agenda-groups '((:auto-doom-path t))
+  ;; Replace org agenda categories (filename w/out explicit category) with
+  ;; org-super-agenda filepath group
+        org-agenda-prefix-format '((agenda . " %i %?-12t% s")
+                                   (todo . " %i ")
+                                   (tags . " %i ")
+                                   (search . " %i ")))
+  ;; This seems to default to adding forms `:before' the function you are
+  ;; modifying. At its core, it uses advice-add or add-hook, depending on
+  ;; whether you are modifying a function or hook.
+  (add-transient-hook! 'org-agenda
+    (org-super-agenda-mode)
+    (org-super-agenda--def-auto-group
+     doom-path "their parent heading"
+     :key-form (-when-let* ((marker (org-super-agenda--get-marker item))
+                            (file-path (->> marker marker-buffer buffer-file-name))
+                            (result (replace-regexp-in-string
+                                     "\\.org"
+                                     ""
+                                     (replace-regexp-in-string
+                                      (expand-file-name org-directory)
+                                      ""
+                                      file-path))))
+                 (concat "Filepath: " result)))))
+
+#+end_src
+
+* notes
+citar is a replacement for org-roam-bibtex, though the two can be used together. Both create notes and offer commands to act on citations. The biggest advantage of or g-roam-bibtex is that ~orb-note-actions~ offers multiple actions for roam refs in the curret note while citar requires you to invoke ~embark-act~ or one of its commands with cursor over a ref (citation). Both packages can create roam notes, but citar's interface feels cleaner since it doesn't pollute ~org-roam-capture-templates~.
+
+Usage:
+- ~+org/dwim-at-point~ (~RET~) over a citation invokes ~citar-at-point-function~. If ~citar-dwim~, ~citar-default-action~ is called, which is by default ~citar-open~ to open file or link resources or notes associated with the citation via ~(consult-)completing-read-multiple~. I set the default action to ~embark-act~ (also ~SPC a~). It dispatches commands for the citation or roam ref under point. It offers commands to open any resource (file, link, or note) associated with an entry, copy references, and edit parts of the citation.
+- ~org-cite-insert~ (~SPC m @~) inserts and edits citation. On a citation, behavior depends on the location of point. After the colon, replace the citekey. Before the colon, edit the org-cite style. Before or after a citation, insert a new citation.
+- ~org-roam-open-refs~ (~SPC m m b~) opens resources associated with a roam ref in the current roam note. For PDFs, you may instead want to use ~org-noter~ (~SPC m m n~) within a "Notes" heading that has a ~:NOTER_DOCUMENT~ property (i.e., any note in ~\tilde/.doom.d/org/cite~)
+- ~citar-open-notes~ (~SPC n r b~) opens or creates new notes. It may display outdated candidates without a prefix or previously running ~citar-refresh~.
+
+org-noter(-pdftools) allows you to take notes linked to annotations in PDFs displayed in Emacs with pdftools. The bindings are in ~org-noter-doc-mode-map~ and ~org-noter-notes-mode-map~. The doc map includes pdftools/pdfview bindings. Both maps include comamnds to sync the two buffers when navigating to the next page or the next note. The doc map includes "i" to insert an annotation without a heading, and "tab" to insert a heading with the annotation text. The latter is similar to Zotero 6 (beta as of 3/2022) and MarginNote3, where annotations/notes consist of the highlighted text and a comment underneath.
+
+Possible Zotero 6 workflow:
+1. For PDFs whose text can't be edited in the Zotero PDF viewer or org-noter, right-click items or attachments, click OCR selected PDFs. NOTE that this requires zotero-ocr.
+2. Annotate the PDF in Zotero.
+3. In the Zotero PDF viwer, File>Store Annotations in File. The annotations are removed from the Zotero database, will show a lock icon, and and will only be editable in an external PDF viewer like org-noter.
+4. Create a bibliographic note in Emacs with ~citar-open-notes~. Execute ~org-noter-pdftools-create-skeleton~ to extract the annotations to the note file.
+
+Alternatively, you can create a note from the annotations, expand the item in the library, right click the note, Export Now (including zotero links) to markdown, then process the markdown into the desired org-noter format. With default Zotero settings for note templates, you get a markdown link to the item in the citation for the annotation, as well as a link back to the annotation in the Zotero database. The links should be stripped to the raw text. When marked as a region, they can be opened via browse-url. (org-mode can't handle them without custom code, and zotxt-emacs seems to have issues with the links. I don't think it's been updated for the beta version of Zotero yet, since it only has a function to open attachment links and not annotation links.)
+
+NOTE There is still an open question of whether zotero-ocr marks items as changed for subsequent syncing, when you opt to replace the original with the OCR'd file. More testing is needed to see if OCR'd files show up in the library for the iPad. You'll knonw if it succeeds if you can annotate the PDF in the Zotero PDF viewer. I had to install zotero-ocr from source for the beta version of Zotero: https://github.com/UB-Mannheim/zotero-ocr/issues/37. zotero-ocr also has prerequisites.
+
+More on Zotero 6:
+https://www.zotero.org/blog/zotero-6/
+https://www.zotero.org/support/pdf_reader
+https://www.zotero.org/support/pdf_reader_preview
+https://www.zotero.org/support/changelog
+https://www.zotero.org/support/ios
+
+Obsidian tips that may be relevant to org-roam:
+https://www.marianamontes.me/post/obsidian-and-zotero/
+
+Searching roam notes content under headings:
+https://org-roam.discourse.group/t/how-to-browse-your-notes-efficiently/1001/2
+org-search-view (https://orgmode.org/worg/org-tutorials/advanced-searching.html)
+org-ql with regexp predicate
+org-rifle
+
+#+begin_src emacs-lisp
+;;; Notes bindings
+
+(map! :leader :prefix "n"
+      "a" nil
+      "b" nil
+      "c" nil
+      "C" nil
+      "d" nil
+      "e" nil
+      "m" nil
+      "N" nil
+      "o" nil
+      "R" nil
+      "t" nil
+      "s" nil
+      "S" nil
+      "v" nil
+      "y" nil
+      "Y" nil
+      "r a" nil
+      "r g" nil
+      "r r" nil
+      "r R" nil)
+
+;; NOTE: I am trying to bind note commands to similar commands bound directly to
+;; leader. This is partly based on reading source code, and partly based on
+;; observed behavior. E.g., +default/org-notes-search bound to "SPC n /"
+;; and swapping bindings for +default/browse-notes and +default/find-in-notes.
+;; NOTE: Bindings for the notes prefix should be global commands. Bindings to
+;; operate within a note should be bound on SPC m m.
+(map! :leader
+      :prefix "n"
+      :desc "Search notes" "/" #'+default/org-notes-search
+      (:prefix ("a" . "org agenda")
+       :desc "Agenda"         "a"  #'org-agenda-list
+       :desc "Todo list"      "t"  #'org-todo-list
+       :desc "Tags view"    "m"  #'org-tags-view
+       :desc "Search view"    "v"  #'org-search-view)
+      :desc "Org agenda"       "A"  #'org-agenda
+      (:prefix ("c" . "clock")
+       ;; Since org-clock-in is bound to localleader in org files, its normal
+       ;; behavior can be triggered that way. Here we are binding a better
+       ;; default behavior for leader, which may be used outside of org files
+       :desc "Clock in"                     "c" #'org-clock-in-show
+       :desc "Clock in continuously"        "C" #'org-clock-in-continuous
+       :desc "Clock out"                    "o" #'org-clock-out
+       :desc "Cancel clock"                 "O" #'org-clock-cancel
+       :desc "Current task"                 "g" #'org-clock-goto
+       ;; In case you leave Emacs running or exit after prompting not to save
+       ;; the active clock.  org-clock-in may also prompt for resolution of the
+       ;; last running clock
+       :desc "Resolve open clocks"          "r" #'org-resolve-clocks
+       ;; org-todo will also close an open clock
+       :desc "Change todo state"            "t" #'org-todo)
+      :desc "Find note" "f" #'+default/browse-notes
+      :desc "Find note from here" "F" #'+default/find-in-notes
+      (:when (featurep! :completion vertico)
+       ;; Preferred to `+default-org-notes-headlines'
+       :desc "Search org agenda headlines" "h" #'consult-org-agenda)
+      (:when (featurep! :lang org +roam2)
+       (:prefix "r"
+        :desc "Roam version"               "v" 'org-roam-version
+        (:when (featurep! :tools biblio)
+         :desc "Open bib note" "b" 'citar-open-notes))))
+
+;;; Notes commands
+
+(defun org-clock-in-show ()
+  (interactive)
+  (let ((current-prefix-arg '(4)))
+    (call-interactively 'org-clock-in)))
+
+(defun org-clock-in-continuous ()
+  (interactive)
+  (let ((current-prefix-arg '(64)))
+    (call-interactively 'org-clock-in)))
+
+;;; org-roam
+
+;; TODO On WSL, org-roam-node-find with a nonexisting file name hangs when selecting a
+;; template. org-capture does not have the same issue.
+;; Related to https://github.com/org-roam/org-roam/issues/1873?
+
+;; See ~/.doom.d/modules/lang/org/autoload/contrib-roam2.el and
+;; ~/.doom.d/modules/lang/org/contrib/roam2.el.
+
+;; Known issues: Doom relies on sqlite3. According to the org-roam Discourse,
+;; sqlite3 doesn't work. It may be related to org-mode errors about the
+;; cache. Doom also uses the deprecated `org-roam-setup', which for now is
+;; aliased to `org-roam-db-autosync-mode'. I've replaced its startup behavior
+;; with a call to the latter. Upgrading to MacOS Monterey (12.0.1) breaks this
+;; function because the only C compiler (gcc) is broken. Running `gcc' in the
+;; terminal produces "xcrun: error: invalid active developer path, missing xcrun".
+;; This is fixed by `sudo xcode-select --reset'. Afterwards, the emacsql sqlite
+;; binary compiles on next startup.
+
+(use-package! org-roam
+  :defer t
+  :init
+  (setq org-roam-directory org-directory
+        +org-roam-open-buffer-on-find-file nil)
+  :config
+  ;; NOTE: Replacing the custom load logic with the standard setup for roam.
+  ;; Hoping this fixes the issue with constant messages bout an outdated org
+  ;; cache when working with org files.
+  (org-roam-db-autosync-mode)
+  (setq org-roam-capture-templates nil)
+  ;; This only works if you create the heading node with
+  ;; org-roam-node-find, then call org-roam-node-insert after the node exists.
+  ;; (add-to-list 'org-roam-capture-templates
+  ;;              '("i" "init" entry (function make-heading-node)
+  ;;                :target (file "init.org")
+  ;;                :immediate-finish))
+  )
+
+;; ;; TODO Adapt org heading level and path to that of outline heading.
+;; (defun make-heading-node ()
+;;   (concat
+;;    (format "* ${title}\n:PROPERTIES:\n:ID: %s\n:END:\n"
+;;            (org-id-new))
+;;    "%?"))
+
+;; (use-package! org-noter
+;;   :defer t
+;;   :config
+;;   (after! citar
+;;     (setq org-noter-notes-search-path citar-notes-paths)))
+
+;; ;; org-noter-pdftools alters the NOTER_PAGE property on notes created in an
+;; ;; org-noter session via org-noter-insert-note. It also converts the selected
+;; ;; pdf text into highlighted annotations. There is no diff between notes and
+;; ;; precise notes, unlike the basic org-noter. The documentation is sparse and
+;; ;; fails to adequately explain the package. For now, the following config
+;; ;; seems sufficient and I am ignoring the rest of the org-pdftools README.
+;; ;; Random error in the README that STILL hasn't been fixed:
+;; ;; https://emacs.stackexchange.com/questions/68013/org-link-to-the-exact-page-position-in-a-pdf-file
+;; (use-package! org-noter-pdftools
+;;   :after org-noter
+;;   :config
+;;   ;; Jump to note in noter note buffer when clicking on a highlighted annotation
+;;   ;; in pdf. NOTE: This was working at one point, but isn't anymore.
+;;   ;; (with-eval-after-load 'pdf-annot
+;;   ;;   (add-hook 'pdf-annot-activate-handler-functions
+;;   ;;             #'org-noter-pdftools-jump-to-note))
+
+;;   ;; One issue is that the PDF doesn't save the annotations it creates by
+;;   ;; default. The following hack fixes this issue. See:
+;;   ;; https://github.com/fuxialexander/org-pdftools/issues/68
+;;   ;; https://github.com/vedang/pdf-tools/issues/28 (referenced by issue 68)
+;;   (add-hook 'pdf-view-mode-hook #'pdf-annot-minor-mode)
+;;   (add-hook 'pdf-view-mode-hook (lambda () (read-only-mode 0)))
+;;   (defun save-noter-annotations (old-func &rest args)
+;;     (with-selected-window (org-noter--get-doc-window)
+;;       (save-buffer)
+;;       (funcall old-func org-noter--session)))
+;;   (advice-add 'org-noter-kill-session :around 'save-noter-annotations))
+
+;; ;; NOTE Without namespacing, number-sequence apparently interferes with a
+;; ;; function of the same name called when indenting in python-mode
+;; (defun my/number-sequence (from to)
+;;   (let ((out '())
+;;         (counter from))
+;;     (while (<= counter to)
+;;       (setf out (cons counter out))
+;;       (setf counter (+ 1 counter)))
+;;     (reverse out)))
+
+;; ;; TODO If you want org-noter to open frames on monitors other than the main one
+;; ;; in MacOS, you will need to replace the call to make-frame in org-noter with a
+;; ;; call this function with the desired number of the monitor, with 1 being the
+;; ;; main monitor. You can also change the main monitor in MacOS System
+;; ;; Preferences.
+;; (defun make-frame-on-monitor (monitor &optional parameters)
+;;   "make-frame uses the main monitor on MacOS. This function allows you to choose
+;; which monitor to display the new frame. Because MacOS does not have monitor
+;; names in Emacs, the original function has been modified to use monitor # based
+;; on the index of display-monitor-attributes-list."
+;;   (interactive
+;;    (list
+;;     (let* ((default 1))
+;;       (string-to-number
+;;        (completing-read
+;;         (format "Make frame on monitor # (default %s): " default)
+;;         (mapcar #'number-to-string
+;;                 (my/number-sequence default (length
+;;                                           (display-monitor-attributes-list))))
+;;         nil nil nil nil default)))))
+;;   (let* ((monitor (nth (- monitor 1)
+;;                        (display-monitor-attributes-list)))
+;;          (geometry-parameters (assq 'geometry monitor)))
+;;     (make-frame (append `((top . ,(nth 2 geometry-parameters))
+;;                           (left . ,(nth 1 geometry-parameters)))))))
+
+;; (defun make-frame-on-current-monitor (&optional parameters)
+;;   (interactive)
+;;   (let* ((geometry-parameters (assq 'geometry (frame-monitor-attributes))))
+;;     (make-frame (append `((top . ,(nth 2 geometry-parameters))
+;;                           (left . ,(nth 1 geometry-parameters)))))))
+
+;; ;; (defadvice! org-noter--set-notes-window-location-for-monitor (&optional type)
+;; ;;   "Split org-noter frame horizontally or vertically depending on monitor
+;; ;; orientation"
+;; ;;   :before #'org-noter--get-notes-window
+;; ;;   (org-noter--with-valid-session
+;; ;;    (let* ((attr (car (frame-monitor-attributes)))
+;; ;;           (width (nth 3 attr))
+;; ;;           (height (nth 4 attr)))
+;; ;;      (setf (org-noter--session-window-location session)
+;; ;;            (if (> height width) "Vertical" "Horizontal")))))
+
+;; (after! org-noter
+;;   (defun org-noter--get-notes-window (&optional type)
+;;     (org-noter--with-valid-session
+;;      (let ((notes-buffer (org-noter--session-notes-buffer session))
+;;            (window-location (org-noter--session-window-location session))
+;;            (window-behavior (org-noter--session-window-behavior session))
+;;            notes-window)
+;;        ;; Hack to split noter window based on monitor orientation rather than
+;;        ;; using org-noter-notes-window-location (org-noter--session-window-location)
+;;        (let* ((attr (assq 'geometry (frame-monitor-attributes)))
+;;               (width (nth 3 attr))
+;;               (height (nth 4 attr)))
+;;          (setq window-location
+;;                (if (> height width) 'vertical-split 'horizontal-split)))
+;;        (or (get-buffer-window notes-buffer t)
+;;            (when (or (eq type 'force) (memq type window-behavior))
+;;              (if (eq window-location 'other-frame)
+;;                  (let ((restore-frame (selected-frame)))
+;;                    (switch-to-buffer-other-frame notes-buffer)
+;;                    (setq notes-window (get-buffer-window notes-buffer t))
+;;                    (x-focus-frame restore-frame)
+;;                    (raise-frame (window-frame notes-window)))
+
+;;                (with-selected-window (org-noter--get-doc-window)
+;;                  (let ((horizontal (eq window-location 'horizontal-split)))
+;;                    (setq
+;;                     notes-window
+;;                     (if (window-combined-p nil horizontal)
+;;                         ;; NOTE(nox): Reuse already existent window
+;;                         (let ((sibling-window (or (window-next-sibling) (window-prev-sibling))))
+;;                           (or (window-top-child sibling-window) (window-left-child sibling-window)
+;;                               sibling-window))
+
+;;                       (if horizontal
+;;                           (split-window-right (ceiling (* (car (org-noter--session-doc-split-fraction session))
+;;                                                           (window-total-width))))
+;;                         (split-window-below (ceiling (* (cdr (org-noter--session-doc-split-fraction session))
+;;                                                         (window-total-height)))))))))
+
+;;                (set-window-buffer notes-window notes-buffer))
+;;              notes-window))))))
+#+end_src
+* search
+
+#+begin_src emacs-lisp
+
+;; The original command doesn't do what it likely intends. I fixed it.
+(advice-add '+default/search-notes-for-symbol-at-point
+            :override '+my/default/search-notes-for-symbol-at-point)
+
+(defun +my/default/search-notes-for-symbol-at-point ()
+  "Search org-directory for symbol at point"
+  (interactive)
+  (require 'org)
+  (let ((default-directory org-directory))
+    (call-interactively '+default/search-project-for-symbol-at-point)))
+
+#+end_src
+
+* ledger
+
+#+begin_src emacs-lisp
+(use-package! ledger-mode
+  :defer t
+  :init
+  (setq ledger-reports
+        '(("bal" "%(binary) -f %(ledger-file) bal not ^budget")
+          ("budget" "%(binary) -f %(ledger-file) bal budget")
+          ("reg" "%(binary) -f %(ledger-file) reg")
+          ("payee" "%(binary) -f %(ledger-file) reg @%(payee)")
+          ("account" "%(binary) -f %(ledger-file) reg %(account)"))))
+#+end_src
+
+* zsh
+
+#+begin_src emacs-lisp
+
+(add-hook 'sh-mode-hook 'outline-minor-mode)
+
+#+end_src
+
+* lsp
+
+#+begin_src emacs-lisp
+
+(use-package! lsp-mode
+  :defer t
+  :init
+  ;; Remove docs from signature shown when typing a function call (separate from
+  ;; lsp-ui-doc and lsp-eldoc-enable-hover which show signature on hover)
+  (setq lsp-signature-render-documentation nil
+        ;; Not needed with lsp-ui-doc-enable to show signatures on hover.
+        ;; Furthermore, it doesn't seem to work with ess-r-mode unless
+        ;; lsp-eldoc-render-all is non-nil. But that enables displaying
+        ;; documentation on hover, which is too much for the echo area.
+        lsp-eldoc-enable-hover nil))
+
+;; lsp-ui-doc shows docs for objects such as functions, signatures and argument
+;; descriptions for (named) function args, and the last assignment statement for
+;; variables. It is quite useful when browsing complex code like package
+;; functions
+(use-package! lsp-ui
+  :defer t
+  :config
+  ;; Has a bias toward displaying the doc childframe in a window on the right
+  ;; side in the frame when this option is set to `frame'. The actual window
+  ;; containing the doc childframe depends on the window splits and location of
+  ;; lsp-mode buffer. Split vertically, then horizontally in the right vertical
+  ;; split. Then open the same buffer in each window. The docs show up in
+  ;; different windows depending on which window it is called from.
+  (setq lsp-ui-doc-alignment 'frame
+        lsp-ui-doc-position 'bottom ; Where to display in chosen window
+        lsp-ui-doc-max-height 10
+        lsp-ui-doc-max-width 80
+        lsp-ui-doc-delay 1
+        ;; Shows docs for objects such as functions, signatures and argument
+        ;; descriptions for (named?) arguments, and the last assignment
+        ;; statement for variables. Disabling disables all of these things.
+        lsp-ui-doc-show-with-cursor t
+        ;; Non-webkit docs are closer to RStudio docs in appearance. While
+        ;; webkit highlights source code in blocks, it also mislabels some
+        ;; sections as code. Non-webkit docs also have the advantage that
+        ;; headings are indented by level, similar to how RStudio uses different
+        ;; font sizes.
+        lsp-ui-doc-use-webkit nil
+        lsp-ui-imenu-auto-refresh t
+        ;; Get rid of e.g. the message to disable all linters on line
+        lsp-ui-sideline-show-code-actions nil
+        ;; arbitrary value
+        lsp-ui-sideline-diagnostic-max-lines 10
+        lsp-ui-sideline-show-hover t)
+  ;; If the common prefix for company is a complete symbol, lsp-ui-doc will
+  ;; show. This is especially a problem for autocompletion where completion will
+  ;; display as you type. If you need to navigate the completion menu, you
+  ;; likely want to banish the doc for the common prefix symbol. This is a hack
+  ;; until I can figure out how to avoid showing the doc at all when the tooltip
+  ;; is visible.
+  ;;(advice-add 'company-select-next :after 'lsp-ui-doc-hide)
+  ;;(advice-add 'company-select-previous :after 'lsp-ui-doc-hide)
+  )
+
+;; TODO Remap this so it doesn't interfere with company-active-map. Perhaps
+;; rewrite scroll-down-lsp-ui to check whether there are company candidates, and
+;; exit if so. Or make sure company-active-map has higher priority?
+;; (general-def '(motion insert emacs)
+;;  "C-f" 'scroll-down-lsp-ui)
+
+(defun scroll-down-lsp-ui ()
+  "Enable scrolling documentation child frames when using lsp-ui-doc-glance"
+  (interactive)
+  (if (lsp-ui-doc--frame-visible-p)
+      (let ((kmap (make-sparse-keymap)))
+        (define-key kmap (kbd "q")
+          '(lambda ()
+             (interactive)
+             (lsp-ui-doc-unfocus-frame)
+             (setq overriding-terminal-local-map nil)
+             (setq which-key-show-transient-maps t)))
+        (setq which-key-show-transient-maps nil)
+        (setq overriding-terminal-local-map kmap)
+        (lsp-ui-doc-focus-frame)))
+  (scroll-up))
+
+;; xref-find-apropos = lsp-ui-find-workspace-symbol > lsp-ui-peek-find-workspace-symbol
+;; lsp-ivy-(global-)workspace-symbol
+;; - compare to SPC l g a / SPC l G s
+;; helm-lsp-switch-project (helm-lsp)
+
+;; required for lsp-iedit-highlights. Call it at point, make edits, then hit C-g
+;; over the symbol to finish editing symbols in parallel. Calling it again
+;; before C-g adds additional symbols to edit in parallel. In contrast to
+;; lsp-rename, editing is in the buffer rather than the minibuffer and allows
+;; for more complex edits like adding a prefix to multiple symbols
+;; Note: If a function and one of its arguments ar ethe same symbol, this will
+;; not distinguish between the two. On the other hand, lsp-rename seems able to
+;; tell the difference. You may have to enter insert mode after the symbol to be
+;; renamed because sometimes you get a message about not being able to rename
+;; the symbol depending on its context.
+;; (use-package iedit)
+
+;; lsp-describe-thing-at-point
+;; lsp-ui-doc-show
+;; lsp-auto-guess-root (projectile support?)
+;; (lsp-ui-doc-focus-frame)
+;; (lsp-ui-imenu) -> can be used even outside of lsp-mode buffers! Customize
+;; imenu-generic-expression
+;; lsp-ui-peek-jump-* (difference from xref-pop-marker-stack? Something about a
+;; "window local jump list")
+;; download R src code for packages so that *-find-definitions jumps to the
+;; original rather than a temp file? See
+;; http://applied-r.com/r-source-code/#:~:text=Compiled%20Package%20Code,the%20package%20source%20for%20you.
+;; lsp-lens-enable (disabled by default; no support from ess-r)
+;; lsp-modeline-* (probably not supported by telephone?)
+;; in lsp-mode, a message is sent when scrolling "showing all blocks". This is
+;; only defined in hs-show-all, which is called by hs-minor-mode when
+;; enabling. Furthermore, when removing hs-minor-mode from prog-mode-hook, the
+;; messges stop. This is strong evidence that lsp-mode is messing with this
+;; minor mode. Finally, the messages don't show up in emacs lisp files, which do
+;; not run lsp. And instrumenting hs-minor-mode drops us into debugging its body
+;; when we scroll.
+
+;; ;; Disable underlines in lsp-ui-doc child frames
+;; (custom-set-faces '(nobreak-space ((t nil))))
+
+#+end_src
+
+* phscroll
+
+Enables horizontal scrolling of tables in org-mode documents and prevents them from wrapping, in visual-line-mode.
+
+WARNING phscroll breaks +default/search-project. In fact, it causes Emacs to hang and become nonresponsive to C-g or any other input short of ~pkill -SIGTERM Emacs~ within a terminal. This affects the following version of doom:
+
+GNU Emacs     v27.2            nil
+Doom core     v3.0.0-dev       HEAD -> master 65ff26366 2022-04-22 23:36:05 +0200
+Doom modules  v22.04.0-dev     HEAD -> master 65ff26366 2022-04-22 23:36:05 +0200
+
+To replicate, start a fresh session of Emacs. Immediately open the private vertico module's README.org. Run +default/search-project. Begin typing. Possibly navigate down the candidates. Doom will freeze. See instructions in "Debugging frozen Emacs".
+
+#+begin_src emacs-lisp :tangle no
+(use-package! phscroll)
+(setq org-startup-truncated nil)
+(load "org-phscroll")
+#+end_src
+
+#+begin_src emacs-lisp :tangle no
+  overlays-in(4131 4481)
+  phscroll-get-overlay-cache(4131 4481)
+  phscroll-update-current-line-display(0 #<window 3 on README.org>)
+  phscroll-update-area-lines-display((phscroll 0 #<overlay from 4653 to 4969 in README.org> ((-1 . -1)) 173) 0 4653 4969 #<window 3 on README.org>)
+  phscroll-update-area-display((phscroll 0 #<overlay from 4653 to 4969 in README.org> ((-1 . -1)) 173) nil #<window 3 on README.org>)
+  phscroll-update-areas-in-window(nil #<window 3 on README.org>)
+  phscroll-on-pre-redisplay(#<window 3 on README.org>)
+  run-hook-with-args(phscroll-on-pre-redisplay #<window 3 on README.org>)
+  redisplay--pre-redisplay-functions((#<window 4 on  *Minibuf-1*> #<window 3 on README.org>))
+  apply(redisplay--pre-redisplay-functions (#<window 4 on  *Minibuf-1*> #<window 3 on README.org>))
+  #f(advice-wrapper :before ignore redisplay--pre-redisplay-functions)((#<window 4 on  *Minibuf-1*> #<window 3 on README.org>))
+  redisplay_internal\ \(C\ function\)()
+  redisplay()
+  vertico--update-candidates(3 #("#wh" 0 1 (face consult-async-split ws-butler-chg chg) 1 3 (ws-butler-chg chg)))
+  vertico--exhibit()
+  read-from-minibuffer("Search (~/.doom.d/): " "#" (keymap (19 . consult-history) (10 . minibuffer-complete-and-exit) (13 . minibuffer-complete-and-exit) keymap (19 . consult-history) (menu-bar keymap (minibuf "Minibuf" keymap (tab menu-item "Complete" minibuffer-complete :help "Complete as far as possible") (space menu-item "Complete Word" minibuffer-complete-word :help "Complete at most one word") (63 menu-item "List Completions" minibuffer-completion-help :help "Display all possible completions") "Minibuf")) (27 keymap (118 . switch-to-completions)) (prior . switch-to-completions) (63 . minibuffer-completion-help) (32 . minibuffer-complete-word) (9 . minibuffer-complete) keymap (19 . consult-history) (3 keymap (5 . +vertico/embark-export-write) (67108923 . embark-export)) (67108923 . embark-act) (menu-bar keymap (minibuf "Minibuf" keymap (previous menu-item "Previous History Item" previous-history-element :help "Put previous minibuffer history element in the min...") (next menu-item "Next History Item" next-history-element :help "Put next minibuffer history element in the minibuf...") (isearch-backward menu-item "Isearch History Backward" isearch-backward :help "Incrementally search minibuffer history backward") (isearch-forward menu-item "Isearch History Forward" isearch-forward :help "Incrementally search minibuffer history forward") (return menu-item "Enter" exit-minibuffer :key-sequence "\15" :help "Terminate input and exit minibuffer") (quit menu-item "Quit" abort-recursive-edit :help "Abort input and exit minibuffer") "Minibuf")) (10 . exit-minibuffer) (13 . exit-minibuffer) (7 . abort-recursive-edit) (C-tab . file-cache-minibuffer-complete) (9 . self-insert-command) (XF86Back . previous-history-element) (up . previous-line-or-history-element) (prior . previous-history-element) (XF86Forward . next-history-element) (down . next-line-or-history-element) (next . next-history-element) (27 keymap (65 . marginalia-cycle) (60 . minibuffer-beginning-of-buffer) (114 . previous-matching-history-element) (115 . next-matching-history-element) (112 . previous-history-element) (110 . next-history-element))) nil consult--grep-history nil nil)
+  #f(compiled-function (prompt collection &optional predicate require-match initial-input hist def inherit-input-method) "Default method for reading from the minibuffer with completion.\nSee `completing-read' for the meaning of the arguments." #<bytecode 0x41da4ec3>)("Search (~/.doom.d/): " #f(compiled-function (str pred action) #<bytecode 0x4720b3d5>) nil t "#" consult--grep-history nil nil)
+  apply((#f(compiled-function (prompt collection &optional predicate require-match initial-input hist def inherit-input-method) "Default method for reading from the minibuffer with completion.\nSee `completing-read' for the meaning of the arguments." #<bytecode 0x41da4ec3>) "Search (~/.doom.d/): " #f(compiled-function (str pred action) #<bytecode 0x4720b3d5>) nil t "#" consult--grep-history nil nil))
+  vertico-multiform--advice(#f(compiled-function (prompt collection &optional predicate require-match initial-input hist def inherit-input-method) "Default method for reading from the minibuffer with completion.\nSee `completing-read' for the meaning of the arguments." #<bytecode 0x41da4ec3>) "Search (~/.doom.d/): " #f(compiled-function (str pred action) #<bytecode 0x4720b3d5>) nil t "#" consult--grep-history nil nil)
+  apply(vertico-multiform--advice (#f(compiled-function (prompt collection &optional predicate require-match initial-input hist def inherit-input-method) "Default method for reading from the minibuffer with completion.\nSee `completing-read' for the meaning of the arguments." #<bytecode 0x41da4ec3>) "Search (~/.doom.d/): " #f(compiled-function (str pred action) #<bytecode 0x4720b3d5>) nil t "#" consult--grep-history nil nil))
+  vertico--advice(#f(compiled-function (prompt collection &optional predicate require-match initial-input hist def inherit-input-method) "Default method for reading from the minibuffer with completion.\nSee `completing-read' for the meaning of the arguments." #<bytecode 0x41da4ec3>) "Search (~/.doom.d/): " #f(compiled-function (str pred action) #<bytecode 0x4720b3d5>) nil t "#" consult--grep-history nil nil)
+  apply(vertico--advice #f(compiled-function (prompt collection &optional predicate require-match initial-input hist def inherit-input-method) "Default method for reading from the minibuffer with completion.\nSee `completing-read' for the meaning of the arguments." #<bytecode 0x41da4ec3>) ("Search (~/.doom.d/): " #f(compiled-function (str pred action) #<bytecode 0x4720b3d5>) nil t "#" consult--grep-history nil nil))
+  completing-read-default("Search (~/.doom.d/): " #f(compiled-function (str pred action) #<bytecode 0x4720b3d5>) nil t "#" consult--grep-history nil nil)
+  completing-read("Search (~/.doom.d/): " #f(compiled-function (str pred action) #<bytecode 0x4720b3d5>) nil t "#" consult--grep-history nil nil)
+  #f(compiled-function () #<bytecode 0x5261de81>)()
+  consult--with-preview-1(any #f(compiled-function (cand restore) #<bytecode 0x47204393>) #f(compiled-function (input cand) #<bytecode 0x4720959d>) #f(compiled-function (&rest args2) #<bytecode 0x47209581>) #f(compiled-function () #<bytecode 0x5261de81>))
+  consult--read-1(#f(compiled-function (action) #<bytecode 0x52be4c77>) :prompt "Search (~/.doom.d/): " :lookup consult--lookup-member :state #f(compiled-function (cand restore) #<bytecode 0x47204393>) :initial "#" :add-history #("#=which-key=" 1 2 (fontified t font-lock-multiline t org-emphasis t invisible t line-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)) wrap-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face))) 2 11 (fontified t face (org-verbatim) font-lock-multiline t org-emphasis t line-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)) wrap-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face))) 11 12 (fontified t font-lock-multiline t org-emphasis t invisible t line-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)) wrap-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)))) :require-match t :category consult-grep :group consult--grep-group :history (:input consult--grep-history) :sort nil :prompt "Select: " :preview-key any :sort t :lookup #f(compiled-function (input cands x) #<bytecode 0x52682361>))
+  apply(consult--read-1 #f(compiled-function (action) #<bytecode 0x52be4c77>) (:prompt "Search (~/.doom.d/): " :lookup consult--lookup-member :state #f(compiled-function (cand restore) #<bytecode 0x47204393>) :initial "#" :add-history #("#=which-key=" 1 2 (fontified t font-lock-multiline t org-emphasis t invisible t line-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)) wrap-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face))) 2 11 (fontified t face (org-verbatim) font-lock-multiline t org-emphasis t line-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)) wrap-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face))) 11 12 (fontified t font-lock-multiline t org-emphasis t invisible t line-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)) wrap-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)))) :require-match t :category consult-grep :group consult--grep-group :history (:input consult--grep-history) :sort nil :prompt "Select: " :preview-key any :sort t :lookup #f(compiled-function (input cands x) #<bytecode 0x52682361>)))
+  consult--read(#f(compiled-function (action) #<bytecode 0x52be4c77>) :prompt "Search (~/.doom.d/): " :lookup consult--lookup-member :state #f(compiled-function (cand restore) #<bytecode 0x47204393>) :initial "#" :add-history #("#=which-key=" 1 2 (fontified t font-lock-multiline t org-emphasis t invisible t line-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)) wrap-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face))) 2 11 (fontified t face (org-verbatim) font-lock-multiline t org-emphasis t line-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)) wrap-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face))) 11 12 (fontified t font-lock-multiline t org-emphasis t invisible t line-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)) wrap-prefix #("             " 0 5 (face org-visual-indent-blank-pipe-face) 5 6 (face org-visual-indent-pipe-face) 9 10 (face org-visual-indent-pipe-face)))) :require-match t :category consult-grep :group consult--grep-group :history (:input consult--grep-history) :sort nil)
+  consult--grep("Search" consult--ripgrep-builder "/Users/jkroes/.doom.d/" nil)
+  (let* ((project-root (or (doom-project-root) default-directory)) (directory (or in project-root)) (consult-ripgrep-args (concat "rg " (if all-files "-uu ") (if recursive nil "--maxdepth 1 ") "--null --line-buffered --color=never --max-columns..." "--path-separator /   --smart-case --no-heading --l..." "--hidden -g !.git " (mapconcat #'shell-quote-argument args " ") " .")) (prompt (if (stringp prompt) (string-trim prompt) "Search")) (query (or query (if (doom-region-active-p) (progn (regexp-quote (doom-thing-at-point-or-region)))))) (consult-async-split-style consult-async-split-style) (consult-async-split-styles-alist consult-async-split-styles-alist)) (if query (progn (let* ((--cl-rest-- (consult--async-split-style)) (type (car (cdr ...))) (separator (car (cdr ...))) (initial (car (cdr ...)))) (progn (let ((--cl-keys-- --cl-rest--)) (while --cl-keys-- (cond ... ... ...))) (cond ((eq type ...) (replace-regexp-in-string ... ... query t t)) ((eq type ...) (if ... ...)) (t nil)))))) (consult--grep prompt #'consult--ripgrep-builder directory query))
+  (progn (if (executable-find "rg") nil (user-error "Couldn't find ripgrep in your PATH")) (require 'consult) (setq deactivate-mark t) (let* ((project-root (or (doom-project-root) default-directory)) (directory (or in project-root)) (consult-ripgrep-args (concat "rg " (if all-files "-uu ") (if recursive nil "--maxdepth 1 ") "--null --line-buffered --color=never --max-columns..." "--path-separator /   --smart-case --no-heading --l..." "--hidden -g !.git " (mapconcat #'shell-quote-argument args " ") " .")) (prompt (if (stringp prompt) (string-trim prompt) "Search")) (query (or query (if (doom-region-active-p) (progn (regexp-quote ...))))) (consult-async-split-style consult-async-split-style) (consult-async-split-styles-alist consult-async-split-styles-alist)) (if query (progn (let* ((--cl-rest-- (consult--async-split-style)) (type (car ...)) (separator (car ...)) (initial (car ...))) (progn (let (...) (while --cl-keys-- ...)) (cond (... ...) (... ...) (t nil)))))) (consult--grep prompt #'consult--ripgrep-builder directory query)))
+  (progn (let ((--cl-keys-- --cl-rest--)) (while --cl-keys-- (cond ((memq (car --cl-keys--) '(:query :in :all-files :recursive :prompt :args :allow-other-keys)) (setq --cl-keys-- (cdr (cdr --cl-keys--)))) ((car (cdr (memq ... --cl-rest--))) (setq --cl-keys-- nil)) (t (error "Keyword argument %s not one of (:query :in :all-fi..." (car --cl-keys--)))))) (progn (if (executable-find "rg") nil (user-error "Couldn't find ripgrep in your PATH")) (require 'consult) (setq deactivate-mark t) (let* ((project-root (or (doom-project-root) default-directory)) (directory (or in project-root)) (consult-ripgrep-args (concat "rg " (if all-files "-uu ") (if recursive nil "--maxdepth 1 ") "--null --line-buffered --color=never --max-columns..." "--path-separator /   --smart-case --no-heading --l..." "--hidden -g !.git " (mapconcat #'shell-quote-argument args " ") " .")) (prompt (if (stringp prompt) (string-trim prompt) "Search")) (query (or query (if (doom-region-active-p) (progn ...)))) (consult-async-split-style consult-async-split-style) (consult-async-split-styles-alist consult-async-split-styles-alist)) (if query (progn (let* ((--cl-rest-- ...) (type ...) (separator ...) (initial ...)) (progn (let ... ...) (cond ... ... ...))))) (consult--grep prompt #'consult--ripgrep-builder directory query))))
+  (let* ((query (car (cdr (plist-member --cl-rest-- ':query)))) (in (car (cdr (plist-member --cl-rest-- ':in)))) (all-files (car (cdr (plist-member --cl-rest-- ':all-files)))) (recursive (car (cdr (or (plist-member --cl-rest-- ':recursive) '(nil t))))) (prompt (car (cdr (plist-member --cl-rest-- ':prompt)))) (args (car (cdr (plist-member --cl-rest-- ':args))))) (progn (let ((--cl-keys-- --cl-rest--)) (while --cl-keys-- (cond ((memq (car --cl-keys--) '...) (setq --cl-keys-- (cdr ...))) ((car (cdr ...)) (setq --cl-keys-- nil)) (t (error "Keyword argument %s not one of (:query :in :all-fi..." (car --cl-keys--)))))) (progn (if (executable-find "rg") nil (user-error "Couldn't find ripgrep in your PATH")) (require 'consult) (setq deactivate-mark t) (let* ((project-root (or (doom-project-root) default-directory)) (directory (or in project-root)) (consult-ripgrep-args (concat "rg " (if all-files "-uu ") (if recursive nil "--maxdepth 1 ") "--null --line-buffered --color=never --max-columns..." "--path-separator /   --smart-case --no-heading --l..." "--hidden -g !.git " (mapconcat ... args " ") " .")) (prompt (if (stringp prompt) (string-trim prompt) "Search")) (query (or query (if ... ...))) (consult-async-split-style consult-async-split-style) (consult-async-split-styles-alist consult-async-split-styles-alist)) (if query (progn (let* (... ... ... ...) (progn ... ...)))) (consult--grep prompt #'consult--ripgrep-builder directory query)))))
+  +vertico-file-search(:query nil :in nil :all-files nil)
+  +vertico/project-search(nil)
+  funcall-interactively(+vertico/project-search nil)
+  call-interactively(+vertico/project-search)
+  (let* ((projectile-project-root nil) (disabled-command-function nil) (current-prefix-arg (if (eq arg 'other) nil arg)) (default-directory (if (eq arg 'other) (let* ((projects (and t ...))) (if projects (completing-read "Search project: " projects nil t) (user-error "There are no known projects"))) default-directory))) (call-interactively (cond (nil #'+ivy/project-search) (nil #'+helm/project-search) (t #'+vertico/project-search) (#'projectile-ripgrep))))
+  +default/search-project(nil)
+  funcall-interactively(+default/search-project nil)
+  call-interactively(+default/search-project nil nil)
+  command-execute(+default/search-project)
+#+end_src
+
+* popup
+
+#+begin_src emacs-lisp
+
+;; TODO How does this compare to popper.el (a la daviwil of system crafters)?
+;; This module does not seem to rely on any external packages.
+
+;; NOTE: To raise popups to buffers, use C-~. This binding is more useful than a
+;; leader binding because I commonly use this command with buffers in emacs
+;; state like info
+
+;; Enable modeline by default that can be overriden by individual popup rules
+(when (featurep! :ui popup)
+  (plist-put +popup-defaults :modeline t)
+  (set-popup-rule! "^\\*Org Src" :ignore t))
+;; Override popup rules' :modeline property and enable modeline everywhere
+;;(remove-hook '+popup-buffer-mode-hook #'+popup-set-modeline-on-enable-h)
+
+;;; popup notes
+
+;; NOTE Some commands support their own alist elements, so transient might be
+;; supported by some command I'm unaware of. Investigate this.
+
+;;+popup-defaults
+;; (:side bottom :height 0.16 :width 40 :quit t :select ignore :ttl 5 :modeline t)
+;;+popup-default-alist
+;; ((window-height . 0.16)
+;;  (reusable-frames . visible))
+;;+popup-default-parameters
+;; ((transient . t)
+;;  (quit . t)
+;;  (select . ignore)
+;;  (no-other-window . t))
+
+;; NOTE Consider binding +popup/quit-window
+;; to "q" in popup buffers instead of quit-window-kill-buffer
+
+;; quit-window-kill-buffer:
+;; quit-window->delete-window->popup--delete-window (sets up timer for
+;; +popup--kill-buffer)->delete-window (avoiding recursion)
+;; kill-buffer->popup-kill-buffer-hook-h (no window, does nothing)
+;; +popup--kill-buffer (after timer; no buffer; does nothing)
+
+;; kill-buffer:
+;; quit-window (b/c dedicated)->delete-window->popup--delete-window (sets
+;; up timer for +popup--kill-buffer)->delete-window (avoiding recursion)
+;; +popup--kill-buffer (after timer; no buffer; does nothing)
+
+;; quit-window:
+;; quit-window->delete-window->opup--delete-window->delete-window
+;; +popup--kill-buffer
+
+
+;; Binding for copy-paste to scratch. scratch as a popup?
+;; Choose between switch-to-buffer and consult-buffer. Fix remappings (the former should be remapped to the latter, but doesn't seem to be. I think it's the result of using hydra. Consider getting rid of hydra. Display full path on left
+;; Buffer grouping. Create groups and add buffers/bookmarks to them on the fly so you don't lose track of which files matter. Need this b/c project grouping (e.g., all buffers under ~/.doom.d is not granular enough to distinguish between different tasks within doom). Tweak consult-buffer or other buffer command to hide all special buffers, which should mostly be handled as popups. Learn popup commands to efficiently search through popups. Auto-close some popups such as info and help when no longer visible. NOTE ibuffer allows creation of named groups based on filters, and hopefully manual selection of buffers. https://stackoverflow.com/questions/3145332/emacs-help-me-understand-file-buffer-management/3145824#3145824
+;; TODO Create a function that dispatches switch-to-buffer and pop-to-buffer/display-buffer based on whether there is a popup rule in display-buffer-alist.
+;; TODO How to avoid stacking popups and reuse windowspace? Save in popup--last and then popup/restore? Wouldn't it be better to remember buffers and redisplay them in the order they were opened rather than restoring window state?
+
+;; popup/raise -> popup/close -> popup--remember -> popup--last
+;; popup/toggle -> popup/close-all -> popup--remember -> popup--last
+;; popup/toggle -> popup/restore -> popup--last
+
+
+;; set-popup-rule(s)!
+;; set-lookup-handlers!
+;; set-repl-handler!
+;; set-eval-handler! (uses quickrun, which has no object persistence; ignore and prefer REPLs)
+;; +eval commands to open repl and send code
+;; Rebind SPC c and SPC o
+;; Unbind lang-spefiic repls in favor of eval/open-repl-other-window (open-repl-same-window doesn't use popup)
+;; Modify +eval/line-or-region to never use quickstep. Currently, repl popup has to be visible or quickstep will be used.
+;; Modify repl popups to close (but not kill buffer) on C-g and figure out how to raise them again
+
+
+
+
+;; +all
+;; +defaults
+
+;; (set-popup-rule! PREDICATE &key IGNORE ACTIONS SIDE SIZE WIDTH HEIGHT SLOT VSLOT TTL QUIT SELECT MODELINE AUTOSAVE PARAMETERS)
+
+;; Omitted arguments are filled from +popup-defaults. WARNING Is there a difference between omitted and explicitly nil? Some of the nil behavior for key arguments differs from the behavior of the values in +popup_defaults, so either there is a difference or the docstring for set-popup-rule! is wrong.
+
+;; PREDICATE is a regexp or action function (i.e., accepts buffer name and ACTION, tries to display buffer, and returns window to display)
+
+;; :ignore t excludes buffers from popup management
+
+;; :actions accepts a list of functions, or ACTION. If omitted, +popup-default-display-buffer-actions is used. This action function is like display-buffer-in-side-window but allows stacking popups with the vslot alist entry. ACTION has form (FUNCTIONS . ALIST). FUNCTIONS is an ((possibly empty) list of) action function(s). ALIST is an (possibly empty) action alist. See https://www.gnu.org/software/emacs/manual/html_node/elisp/Buffer-Display-Action-Alists.html.
+
+;; :side applies if +popup-display-buffer-stacked-side-window-fn or display-buffer-in-side-window is in :actions or +popup-default-display-buffer-actions. (The first is an alternative to the second and the default value of the third.)
+
+;; :size/:width/:height. :size takes precedence and is "mapped with window-width or window-height depending on :side." See +popup--normalize-alist Setting a height for a popup on the left or right side only has meaning if two popups occupy the same :vslot. Accpets fractions (of window size/width/height), integers (lines/columns), or a function that accepts the popup window (e.g. +popup-shrink-to-fit).
+
+;; :slot/:vslot applies to popups (1) with a :side (2) when :actions is blank or contains +popup-display-buffer-stacked-side-window-fn. It accepts an int (see example). :slot controls relative horizontal position of multiple popups on top or bottom side and relative vertical position of multiple popups on left or right side. :vslot controls stacking from edge of frame towards center (i.e., vertical position on top/bottom, horizontal on left/right). Let's assume popup A and B are opened, in that order, with :side 'bottom:
+;;     If they possess the same :slot and :vslot, popup B will replace popup A (because B opened after A)
+;;     If popup B has a higher :slot, it will open to the right of popup A.
+;;     If popup B has a lower :slot, it will open to the left of popup A.
+;;     If popup B has a higher :vslot, it will open above popup A.
+;;     If popup B has a lower :vslot, it will open below popup A.
+;; I assume the same relative positions apply to top side. For popups on left/right side, do higher :slot and :vslot open on top and to the right, repsectively?
+
+;; :ttl is time to live (after buffer is no longer visible, per the source code). nil does not set a time limit, 0 kills buffer immediately (this is used by doom in several places!), t uses default in +popup-defaults (5 seconds). Also accepts a function.
+
+;; :quit determines the behavior of ESC/C-g inside or outside of popup windows. If t, close the popup. If 'other, close when pressed outside; useful for popups where you may press these keys a lot. If 'current, close when pressed inside. If nil, these keys never close. ALso accepts a function.
+
+;; :select is a boolean or function that determines whether to focus the popup window after it opens
+
+;; :modeline is a boolean or function (or list?) that determines where to show the modeline (what to show for a function)
+
+;; :autosave determines what to do with modified, file-visiting popup buffers. t saves automatically. nil prompts. 'ignore kills without prompt. Can also be a function.
+
+;; :parameters accepts an alist. See the elisp node for window parameters. Doom does not appear to use this, but some of the above arguments are actually window parameters as shown in buffer-display-alist. Note that the elisp node doesn't list all of the parameters that show up in display-buffer-alist. Other parameters include ones that affect delete-window, delete-other-windows, other-window, split-window, quit-restore-window. See https://www.gnu.org/software/emacs/manual/html_node/elisp/Window-Parameters.html.
+#+end_src
+
+* popper
+Giving up on this. It's honestly too difficult to get things working with popper.
+
+#+begin_src emacs-lisp :tangle no
+(use-package! popper
+  :init
+  (setq
+   ;; popper-group-function #'popper-group-by-directory
+        ;; TODO This disables modeline for all popups. Find a way to do this
+        ;; on a per-buffer basis like doom +popup.
+        popper-mode-line nil
+        popper-display-control nil
+        ;; TODO Needs to be run later
+        popper-reference-buffers
+        (remove nil (mapcar (lambda (alist)
+                              (when (stringp (car alist))
+                                (car alist)))
+                            display-buffer-alist))
+        )
+  :config
+  (popper-mode))
+
+
+;;; popper notes
+;;;; buffers
+;; popper identifies popup buffers via buffer-local variable popper-popup-status
+;; popper installs a single rule in display-buffer-alist to handle displaying
+;; popups, via popper-display-function, unless popper-display-control is nil.
+;;;; commands
+;; popper-toggle-type: toggle between popup and normal buffer
+;; popper-toggle-latest: toggle visibility of last popup. With double prefix,
+;; toggle all popups
+;; popper-kill-latest-popup: kill latest VISIBLE popup and delete its window
+;; popper-cycle: cycle visibility of popups
+;; popper-echo-mode, popper-echo-lines, popper-echo-transform-function, and
+;; popper-echo-dispaych-keys: set the latter to nil to simply list popups in the
+;; echo area when cycling or toggling
+;; popper-reference-buffers: list of buffer regexp, major-mode symbol, or
+;; predicate function. Can be modified to auto-hide a popup when it is first
+;; created.
+
+#+end_src
+
+* recentf
+#+begin_src emacs-lisp
+(after! recentf
+  (push #'file-directory-p recentf-exclude))
+#+end_src
+
+* trace
+
+#+begin_src emacs-lisp :tangle no
+;; Per
+;; https://emacs.stackexchange.com/questions/14208/how-to-obtain-a-list-of-all-functions-exclusively-provided-by-a-certain-major-mo,
+;; it is not possible to know which functions are defined by a library without
+;; executing (loading) the library. (I believe bytecomp has display-call-tree
+;; for building call trees from compiled code.) E.g., the downvoted answer here
+;; hints at why regex is not the right solution:
+;; https://stackoverflow.com/questions/26330363/how-do-i-get-a-list-of-functions-defined-in-an-emacs-lisp-file?rq=1
+
+;; TODO Use etags or parse load-history--(cdr (assoc <path> load-history)--to
+;; speed this up See https://www.emacswiki.org/emacs/EmacsTags
+
+;; NOTE This works only for loaded elisp files
+(defun get-file-functions (path)
+  (let ((funclist ()))
+    (mapatoms
+     (lambda (x)
+       (when (and (fboundp x)
+                  (let ((f (symbol-file x)))
+                    (and f (string= f path))))
+         (push x funclist))))
+    funclist))
+
+;; NOTE Tests whether each file contains regexp MATCH, not whether it matches
+;; exactly. directory-files-no-dot-files-regexp thus can be used with
+;; directory-files to match a string that contains a non-period
+;; character--periods in character classes are literal, so no backslashes--or
+;; three periods, so exluding only "." and ".." Luckily I just need to match
+;; files ending in ".el" here
+(defun get-dir-src-files (dir)
+  (directory-files-recursively dir "\\.el"))
+
+(defun get-all-files-functions (files)
+  (require 'dash)
+  (let (result)
+    (dolist (f files result)
+      (setq result (append (get-file-functions f) result)))))
+
+(defun trace-all (functions)
+  (require 'trace)
+  (dolist (func functions)
+    (trace-function func)))
+
+(defun write-functions (functions filename)
+  (require 'f)
+  (f-append-text
+   (concat (mapconcat (lambda (x) (symbol-name x)) functions "\n") "\n")
+   'utf-8
+   filename))
+
+(defun read-functions (filename)
+  (require 'dash)
+  (butlast
+   (-map
+    (lambda (x) (intern x))
+    (split-string
+     (f-read-text filename 'utf-8)
+     "\n"))
+   1))
+
+;; Run once
+;; (write-functions
+;;  '(display-buffer quit-window quit-restore-window delete-window
+;;                   delete-other-windows split-window)
+;;  "functions.tmp")
+;; (write-functions
+;;  (get-all-files-functions
+;;   (get-dir-src-files (doom-module-locate-path "ui" "popup")))
+;;  "functions.tmp")
+
+(trace-all (read-functions "functions.tmp"))
+;; Next open and close a popup. The trace-output buffer will display automatically
+(untrace-all)
+
+
+#+end_src
+
+* ace-window
+
+#+begin_src emacs-lisp
+(custom-set-faces!
+  '(aw-leading-char-face :height 3.0))
+#+end_src

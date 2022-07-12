@@ -1,0 +1,155 @@
+:PROPERTIES:
+:ID:       8809F0D3-4FB4-4408-9947-1C5FFADFE02C
+:END:
+#+title: Access
+#+category: Access
+
+# Sources
+
+[Get started](https://support.microsoft.com/en-us/office/get-started-with-access-000df874-6a6a-49e4-8c95-51cd4d368039?ui=en-US&rs=en-US&ad=US)
+[User interface](https://support.microsoft.com/en-gb/office/guide-to-the-access-user-interface-cd8eca71-78a1-484f-897b-fc80b1ac77ec)
+[Database design](https://support.office.com/en-us/article/database-design-basics-eb2159cf-1e30-401a-8084-bd4f9c9ca1f5)
+[Data type, format, and properties](https://support.office.com/en-us/article/introduction-to-data-types-and-field-properties-30ad644f-946c-442e-8bd2-be067361987c)
+
+## TODO
+[Backup](https://support.microsoft.com/en-us/office/protect-your-data-with-backup-and-restore-processes-96539a81-5984-4d56-99ca-ee81f8d6356c)
+[Split database and sharing](https://support.office.com/en-us/article/ways-to-share-an-access-desktop-database-03822632-da43-4d8f-ba2a-68da245a0446)
+User permissions (see split database)
+Formats and how they affect programming languages/data storage. E.g., see the
+caption property for how numbers, text, etc. display in forms.
+[Validation rule](https://support.office.com/en-us/article/restrict-data-input-by-using-validation-rules-b91c6b15-bcd3-42c1-90bf-e3a0272e988d)
+
+
+# UI
+
+ribbon->command tab->group->commands
+
+# Views
+
+Tables can be viewed in datasheet or design view. View can be changed from the
+Home tab, Fields tab while in datasheet view, or the Design tab while in design
+view.
+
+## Design view
+
+In this view, the table schema can be designed, including field name, data type,
+and some field properties only displayed in this view (see the General and
+Lookup tabs toward the bottom).
+
+### General tab
+
+Toward the bottom, the General tab shows metadata about the selected field such
+as field size, default value, and validation.
+
+### Lookup tab
+
+The lookup tab shows information if the selected field is the lookup data type.
+There are two types of lookups: table queries and (hard-coded) value lists. At
+its simplest, a value list can be used to create a dropdown with a list of
+values to choose from.  Note, however, that this does not provide validation as
+non-enumerated values can still be typed in this lookup field.
+
+# Data types
+
+The most commin include text (long text for >255 chars), number, yes/no (see
+format, since default is a checkbox), date/time, calculated field, attachment,
+hyperlink, and lookup.
+
+# Field properties
+
+* Field size
+* Format
+* Input mask (data validation pattern)
+* Default value
+* Required: 'Yes' for requires a value in each record
+
+## Input masks
+
+Three semicolon-separated parts:
+* Mask string, placeholders, and literal data
+* Boolean (0 or 1) for whether to store displayed mask characters in data
+* Whether to use hyphens instead of underscore as placeholder char
+
+### Placeholders
+
+* 0: Mandatory digit
+* 9: Optional digit
+* #: Optional digit, space, plus, or minus. If skipped, Access enters a space.
+* L: Mandatory letter
+* ?: Optional letter
+* A: Mandatory letter or digit
+* a: Optional letter or digit
+* &: Mandatory character or space
+* C: Optional character or space
+* .,:;-/ Decimal and thousands placeholders, date and time seperators
+* >: Converts following characters to uppercase
+* <: Converts following characters to lowercase
+* \: Characters immediately following are literal. Use to insert characters
+  instead of placeholders.
+* "": Enclosed characters are literal
+* !: Apparently used to fill in a mask's rightmost characters first when
+  optional characters are included in the mask. Note: The relevant example mask
+  in the Microsoft docs say "left to right," but this description seems off
+  based on their example value.
+
+### Wizard
+
+In the Design view, on the General tab, click Input Mask property box, then the
+... button.
+
+Select a mask type, then click Try it to generate a mask.
+
+Or click Edit List to customize a mask.
+
+# Validation rules
+
+While masks specify the format, validation rules restrict the ranges of
+permitted values for a field or entire record. You can also add a rule for a
+form.
+
+Used when input masks are insufficient (e.g., validating email addresses and
+other strings with highly variable length and a few common characters such as @
+and a period.
+
+# Database design
+
+One-to-many: E.g., suppliers and products, where multiple suppliers can't offer
+the same product. Foreign key in one table is the primary key in another.
+
+Many-to-many: E.g., orders may have multiple products, and products may be
+included in multiple orders. To link these tables, you need a junction table
+whose primary key consists of the primary keys from the products and orders
+tables.
+
+One-to-one: Useful to avoid empty space when some fields to apply to certain
+records but not others in a table. Such tables share a primary key if the
+subject is the same (e.g., products and supplementary product info); otherwise,
+either one (but not both) of the tables requires a foreign key similar to a
+one-to-many relationship.
+
+Break fields into smallest possible units (e.g., regno consists of firmno,
+prodno, subregistration, and ABN)
+
+When information is being duplicated, consider splitting your table into several
+tables.
+
+Each column must describe the subject of the table; otherwise, it belongs in a
+separate table.
+
+Avoid storing calculations or derived fields in tables. Calculate/derive using a
+calculated field or on-the-fly in forms. The latter options preserves 3NF.
+
+1NF: Each cell consists of a single value, not a list.
+2NF: Each non-key field depends on the entire key (when the key consists of
+multiple fields).
+3NF: Non-key columns are independent of each other.
+
+# Copying data into Access
+
+Access will set the data types of each field according to the data pasted, when
+pasting into an empty table. Field names are pulled from the first row.
+
+# Table analyzer
+
+Available in Database Tools tab. Use to find redundant data that indicates a
+need to split a table.

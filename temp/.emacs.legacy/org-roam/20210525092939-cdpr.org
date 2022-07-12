@@ -1,0 +1,13 @@
+:PROPERTIES:
+:ID:       107F11F6-4D09-4961-B7D2-DDBC41316C14
+:END:
+#+title: CDPR
+#+filetags: :work:
+#+category: work
+
+* TODO [[id:b55e2f3b-3d07-486f-b07e-d0dbcd0b2167][Reorganize work tasks]]
+* [[id:4e97c681-1fd6-423d-b31a-2965b950822c][Accessibility]]
+* [[id:989704cd-9dfc-4c28-8ca8-973f388150b5][Studies]]
+* [[id:9a64cbc2-1a0b-4984-ba3a-10a3cb1d5aa6][Sampling]]
+* [[id:ae5ee1a3-ca19-4f41-b6d8-a9148f95196b][Annual Reviews]]
+* [[id:6c3e28f4-342c-4386-b146-0a0473a10920][TGA Evaluations]]

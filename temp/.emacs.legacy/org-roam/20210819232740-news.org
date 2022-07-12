@@ -1,0 +1,9 @@
+:PROPERTIES:
+:ID:       153644E9-BC49-4EB9-A874-3B5880EE4D18
+:END:
+#+title: news
+#+category: news
+
+* Local
+** fox40.com
+https://fox40.com/news/local-news/i-think-shes-out-solano-county-deputy-says-after-violent-arrest-in-dixon/?fbclid=IwAR3Xhjhr3OPoB8Z80yWvjZCVhfwe_3-e-b8ff8mVEaHS90MVRn7olu0taUE

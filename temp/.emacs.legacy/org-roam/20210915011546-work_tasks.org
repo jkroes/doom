@@ -1,0 +1,406 @@
+:PROPERTIES:
+:ID:       b55e2f3b-3d07-486f-b07e-d0dbcd0b2167
+:END:
+#+title: Work Tasks
+#+filetags: :work:
+#+category: work
+
+* Tasks
+** Compile questions for last two PREC presentations from meetings' minutes
+
+* Work Diary
+** Tasks
+*** Set up a Linux server to host Shiny apps
+Maziar gave permission to set one up. Once done, he can pitch the finished product to ITB. Alternatively, he suggested hosting the app on the internal web page.
+*** Migrate files and task list
+Move files from OneDrive to D: that need to go back (e.g., VOC scripts).
+
+Link emails in org subfolder and delete unlinked emails. Look for Outlook-Emacs integrations or simply save the emails to disk.
+
+Consolidate tasks from documents in my Documents folder. Plus yellow sticky notes.
+
+org-links -> org-attachments
+
+Zotero
+*** Send Yvan Focus 4 reanalysis documents
+**** Focus 4 Reanalysis
+- Notify Brenna if analysis will lead AP to change Focus 4 regulations
+- See email from Brenna with documents about original anlaysis
+*** Ask HR about timeline for senior scientist eligibility for Minh/Maziar
+*** DONE TGA training (presentation)
+CLOSED: [2021-09-15 Wed 01:17]
+*** DONE Convert 2019 annual VOC report to ADA
+see emails to Alex G.
+CLOSED: [2021-08-19 Thu 16:43]
+*** 2020 SJV report
+*** 2019 annual report comments
+The report script has code for whether or not it is a draft, but rerunning will discard all formatting chnages and added content. Rerun, do a comparison, then add instructions for the differences between them. E.g., we should not have to re-run the reoprt after draft comments. Finally, archive the files.
+*** DONE PREC slide revisions
+CLOSED: [2021-08-19 Thu 16:43]
+Due june 28.
+*** Find final PDF report and appendix for all VOC years
+E.g., 2017 inventory folder is missing the final PDF, which may be in the Annual Reports folder.
+*** DONE 1,3-D Study Summary Write-up
+CLOSED: [2021-06-24 Thu 12:32]
+See [[wsl:/mnt/c/Users/jkroes/Documents/org-links/1,3-D_Study_Summary_20210624.docx][completed document]].
+*** DONE Convert May Focus 4 list to ADA
+CLOSED: [2021-06-14 Mon 15:26]
+*** DONE Submit May timesheet
+CLOSED: [2021-06-08 Tue 14:05]
+**** Use 2 days of PDD time
+*** DONE AMN tables
+CLOSED: [2021-06-08 Tue 13:56]
+*** DONE Sampling signups
+CLOSED: [2021-06-08 Tue 13:56]
+** Meta-projects
+** Shiny
+*** Air Monitoring Network
+# 2020-06-29
+
+Fabio is creating a Shiny application to visualize the PAMR database.
+Maziar asked Rosemary and me to test the app.
+
+The first email contained 2020_0625_AMN_pest_app12.R and AMN_data_sets4.R.
+Fabio mentioned that "the input data set" can be loaded by selecting "one of
+the two options ... in the main script." One was a call to getURL and
+read.csv with input file air.csv. The other involved setwd and input file
+pamr_output.csv. These are the same input, but the AP website provides it
+via two different names and access points. There was a second missing file
+that Maziar later sent: screen_levels.csv.
+
+I initially ran the application without the input PAMR data and reached
+out to Maziar about the missing file. At the same time I reached out to Fabio. I
+asked about the version of R he was using.
+
+# 2020-06-30
+
+Maziar forwarded my question to Rosemary, who simply said the app should run. I
+pointed out that I was still missing the file I had asked for, and that it was
+visible in the screenshot she provided of RStudio. I asked where to find it, and
+she sent me the link:
+https://www.cdpr.ca.gov/docs/emon/airinit/pesticide_air_monitoring_database.htm
+
+Fabio replied back that the version shouldn't matter so long as I installed all
+of the packages and had all of the scripts in the right place. This is incorrect
+due to both forwards and backward compatibility issues, but I was able to run
+the application once I obtained the PAMR dataset.
+
+After testing the application, I sent the following revision suggestions to Fabio:
+
+    1. I appreciate the dynamic y-axis range based on the combination of AI and
+       location. I thought that was a really nice touch.
+
+    2. Shiny sets the current working directory to the application’s root folder.
+       This means a call to read.table(file = “parm_output.csv”) will work as
+       expected if parm_output.csv is in the same folder as the Shiny app. You can
+       then get rid of setwd, eliminating the need for the user to modify a path in
+       the script--no matter where the user runs the application. An action button
+       could also be used for users to upload their own data, rather than requiring
+       them to move it into the application folder.
+
+    3. The use of RCurl::getURL could be incorporated into a UI action button that
+       downloads the data if clicked.
+
+    4. Moving the graph below the sidepanel—you may have to change the Shiny object
+       from sidepanel to something else—will keep the graph fully visible for
+       smaller browser windows. When the window is resized, the graph changes size
+       to accommodate ti.
+
+    5. Currently changing the date values to dates outside of the bounds is
+       permitted, but it doesn’t change the graph or throw an error. Add minimum and
+       maximum values to the dataRangeInput elements. This limits the permitted
+       dates to values for which we have data. If the temporal bounds change based
+       on inputs such as site location and AI, reactive values will likely be
+       required.
+
+    6. Should “indeces” be spelled “indices?”
+
+    7. The ggplot theme of the graph is different for measured, acute, and chronic
+       indices (e.g., font and gridlines).
+
+    8. What is the difference between measured and acute data? In many cases, they
+       seem to generate identical graphs. I’m not familiar with the PAMR data,
+       though.
+
+    9. Add the output of sessionInfo() to the code so that users know the R version
+       and package versions used to test and run the application. Older versions of
+       R may not be forwards compatible, while future versions of R may not be
+       backwards compatible. In other words, older versions may not contain all of
+       the required objects/functions, while future versions may get rid of them or
+       rename them. Either case will prevent the application from functioning
+       exactly  as intended. Alternatively, you can embed R and its packages into
+       your application so that users do not have to install anything on their end.
+       This latter approach was what I used for the TGA evaluation Shiny application
+       I developed.
+
+Maziar asked Fabio to implement points 7 and 9, and mentioned that the app
+will be fully self-contained like the TGA evaluation Shiny app.
+
+# 2020-07-01
+
+According to Maziar, acute and measured are the same thing only b/c our samples
+are continuous over 24 hours, yielding a single average concentration, and acute
+is averge concentration of samples over a 24-hour period.
+
+Maziar recommends not using the FPT curl method of retrieving data to Fabio.
+*** TGA Evaluations
+**** Log
+***** 2018-09-04
+Minh sent Kelsey and I Cheryl's 2018-08 procedures for logging incoming
+evaluations, outgoing evaluation reports, and EPs in two tracking spreadsheets.
+
+Kelsey requested an Air Program meeting to review evaluation procedures with
+staff. She included a copy of the current internal guidelines for constructing
+evaluation reports. She noted that Cheryl's document doesn't name the
+spreadsheets. "VOC Spreadsheet.1.30.2018.xlsx" is the name of Spreadsheet I (the
+evaluation tracker), and "TGA_data_entry_from_Cheryl_1.30.18.xlsx" is the name
+of Spreadsheet II (the EP tracker). Kelsey suggested eliminating Cheryl's role
+(evaluation and EP tracking) and combining it with her own role (overseeing
+and reviewing staff evaluations).
+***** 2018-09-12
+I informed Minh that Kelsey and I planned to create a "master EP database" by
+combining Cheryl's tracking and our current EP spreadsheets. We brok the task
+down into defining database structure, cleaning and merging the spreadsheets,
+data entry into Access, and ongoing data validation. I anticipated starting the
+project after completing the 2017 annual inventory (i.e., sometime in late
+2018/early 2019). Minh agreed with the project and timeline.
+***** 2018-09-13
+Cheryl sent Kelsey an "old" spreadsheet from 2005: "VOC.Reformulation Worksheet
+Status.1.9.09.xls". The date and mention of reformulation brings to mind a
+Notice from that year requiring reformulation of liquid ag pesticides. A number
+of our evaluations from that time also reference reformulation. I believe Kelsey
+sometimes referred to this as Spreadsheet III.
+
+See also A:\VOC\Emissions_Potential\TGA_Evaluations\_ReformulationEvaluations,
+"A:\VOC\Archive\VOC reformulation reevaluation", and anything that pops
+up under a search of A:/VOC for "reformulation."
+***** 2019-02-26
+I emailed Rosemary about this project. I clarified that I planned to separate
+data, metadata, and tracking/changelog. I asked her the following questions:
+
+1. Purpose of "merge_reeval_TGA_EPs_with_EPdatabase.mm.yyyy.[in]active$TGA
+   reeval assignment procedure"?
+2. Related to all of our EP database-related files, I am looking for more
+   information on several method codes/descriptors: bridged (0), tga/derived
+   (2), derived (7), and CSF (8).
+    a. Is there any conceptual difference between codes 0 and 7? (I am thinking
+    of adding a new variable that indicates bridges, specifically the prodno of
+    the original product from which we bridged. So I want to know whether there
+    are any special considerations for method code 0.)
+    b. Our method-code key in our workbooks indicates that code 7 determinations
+    are made only by Registration. EM has filled out TGA evaluation forms
+    approving bridges for substantially similar products. From what I have seen
+    (e.g., prodno 62582), we use the code (1) for TGA evaluations, rather than
+    code 7, to indicate bridges that EM approves, but I had trouble finding
+    other EM bridges to verify this. Do we only use code 1 to indicate some
+    products for which EM has done SS comparisons, or do we also use code 7?
+    c. How do I know when a product should be added under method code 2? I had
+    thought this was a legacy code, and indeed most such products seem to have
+    been added by Frank. But there were some added by Kelsey and you, so I
+    figure I need to be on the lookout for these liquid call-in products.
+
+Rosemary's response:
+
+1. This is something Frank would have written, probably to document the
+   procedure he followed at the time. I agree that it can be removed.
+2. You may have seen the attached document [inventory4.docx] that
+   Frank authored back in 2012. It describes the method codes starting on page
+   four. [NOTE: This is an older version of the background document Kelsey
+   passed on to me.]
+    a. Most of the products with code 0 seem to have had their EP derived from
+    one master label product MASTER LABEL - CONCORDE P-40. I’m not sure why
+    Frank used 0 as opposed to 7 – perhaps he can remember. If you add a new
+    variable – which I agree sounds like a good idea – I would recommend you
+    keep the “old” code variables in case you need to refer back to them at some
+    point.
+    b. Code 1 should be used just for TGA evaluations and Code 7 for
+    substantively similar/AB1011 equivalence process. If you find products which
+    appear to be incorrectly coded, I would suggest you update them. Again –
+    keep a copy of the “old” code for reference.
+    c. According to Frank’s notes code 2 was used to identify multiple
+    subregistrations for which only one product was actually tested. I think it
+    would be useful to retain this code. Now would be the time to thoroughly
+    document all the codes because – as you have probably figured out – it can
+    become very complicated.
+
+My response:
+
+2.b. To clarify, if EM does an SS/AB1011 bridge and fills out an evaluation form
+for the bridge, that would be indicated by code 7? The only such form I found
+was labeled code 1, and I have had trouble finding counter-examples.
+
+2.c. I saw some code-2 products with comments in this style:
+‘Jun_2017_RN_from_Carlos_Gutierrez.’ The ‘RN’ initials made me suspect that
+these were products you had added. I was wondering if you remembered any of
+these products and if so, how you knew to add them under method code 2.
+
+Rosemary's response:
+
+2.b. I would agree with you – whether the bridge originates in Registration or
+EM, the code should be 7.
+
+2.c. Yes – RN was me!! The Stallion products (279-9545-): AA submitted TGA data
+(code 1), sub-registration ZA did not (code 2). According to Carlos in
+Registration Minx 2 (228-736-AA and 228-734-ZA; code 2) and were
+subregistrations of Abamex (228-734-AA, originally called Nufarm Abamectin 0.15
+LVOC; code 1) for which TGA data was submitted.
+*** Hydrus Studies
+* Recent Projects
+** Sampling Issues
+1. Wasn't notified of vehicles being moved to W. Sac at start of remote work.
+2. Wasn't notified about re-keying until a year into sampling.
+3. Wasn't aware that we should sign the transport section of COCs given to use by Clarice until I asked Jazmin.
+4. ARB vs CDFA cannisters
+** Focus-4 rulemaking
+*** Meeting 9/18/20
+**** DONE Find memo
+CLOSED: [2020-09-29 Tue 14:03]
+There is a memo detailing the original analysis
+**** TODO Identify chlorpyrifos use and emissions for the last 5 years, noting any decrease
+**** TODO Identify 4-5 AIs to replace loss of chlopryifos emissions
+AITC is a potential candidate, according to Minh. It is already coming up for rulemaking at some point.
+***** TODO Review memo from Maziar
+***** TODO Review documents from Brenna
+***** TODO Review Minh's email laying out the task
+***** TODO Recreate original analysis using 2020 data
+* TODO Short-term [16%]
+** TODO Preliminary report (2019)
+*** DONE Follow procedural documents to generate report data
+CLOSED: [2020-08-19 Wed 12:57]
+*** DONE Modify SAS scripts and filenames to remove redundant date information
+CLOSED: [2020-08-19 Wed 13:07]
+*** DONE Convert report to rmarkdown
+CLOSED: [2020-08-19 Wed 12:57]
+See notes in the report script for work that still needs to be done.
+*** DONE Archive folders that have changed
+CLOSED: [2020-08-19 Wed 12:57]
+*** TODO Steps I skipped to finish report
+**** DONE Steps 1-2: VOC Calculator
+CLOSED: [2020-11-02 Mon 15:41]
+***** DONE Stakeholder email
+CLOSED: [2020-11-02 Mon 15:41]
+**** DONE Step 2: PUR Completeness
+CLOSED: [2020-11-02 Mon 15:42]
+**** DONE Step 6: GIS
+CLOSED: [2020-11-02 Mon 15:42]
+**** WAITING 060120/No_Fumigant_Codes.xlsx
+- State "WAITING"    from "TODO"       [2020-08-20 Thu 14:49] \\
+  May only be applicable to the annual report. Nonreporting is up and a statement
+  needs to be present in the relevant report about % of fumigant applications
+  missing a valid fumigant code.
+*** DONE Edits from management
+CLOSED: [2020-11-02 Mon 15:42]
+*** DONE VOC listserv / stakeholder email
+CLOSED: [2020-11-02 Mon 15:42]
+Minh seems to be handling stakeholder emails for report publication, but I
+believe I still need to send them out for the EP database updates and VOC calculator.
+** DONE Annual VOC Report (2018)
+CLOSED: [2020-11-02 Mon 15:42]
+*** DONE Convert to Rmarkdown
+CLOSED: [2020-08-19 Wed 13:11]
+*** DONE Management edits
+CLOSED: [2020-08-19 Wed 13:10]
+*** DONE Executive edits
+CLOSED: [2020-08-19 Wed 13:10]
+*** DONE ADA conversion
+CLOSED: [2020-08-19 Wed 13:10]
+*** DONE Public comment period
+CLOSED: [2020-08-19 Wed 13:10]
+*** DONE Resolve public comments
+CLOSED: [2020-08-19 Wed 13:10]
+*** DONE Respond to public comments                             :ARCHIVE:
+**** DONE Read responses to comments from previous reports
+***** DONE 2007, Appendix 5
+***** DONE 2010, Appendix 4
+**** DONE Read OAL guidance on public comments
+**** DONE Respond to oral comments on PREC presentation
+Available on Youtube as of 6/3/20
+**** DONE Respond to written public comments
+**** DONE Meet with management to discuss Edgar's suggestions
+**** DONE Implement Edgar's revisions to public response
+*** DONE Data submission to ARB                                 :ARCHIVE:
+CLOSED: [2020-07-16 Thu 15:14]
+**** DONE Interpret existing procedures to generate data submission
+**** DONE Burn to CD
+**** DONE Submit to ARB
+*** DONE Archive folders that have changed
+CLOSED: [2020-08-19 Wed 13:04]
+*** DONE VOC listserv / stakeholder email
+CLOSED: [2020-08-19 Wed 13:04]
+** TODO Check hypothetical emissions
+*** DONE Does annual report script use lbs AI or product?       :ARCHIVE:
+It uses lbs AI in Rmd report.
+*** DONE What about past workbooks?                             :ARCHIVE:
+CLOSED: [2020-08-19 Wed 13:34]
+Yes, the regulations and Focus4_and_the_Magnificent7 workbooks are consistent in
+using lbs_AI
+*** DONE Does your earlier .Rmd analysis of hypothetical emissions still make sense? :ARCHIVE:
+CLOSED: [2020-08-19 Wed 13:34]
+I believe I suggested that dividing emissions by mass yields average
+EP of a product containing an AI. But this assumes we use product
+mass, since emissions and EP are product-wide.This analysis is thus only valid
+for VOC/applied metric in one focus4 table and not for hypothetical emissions.
+*** TODO Why did hypothetical emissions calculation decide to use lbs_AI and not lbs?
+Average EP for nonfumigants can only be gained by dividing emissions by product
+lbs. See Emissions.html
+** TODO Version Control System
+*** DONE Add git bare repo to serve invnetory scripts.
+*** DONE Add git bare repo for annual report scripts and those used to make script input datasets.
+*** TODO Reinstall Git for Windows and move repo to A:/
+*** TODO Add instructions for using repo
+*** TODO Add tags for each inventory run
+E.g., "2018PrelimDraft"
+** TODO Registration
+*** TODO Document ongoing projects and consolidate meeting notes and emails from Registration
+*** TODO SOP for Air Program-Registration data process, in particular ABNs and product transfers
+** Long-term
+*** VOC report updates
+**** TODO Modularize through source() or child
+**** TODO Refactor ggplot2 code
+**** TODO Discussion and updates around chlorpyrifos?
+**** TODO Update procedures
+***** Filenames and SAS scripts no longer have redundant dates as of 6/2019
+***** Status code for TGA tracker
+*** Convert inventory guidelines to markdown and version control
+*** Script rewrites
+**** Topics
+***** Unadjusted emissions
+****** Two scripts calculate unadjusted fumigant emissions differently,
+one of which is used for adjusted emissions. Need to confirm that
+scripts' results are the same for these fumigants, or else how
+differences affect final inventory results and whether to rewrite.
+See "D:\EmissionsCalcs.docx";
+"D:\EmissionsCalculationAnalaysis.xlsx";
+Compare_Unadjusted_Calcs.sas
+***** Adjusted emissions (A/VOC/Procedures/Adjusted emissions.docx)
+***** Errors in aggregated totals
+****** Seen in AI and site-AI totals, and in differences between mebr
+and nonmber datasets. See Rmarkdown report, roadmap, and
+procedural document for report.
+
+In general, aggregation should be done as late as possible in
+the data process to avoid loss of information and unnecessary
+early splitting of a dataset into multiples, which increases
+the risk of truncation and other i/o errors. Aggregation
+across one group of factors should be done only once for each
+dataset.
+*** SOP for updating inventory inputs
+*** Script to identify Focus-4 products
+*** Update flowchart to reflect new inventory process, once finalized
+**** Add to inventory script git repo
+** Miscellaneous
+*** Statewide calculations
+*** Organize archived historical files
+** Recurring
+*** TGA reviews
+**** Add and populate bridge-indicator variable in EP database and tracking sheet
+***** For information on past bridges, see evaluations, past tracking sheets, and comment variables in the EP and tracking sheets
+**** Archive submissions to evalreports
+/mnt/a/VOC/19VOC/Procedures/Registration_and_Evaluation/
+**** Keep a running list of products to add to each inventory run
+*** Focus 4 lists
+**** Record changes that should be added to the VOC inventory
+**** ADA conversion for each list
+**** IT ticket to post each list
+*** Product name and regno update letters from Brenna
+**** Add to product evaluation file to help check filename (CA regno) with contents

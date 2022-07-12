@@ -51,3 +51,25 @@
 
 ;; Don't download any snippets
 (package! doom-snippets :ignore t)
+
+;; Alternative completion setup
+(package! corfu
+  :recipe (:host github :repo "minad/corfu"
+           :files ("*.el" "extensions/*.el")))
+(package! cape)
+(package! corfu-doc)
+(package! kind-icon)
+;;(package! pcmpl-args)
+;; Can tempel replace yasnippet for Python arg completion in lsp? See
+;; https://github.com/minad/corfu/issues/116
+;;(package! tempel)
+
+;; From old config
+;; (package! outline-minor-faces)
+;; (package! backline)
+;; (package! page-break-lines)
+;; Auto revert seems like a bad idea and a potential source of bugs.
+;; (package! autorevert :disable t)
+;; (package! org-super-agenda)
+;; (package! vulpea)
+;; (package! fira-code-mode)

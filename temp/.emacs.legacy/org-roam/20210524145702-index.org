@@ -1,0 +1,21 @@
+:PROPERTIES:
+:ID:       4284AA22-7314-40F9-915C-6B313B524BD7
+:END:
+#+title: Index
+#+category: Index
+
+* [[id:107F11F6-4D09-4961-B7D2-DDBC41316C14][CDPR]]
+* [[id:FC7EC087-DA24-4F75-9F05-C71C3C060EC1][Programming]]
+* [[id:CB846BE1-E503-4EFC-BBDF-FBE67D3EB1CE][Software]]
+* Investments
+* Horticulture
+* Music
+** Piano
+** Euphonium
+* Climbing
+* Cycling
+* Camping
+* [[id:41FB5223-E13B-4C8C-8EFF-7C82E1163921][Cleaning]]
+* [[id:7FA32AB4-979E-4067-993B-EA1A2F465C9D][Voting]]
+* Shopping
+** [[id:09129416-C754-4F5B-B90A-FF97E90246A6][Car]]

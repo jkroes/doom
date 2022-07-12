@@ -1,0 +1,56 @@
+:PROPERTIES:
+:ID:       6c3e28f4-342c-4386-b146-0a0473a10920
+:END:
+#+title: TGA Evaluations
+#+filetags: :work:
+#+category: work
+
+* Investigations
+** Florgib 4L/Falgro 4L
+There are four products (two basic, two subreg.). The revised EP was never added to the EP workbook. Compare comments and dates to evaluations matching the regnos. Search for missing correspondence mentioned in comments. Brenna thinks it's possible that the EP was based on a reformulation that was never approved for registration. In which case the revised EP evaluation would be invalid.
+* Exemptions
+** 9/3/20
+I laid out my research into the 2010 group of 4 products, 2 of which requested exemptions, to Brenna. We need to decide whether we push for data under a rationale that all liquid ag products require data and that Ntocie 2013-6 invalidates exemptions on use and EP thresholds laid out by Notice 2005-6. Brenna will talk to her management. I will talk to our management. She hinted that there are more products like this, and we need a general strategy for handling them. I also need to investigate registered sites and current use in NAAs during ozone season, and report back to Brenna.
+There are newer exemption requests. This includes a tomato extract, paints, and the biocides. Brenna says that a memo laying out when/for what we grant exemptions, even a short one, with my signature would be useful in getting compliance from registrants. Do we determine it based on sample TGA data and a median value, for recurring failure of TGA tests? Cite past examples. Build an internal spreadsheet of past products granted a waiver, and Brenna will add to it as well.
+Brenna's estimate of 4 TGAs per month was conservative. Realistically we should be doing about 10/month, but she's hesitant to ask us for too much right now. I will try to finish more of them.
+*** TODO Create a tag for meetings, then label meetings with the subject, and datestamp it
+* Data entry
+** Calculation errors
+*** 100-1448 (Medallion SC)
+* Log
+** 8/24/20
+Resumed staff TGA evaluations
+** 9/16/21
+Reviewed data entry by Rosemary and Yvan
+** 9/27/21
+Rosemary and Yvan resumed data entry.
+** 9/28/21
+Yvan shared a document in the Teams chat documenting questions he had asked about data entry and my answers. I will use it to create an SOP for data entry.
+* Guidelines
+** Evaluatoin review process
+1. Filename field after CA registration
+2. Routed field after routing
+3. Archiving long forms (delete short forms)
+4. How to handle incompatible forms
+   A. "Other" action may be CSF, bridging, or another action
+   B. Non-0% calculation fields on rejection
+   C. Mislabeled actions (e.g., Ventigra insecticide 7969-393)
+   D. CSF estimation was not previously a field. Forms may list only a value for EP. This cannot be entered into the application. Instead, enter the final value as mean sample mass loss.
+   E. Leave numeric fields blank instead of entering N/A or "Not available"
+   F. Not all forms that mention rejection should be entered as rejections. read the discussion and conclusion carefully. e.g., tga data may have been rejected, but a CSF-based estimate was approved.
+5. Investigate/correct calculation errors. E.g., 100-1448 (Medallion SC)
+6. Copy-pasting to Shiny removes hyphens in some fields (conclusion and discussion). Always manually replace hyphens when pasting.
+7. Issues with Excel.
+   1. Excel removes leading zeroes for numeric text and changes date format, if the file is saved; however, you can import the data rather than opening the file in Excel. Data file is UTF-8.
+8. Flag products in maxchem that are missing evaluations. Flag evaluations that are missing from evaluations.csv.
+* Other
+** Clear out C:\Users\jkroes\Documents\shinyApps\TGA_Evaluations\user_data\Routed
+Check that these have been added to A:
+** Remove short forms from A:
+** Clear out TGA Evaluations folder in Outlook
+** Edit helptext for selection UI
+ENTER confirms the selection, not the typed value. TAB must be used for the typed value. Try typing a substring of an existing value to see.
+** Discussion text in guidelines
+Incorrect. Shouldn't mention productname and regno in most cases, in contrast to the conclusion.
+** Scanned thermograms must have axes parallel to page edges
+Otherwise orthogonal lines measured will not be parallel to axes, which means the calculations will be wrong.

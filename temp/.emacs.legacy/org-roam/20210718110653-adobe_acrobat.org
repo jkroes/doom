@@ -1,0 +1,7 @@
+:PROPERTIES:
+:ID:       A18EFAC3-2223-4F8C-B955-D7C0B743226D
+:END:
+#+title: Adobe Acrobat
+#+category: Adobe Acrobat
+
+* Accessibility

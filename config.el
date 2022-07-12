@@ -223,7 +223,6 @@ module."
 ;; Disable smartparens
 (remove-hook 'doom-first-buffer-hook #'smartparens-global-mode)
 
-(setq org-element-use-cache nil)
 
 ;; Default comint settings for an easy to use, immutable, evil-compliant
 ;; comint-based REPL. Some hooks may override these values. In particular, ess-r
@@ -254,14 +253,6 @@ module."
 
 ;; (when (string-match "Linux.*Microsoft.*Linux" (shell-command-to-string "uname -a"))
 
-;; NOTE Keyboards can send either C-m / RET or <return>. <return> is automatically translated
-;; to RET if no <return> binding exists. If a <return> binding exists, it shadows RET. This
-;; seems to take precedence over map precedence. E.g., <return> in any keymap
-;; shadows RET in any keymap. To normalize doom return keybindings, search for C-m,
-;; C-ret, C-<return>, c-m-m, c-m-ret, and c-m-<return>
-;; Safest option is probably to bind RET and <return>.
-;; ;; https://www.fromkk.com/posts/c-m-ret-and-return-key-in-emacs/
-;;
 ;; For use with +eval/open-repl-other-window
 ;; TODO eval module is a hot mess. Abandoning it for now.
 ;; (map! :mode ess-r-mode
@@ -279,3 +270,222 @@ module."
 
 ;; Make "C-h h" do the same thing without a key prefix as with one
 (general-def help-map "h" #'my/embark-bindings)
+
+;; doom-init-leader-keys-h binds to general-override-mode-map and calls
+;; general-override-mode (see also general-override-auto-enable). The only
+;; bindings are those leader and localleader, M-x, and A-x. This overrides
+;; any other evil binding and nearly every other binding in Emacs. See:
+;; https://discourse.doomemacs.org/t/how-to-re-bind-keys/56
+;; - This says that evil-normal-state-local-map (evil-local-set-key) has lower
+;;   precedence than auxiliary keymaps, but this is wrong.
+;; https://github.com/noctuid/general.el#override-keymaps-and-buffer-local-keybindings
+;; https://github.com/noctuid/evil-guide#keymap-precedence
+;; ~/doom-emacs/.local/straight/repos/evil/evil-core.el
+(setq doom-leader-alt-key "M-SPC")
+(setq doom-localleader-alt-key "M-SPC m")
+
+;; See core-ui.el
+(after! ediff
+  (remove-hook 'ediff-before-setup-hook #'doom-ediff-save-wconf-h)
+  (add-hook 'ediff-before-setup-hook (defun ediff-in-new-frame ()
+                                       (select-frame (make-frame))))
+  (remove-hook! (ediff-quit-hook ediff-suspend-hook)
+    #'doom-ediff-restore-wconf-h)
+  (add-hook! 'ediff-quit-hook :append #'delete-frame))
+
+(use-package! corfu
+  :hook (doom-first-input . global-corfu-mode)
+  :init
+  (setq corfu-cycle nil
+        corfu-auto t
+        corfu-auto-prefix 1
+        ;; Keep corfu alive without a match after `corfu-insert-separator'
+        corfu-quit-no-match 'separator
+        ;; After `corfu-insert-separator', do not quit at word boundary
+        ;; (such as `corfu-separator' when set to `?\s')
+        corfu-quit-at-boundary 'separator
+        ;; What to insert by `corfu-insert-separator'
+        corfu-separator ?\s
+        corfu-echo-documentation nil)
+  (setq tab-always-indent 'complete)
+  (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
+  (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
+  :config
+  (corfu-history-mode))
+
+;; NOTE Uncomment If you would like to use corfu instead of vertico when
+;; completing in the minibuffer (e.g., with `M-:')
+;; (defun corfu-enable-in-minibuffer ()
+;;   "Enable Corfu in the minibuffer if `completion-at-point' is bound."
+;;   (when (where-is-internal #'completion-at-point (list (current-local-map)))
+;;     ;; (setq-local corfu-auto nil) Enable/disable auto completion
+;;     (corfu-mode 1)))
+;; (add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer)
+
+;; (use-package! corfu-doc
+;;   :init (setq corfu-doc-auto t)
+;;   :hook (corfu-mode . corfu-doc-mode))
+
+(use-package! cape)
+
+(use-package! kind-icon
+  :after corfu
+  :init (setq kind-icon-default-face 'corfu-default)
+  :config (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+
+(evil-define-key 'insert corfu-map
+  [down]        #'corfu-next
+  (kbd "C-n")   #'corfu-next
+  [up]          #'corfu-previous
+  (kbd "C-p")   #'corfu-previous
+  (kbd "C-b")   #'corfu-scroll-down
+  (kbd "C-f")   #'corfu-scroll-up
+  (kbd "C-,")   #'corfu-first
+  (kbd "C-.")   #'corfu-last
+  ;; This will shadow the binding to evil-escape in
+  ;; ~/doom-emacs/modules/editor/evil/config.el
+  (kbd "C-g")   #'corfu-reset
+  (kbd "C-SPC") #'corfu-insert-separator
+  (kbd "C-h")   #'corfu-info-documentation ; Works with scroll-other-window(-down)
+  [tab]         #'corfu-insert
+  (kbd "TAB")   #'corfu-insert
+  ;;(kbd "C-h")   #'corfu-doc-toggle
+  (kbd "M-p")   #'corfu-doc-scroll-down
+  (kbd "M-n")   #'corfu-doc-scroll-up)
+;; TODO evil-org interferes with RET. This doesn't seem to be an issue in the
+;; company module. See the fix for #1335 in company/config.el.
+;; Elsewhere, unbinding RET when `corfu-preselect-first' is enabled allows us to
+;; insert a newline without also completing
+(after! corfu
+  (define-key corfu-map (kbd "RET") nil))
+
+;; NOTE This has the side effect of quiting corfu rather than banishing a
+;; doc buffer created by `corfu-info-documentation' when it is called
+;; (defun corfu-abort ()
+;;   "Undo changes made while corfu was active and quit. Takes one keystroke compared
+;; to two to three for corfu-reset but resets changes all at once rather than
+;; incrementally."
+;;   (interactive)
+;;   (cancel-change-group corfu--change-group)
+;;   (corfu-quit))
+
+;; HACK `corfu-info-documentation' spawns a help buffer, which the popup module
+;; catches, but the two are not yet compatible. `scroll-other-window' will
+;; not scroll the help buffer, and "q" will quit the original buffer. (The latter
+;; behavior is likely tied to corfu restoring the window configuration via
+;; pre-command-hook.)
+(defadvice! +popup--ignore-corfu-info-documentation (fn &rest args)
+  :around #'corfu-info-documentation
+  (push '("^\\*\\([Hh]elp\\|Apropos\\)" nil) display-buffer-alist)
+  (apply fn args)
+  (pop display-buffer-alist))
+
+;; Based on https://github.com/minad/corfu/wiki, but it actually works...
+;; NOTE This setup will not be torn down properly if lsp-mode is disabled.
+;; See the definition of lsp-completion-mode if you want to improve the
+;; code
+(unless (featurep! :completion company)
+  (setq lsp-completion-provider :none)
+  ;; OPTIONAL: The first word uses orderless-flex for filtering. This means the
+  ;; characters are matched in order but do not have to be consecutive. It
+  ;; returns more results than a pure orderless style would, at least initially
+  ;; (add-hook 'lsp-completion-mode-hook
+  ;; NOTE This also affects vertico; e.g., you can't use regex like "^" on the first word
+  ;;           (lambda ()
+  ;;             (add-to-list 'orderless-style-dispatchers
+  ;;                          (lambda (_pattern index _total)
+  ;;                            (and (eq index 0) 'orderless-flex)))))
+  ;; Make lsp completion use orderless
+  (add-hook 'lsp-completion-mode-hook
+            (lambda ()
+              (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+                    '(orderless))))
+  ;; Bust capf caches, refreshing candidates more often (e.g., on backspace)
+  (add-hook 'lsp-completion-mode-hook
+            (lambda ()
+              (setq-local completion-at-point-functions
+                          (list (cape-capf-buster #'lsp-completion-at-point))))))
+
+
+
+;; NOTE Keyboards can send either C-m / RET or <return>. <return> is
+;; automatically translated to RET if no <return> binding exists. If a <return>
+;; binding exists, it shadows RET. This seems to take precedence over map
+;; precedence. E.g., <return> in any keymap shadows RET in any keymap. To
+;; normalize doom return keybindings, search for C-m, C-ret, C-<return>, c-m-m,
+;; c-m-ret, and c-m-<return> Safest option is probably to bind RET and <return>.
+;; ;; https://www.fromkk.com/posts/c-m-ret-and-return-key-in-emacs/
+
+;; insert state -> org-tab-first-hook -> org-indent-maybe-h -> indent-for-tab-command (src); else org-cycle -> global-key-binding TAB -> indent-for-tab-command
+;; not org -> indent-for-tab-command (see tab-always-indent and indent-line-function)
+
+
+;;; notes
+
+;; Use org-directory as org-roam-directory
+(setq org-roam-directory "")
+(after! org-roam
+  ;; Since doom already displays subdirectories kind of like tags in org-roam-node-find,
+  ;; why not make capturing to a subdirectory painless?
+  (setq org-roam-capture-templates nil)
+  (add-to-list 'org-roam-capture-templates
+               '("d" "default" plain "%?"
+                 :target (file+head
+                          "%(read-directory-name \"path: \" org-roam-directory)/%<%Y%m%d%H%M%S>-${slug}.org"
+                          "#+title: ${title}\n")
+                 :unnarrowed t)))
+
+;; See https://retorque.re/zotero-better-bibtex/exporting/pull/
+;; Right click a Zotero collection and select "Download Betterbibtex export" to get the URL
+;; TODO Will this work within WSL or does it have to be run on the host OS to communicate over http?
+(defun update-bib-file ()
+  (interactive)
+  (let ((root_url (shell-quote-argument
+                   "http://127.0.0.1:23119/better-bibtex/export/collection?/1/org-cite.biblatex"))) ; &exportNotes=true
+    (shell-command (format "/opt/homebrew/bin/wget %s -O %s" root_url citar-bibliography))))
+
+
+;; Delete values for extensions.zotero.annotations.noteTemplates.title and
+;; extensions.zotero.annotations.noteTemplates.note. Then only highlight
+;; annotations will be exported, which simplifies the regexp. This is fine
+;; because only highlight annotations contain a link back to the location in
+;; the PDF.
+;; Right click one or more items, "Add note from annotations"
+;; Right click a single note, "Export note" as markdown including zotero links
+;; TODO You can select multiple notes, and they will be separated by "---"
+;; TODO Format of notes is configurable: https://www.zotero.org/support/note_templates
+;; NOTE May have to delete previous annotation file for subsequent export to succeed. If note template contains no title, you need to choose a filename
+(defun import-zotero-annotations-from-note (buf)
+  "Import Zotero annotations from a markdown notes-export file,
+convert the annotations to org-mode links with annotation
+comments underneath, and display the buffer"
+  (interactive
+   (list (find-file-noselect (read-file-name "Markdown Zotero notes file: "))))
+  (with-current-buffer buf
+    (beginning-of-buffer)
+    (while (re-search-forward "(\\[.*?](zotero://select.*?)) " nil t)
+      (replace-match ""))
+    (beginning-of-buffer)
+    (while (re-search-forward "^\u201C\\(.*\\)\u201D (\\[pdf](\\(zotero://open-pdf.*?\\)))[ ]*" nil t)
+      (replace-match "[[\\2][\\1]]\n\n"))
+    (beginning-of-buffer)
+    (while (re-search-forward "\n\n\n" nil t)
+      (replace-match "\n"))
+    (org-mode))
+  (pop-to-buffer buf))
+
+;; Follow zotero links
+;; TODO Will this work within WSL
+(after! ol
+  (org-link-set-parameters "zotero" :follow
+                           (lambda (zpath)
+                             (browse-url
+                              ;; we get the "zotero:"-less url, so we put it back.
+                              (format "zotero:%s" zpath)))))
+
+;; https://forums.zotero.org/discussion/78550/getting-zotero-to-work-under-ubuntu-linux#latest
+;; https://www.reddit.com/r/emacs/comments/jza1uk/notmuch_how_do_i_specify_which_browser_to_use_for/
+;; https://www.reddit.com/r/emacs/comments/m7pe6c/wsl2emacsvcxsrv_open_everything_with_native/
+;; https://superuser.com/questions/1679757/how-to-access-windows-localhost-from-wsl2
+;; https://askubuntu.com/questions/514125/url-protocol-handlers-in-basic-ubuntu-desktop
+;; https://medium.com/@pcbowers/wsl-windows-10-allow-web-links-to-open-automatically-27bdc53d6f86

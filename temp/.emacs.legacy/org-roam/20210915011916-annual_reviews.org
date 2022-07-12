@@ -1,0 +1,93 @@
+:PROPERTIES:
+:ID:       ae5ee1a3-ca19-4f41-b6d8-a9148f95196b
+:END:
+#+title: Annual Reviews
+#+filetags: :work:
+#+category: work
+
+* 2020
+** Summary of annual performance review (2020/5/19)
+
+Minh would like to involve me in ARCGIS. He can send me ARB shapefiles for NAAs
+and Maziar has an R script that sounds like it will map NAAs to counties. I may
+be able to use these to update our inventory.
+
+The new hire will most likely be sent to collaborate with me on the VOC
+inventory, so I will have practice working with others on a project I am
+familiar with. Maziar has noticed that I am easily frustrated when asked to work
+on unfamiliar projects, especially with so much other work to do already. He has
+avoided new, outside assignments.
+** Annual performance pre-review Q&A
+
+- Rate ourselves
+  - 7/10 (C-)
+    - Bare minimum to pass.
+    - Before the county lockdown, I wasn't taking care of myself in my
+      personal life like I should have. Once the lockdown hit, things
+      grew worse for a time. A large reason for that I learned
+      recently is that I was spending too much of my non-work hours
+      doing work on various projects. A lot of research into
+      programming, system administration, new tools and editors I
+      could work with. And it burned me out.
+    - Another reason was that I wasn't on the right medication. But
+      switching came with side effects that I had to overcome, so it's
+      only been lately that I've been starting to feel more rested,
+      more productive, and more alert.
+    - Disorganization. Kept jumping between where and how I kept notes:
+      Word wasn't working, paper notes didn't match the way I think
+      and work. Microsoft Notes, Planner taken away. Finally found a
+      solution that IT is not planning to take away.
+    - Trouble adapting to changes in the inventory.
+- What you can improve
+  - Task management and note taking
+  - Work-life balance. Being more productive at work so that I don't need
+    to spend as much of my leisure time working.
+  - Collboration with others. I have kept to myself, and I need to reach
+    out to more of the senior staff when I have the time.
+- Rate management
+  - 8/10. Have been supportive of everything I've tried to do. Have given
+    me freedom to work on the things I think are important.
+- Learn more about
+  - Clean Air Act and how it affects the VOC inventory. No formal training
+    that touches on this. How to do a SIP submission. E.g., 2018
+    changes to FFMs?
+  - Rulemaking experience. OAL covered process, not substance. What I've
+    used from the training I already mostly knew from my time as a Sci
+    Aid when I spent a couple weekends in the State library.
+- Most proud of
+  - Rmarkdown report. It required creativity, flexibility, and problem
+    solving. I was able to discover past errors in report language and
+    the values in data tables, I was able to build datasets for all of
+    the report inputs--in some cases going back to the early 2000s
+    (and 1990)--despite inaccurate metadata about past years' source
+    files/scripts. I learned how to weave together latex and rmarkdown
+    creatively. And in all, it finally helped me understand what we
+    were actually doing during this stage of the
+    inventory. Previously, we had a workbook with dozens on dozens of
+    sheets that had redundnancies and confusing cross-references. And
+    the procedures were incomplete, so I did a lot of investigative
+    work.
+  - It also showed me that I'm more productive when I jump headfirst
+    into a task and experiment, rather than doing endless research
+    trying to find all of the answers before I attempt a task. The
+    latter has been the way I've always approached a task, but I don't
+    think it will be any longer. I tend to learn better through doing,
+    I've found.
+  - Evaluation database template. I had previously created one during
+    research into database normalization forms and bitemporal dbs, but
+    never implemented it due to possible lack of IT support. With the
+    request from Registration to change our forms, at least I already
+    have a template ready that I can begin to fill out.
+- Goals for next year
+  - Preliminary report markdown
+  - Rewrite/refactoring of the annual report text? Seemed like Maziar
+    wanted to work on it together when the time came.
+  - Finish the rewrite of the inventory using git, R, and SQL.
+  - SOP for inventory inputs and when and how to update them.
+  - Conversion of script metadata to git logs. Changes are lost over time.
+- Priority projects
+  - Report generation/revisions
+  - Inventory script rewrites
+  - Evaluation revisions and guidelines updates.
+  - Conversion of past evaluations to new format (PDF history, not
+    Brenna's suggested changes)

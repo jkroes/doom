@@ -1,0 +1,29 @@
+:PROPERTIES:
+:ID:       8C16EFC5-1640-4621-A9CD-5A32C927E687
+:END:
+#+title: food and cooking
+#+category: food
+
+* Subscriptions
+** America's Test Kitchen
+Provides recipes, taste tests, and equipment and ingredient reviews / buying guides using a team of hired staff and a well-defined review proces. Also provides access to cookbooks and episodes of cooking shows. Cookbooks are added every month, and are available with free shipping if you want the print edition. There is a members-only Facebook group where home cooks post their recipes.
+
+Might also provides access to OnlineCookingSchool through the discounted all-access membership. Call customer service to ask about this.
+** OnlineCookingSchool
+Provides online learning with categories for recipes, technique, and cooking basics. The dashboard does not allow you to filter by courses you have started or completed. To view this, click e.g. on a category. The individual lesson thumbnails will either say "View Details" or "Continue" in the lower-right corner.
+** Cook's Illustrated
+** CooksCountry
+* Oils
+** Olive Oil
+Extra virgin olive oils are minimally processed and considered higher grade.
+
+Mild olive oils are meant for cooking, since they don't lose their flavor with heat, but they can sometimes also be used served cold.
+
+Look for opaque/dark bottles. Store away from light in a cupboard.
+
+Certification of quality for extra virgin olive oil by COOC, NAOOA or IOC. UC Davis has a tasting panel that was certified by IOC, the only such one in the USA as of 2010. They helped develop the COOC certification for CA-produced olive oil: https://escholarship.org/uc/item/5071k2zr.
+
+According to [[https://nymag.com/strategist/article/best-olive-oils-according-to-chefs.html][NY Mag]], California Olive Ranch EVOO is the best cheap option for anything from cooking to a viniagrette. It comes in three flavors.
+** Beans
+*** Heirloom
+Eatwell Farms orders from Rancho Gordo. You can access other types of beans on the RG website, which includes waitlisted varieties: https://www.ranchogordo.com/collections/heirloom-beans

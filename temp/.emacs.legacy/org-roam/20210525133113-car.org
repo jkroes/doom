@@ -1,0 +1,141 @@
+:PROPERTIES:
+:ID:       09129416-C754-4F5B-B90A-FF97E90246A6
+:END:
+#+title: Car
+#+category: Car
+
+* Hybrids
+Honda CR-*, Accord
+Toyota Avalon, Prius, Camry
+Kia Optima
+Chevy Volt
+Ford Fusion
+
+
+* Resources
+[[https://cars.usnews.com/cars-trucks/rankings/used/hybrid-cars-1][Hybrid rankings]]
+[[https://www.carcomplaints.com/][CarComplaints]] (recalls, issues, etc., by model and year)
+[[https://vinrcl.safercar.gov/vin/][Recall by VIN]]
+[[https://www.moneyunder30.com/best-car-insurance-for-young-adults][Insurance]]
+[[https://www.nerdwallet.com/insurance/compare-car-insurance-rates][Avg insurance rates]]
+
+* Electric Vehicles
+** 2016 Nissan Leaf
+*** Plug type
+CHAdeMO
+*** Reviews
+https://www.edmunds.com/nissan/leaf/2016/review/
+**** Safety
+***** Edmunds
+https://www.edmunds.com/car-news/2016-nissan-leaf-earns-four-star-safety-rating-from-federal-government.html
+***** NHTSA
+4/5
+https://www.nhtsa.gov/vehicle/2016/NISSAN/LEAF/5%252520HB/FWD#recalls390
+***** IIHS
+Font-side overlap (poor)
+https://www.iihs.org/ratings/vehicle/nissan/leaf-4-door-hatchback/2016#small-overlap-front-driver-side
+** Notes
+There are 3 chargers, in order of most accesible, slowest to least accessible, fastest:
+- L1 (standard 120V outlet)
+- L2 (240V outlet, must be installed by electrician @ home)
+  - According to [[https://www.forbes.com/sites/bradtempleton/2020/08/25/your-guide-to-a-camping-road-trip-in-a-tesla-or-other-ev/][this]] faster charges are also attained by higher amps, which means different kinds of L2 chargers for
+- L3 (DC fast charge). This is the ideal charge on a roadtrip, yielding 60-80 miles in 20 minutes of charging.
+There are different types of charger plugs: e.g., SAE J1772.
+[[https://www.greencarreports.com/news/1124182_report-us-nissan-leaf-owners-to-get-update-allowing-subsequent-fast-charges][Apparently]], taking older Nissan Leafs on road trips via repeated L3 charges can lead to temporary slowdowns in charging. Effectively lowering the daily range of the car. There is TSB (technical service bulletin) update to remedy this, but I wonder what other EVs have similar issues?
+Discusses using RV parks for charging:
+
+* EV Checklist
+Per https://environmentcalifornia.org/reports/ame/ready-charge,
+https://www.energy.gov/eere/electricvehicles/vehicle-charging:
+- Can the vehicle use an L3 charger?
+- What type of plug is required? Are the charging stations compatible with the plug type or multiple types?
+- How many L2/L3 charges can a vehicle endure each day?
+- Do I need membership to a charging network or to a pay a fee to the owner or a parking fee? What is the fee structure: flat fee, length of time, or energy consumed?
+  - What charging networks are provide by a car manufacturer for its
+- Are L2 and L3 chargers locally often busy? What hours do they operate if not 24 hours/day.
+- Does the place you live allow you to charge a vehicle from an outdoor outlet?
+- Does the car come with an L2 adapter or only an L1 adapter?
+
+* Cars
+** National
+*** https://www.edmunds.com/
+*** https://www.kbb.com
+*** https://www.cargurus.com
+*** https://www.autotempest.com
+*** https://www.autolist.com
+*** https://www.carsdirect.com
+*** https://www.autotrader.com
+*** https://www.carvana.com/
+*** https://www.carmax.com
+*** https://www.carfax.com
+*** https://www.auto.com
+*** https://www.cars.com
+** Local
+*** https://www.sandrcar.com/
+2011 Toyota Prius / 95 / 9999
+2012 Honda Accord / 101 / 11350
+2012 Toyota Prius / 82 / 10999
+2012 Toyota Rav4 / 147 / 10999
+2013 Toyota Corolla / 116 / 9999
+2014 Subaru Impreza / 105 / 10999
+2016 Scion iA / 84 / 10899
+*** https://www.ecoautodeals.net/cars-for-sale
+2007 Toyota Rav4 / 120 / 8750
+2008 Toyota Prius Touring / 124 / 6150
+2008 Toyota Prius Touring/ 164 / 5450
+2008 Toyota Prius Touring/ 168 / 5650
+2014 Honda Civic LX / 99 / 9650
+2015 Toyota Prius V / 84 / 11000
+*** https://www.qualityautoz.com/newandusedcars?clearall=1
+2016 Subary Legacy / 61 / 15999
+2017 Hyundai Accent / 64 / 10999
+2017 Hyundai Enlantra / 59 / 11997
+2017 Lexus CT 200h / 18 / 20999
+2017 Toyota Corolla / 103 / 12999
+2017 Toyota Corolla / 40 / 17499
+2017 Toyota Prius C / 37 / 15999
+2018 Hyundai Elantra / 48 / 13999
+2018 Hyundai Elantra / 61 / 13599
+*** https://www.salemauto.net/
+
+* Awesome video reviews
+https://www.motorbiscuit.com/the-2020-mitsubishi-mirage-is-the-worst-small-car-you-should-never-buy/
+
+* New Cars
+Source: https://www.cnet.com/roadshow/news/cheapest-least-expensive-new-cars-2020/
+
+** Toyota Yaris
+** Honda Fit
+https://www.caranddriver.com/honda/fit
+All CVT-equipped Fits come with Honda Sensing, lane keepr assist, adaptive cruise control
+Choose the Sport to include 7" touchscreen and apple carplay
+** Kia Rio
+** Nissan Versa
+** Hyundai Accent
+
+* Buying a New Car
+** Get preapproved for a loan.
+Schools approved me for 18k @ 2.44% with no downpayment required
+** Calculate Max Monthly Payments
+https://www.truecar.com/car-loan-calculator/
+With no trade-in, nothing down:
+#319 over 60 months.
+$394 over 48 months.
+$519 over 36 months.
+Any financing offered by the dealer should be better than this.
+** Solicit 5-7 offers on a car for a reverse auction.
+Incentives aren't important. Focus on lowest total price. Respond to other offers with lowest current offer and see if they'll beat it.
+** Visiting a dealership
+Let them know you're preapproved for a loan. Steer the conversation away from financing until you've agreed on a total price.
+** Insurance
+Before buying, get the VIN, then order from Geico or Progressive (Geico had a better rating from NerdWallet)
+**** Coverage amounts
+100000/300000 Bodily Injury
+50000 Property Damage
+30000/60000 Uninsured/Underinsured Bodily
+No uninsured motorist property damage if collision is selected
+Collision 500 deductible
+Collison Deductible Waiver if person is uninsured ???
+Comprehensive 0 deductible
+Loan/Lease (GAP?) Payoff
+No emergency road service, rental, mechanical breakdown insurance

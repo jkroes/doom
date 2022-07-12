@@ -130,10 +130,10 @@
   ;; it doesn't do this if you have Emacs in a single window in a half-screen
   ;; frame and not enough space. Should be able to display the doc childframe
   ;; outside of Emacs.
-  ;; (advice-add 'company-box-doc--set-frame-position
-  ;;             :override 'my/company-box-doc--set-frame-position)
-  ;; (advice-add 'company-box-doc--make-buffer
-  ;;             :override 'my/company-box-doc--make-buffer)
+  (advice-add 'company-box-doc--set-frame-position
+              :override 'my/company-box-doc--set-frame-position)
+  (advice-add 'company-box-doc--make-buffer
+              :override 'my/company-box-doc--make-buffer)
   (define-key company-active-map (kbd "C-h") #'my/company-show-doc-buffer)
   ;;(advice-add 'company-show-doc-buffer :override 'my/company-show-doc-buffer)
   (setq company-box-show-single-candidate t

@@ -1,0 +1,10 @@
+:PROPERTIES:
+:ID:       FC7EC087-DA24-4F75-9F05-C71C3C060EC1
+:END:
+#+title: Programming
+#+category: Programming
+
+* [[id:2CC161DF-B833-48D9-BF06-55AC72CEA0C9][elisp]]
+* Python
+* [[id:30BD7681-302E-47E5-A85A-44B1EA5B3870][R]]
+* zsh

@@ -1,0 +1,19 @@
+:PROPERTIES:
+:ID:       CB846BE1-E503-4EFC-BBDF-FBE67D3EB1CE
+:END:
+#+title: Software
+#+category: Software
+
+* [[id:8809F0D3-4FB4-4408-9947-1C5FFADFE02C][Access]]
+* [[id:A18EFAC3-2223-4F8C-B955-D7C0B743226D][Adobe Acrobat]]
+* [[id:B71794A2-7543-43A5-B6FC-66B9F5CD2EB3][Emacs]]
+* MacOS
+* Pycharm
+* RDP
+* [[id:F4B98D99-0288-4894-901E-D65C2AA55175][shell]]
+* Terminals
+** iTerm2
+** Windows Terminal
+* [[id:5BACB677-D4B2-4647-A8C7-A47704D6FCA8][vim]]
+* [[id:7E6E6719-2BC0-47FA-A622-F0880AD3B23F][WSL]]
+* Zotero

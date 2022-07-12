@@ -76,9 +76,11 @@ In case of failure, fail gracefully."
           (file-truename)
           (file-name-as-directory))
         org-roam-node-display-template
-        (format "${doom-hierarchy:*} %s %s"
-                (propertize "${doom-type:12}" 'face 'font-lock-keyword-face)
-                (propertize "${doom-tags:42}" 'face 'org-tag))
+        (format "%s %s %s"
+                "${doom-hierarchy:*}"
+                (propertize "${doom-type:40}" 'face 'font-lock-keyword-face)
+                ;; Zero-width componenets can still be filtered on
+                (propertize "${doom-tags:10}" 'face 'org-tag))
         org-roam-completion-everywhere t
         org-roam-db-gc-threshold most-positive-fixnum
         ;; Reverse the default to favor faster searchers over slower ones.
@@ -124,6 +126,11 @@ In case of failure, fail gracefully."
   ;; TODO PR this upstream?
   (advice-add #'org-roam-link-follow-link :filter-args #'org-roam-link-follow-link-with-description-a)
   (advice-add #'org-roam-link-replace-at-point :override #'org-roam-link-replace-at-point-a)
+
+  ;; Replace all roam: links with id: links on save. Why does org-roam not simply complete id links?
+  (add-hook 'org-mode-hook
+            (lambda ()
+              (add-hook 'after-save-hook #'org-roam-link-replace-all nil t)))
 
   (map! :map org-mode-map
         :localleader

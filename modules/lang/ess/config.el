@@ -49,14 +49,6 @@
   ;; intended behavior. Compare to behavior in e.g. python-mode.
   (when (featurep! +lsp)
     (add-hook 'ess-r-mode-local-vars-hook #'lsp! 'append)
-    ;; HACK until ess-r's lsp documentation gets fixed, don't use any lsp
-    ;; lookup functions
-    ;; NOTE I would prefer to only disable the document function, but I couldn't
-    ;; figure out how to do that
-    (add-hook 'ess-r-mode-hook
-              (lambda ()
-                (make-local-variable 'lsp-mode-hook)
-                (remove-hook 'lsp-mode-hook #'+lookup--init-lsp-mode-handlers-h t)))
 
     ;; See my/ess-display-help-on-object and my/company-show-doc-buffer. The R
     ;; language server (lsp-mode) returns strings without newlines.
