@@ -224,7 +224,11 @@ If on a:
                (org-clear-latex-preview beg end)
              (org--latex-preview-region beg end)))
          (when (member "ATTACH" (org-get-tags nil t))
-           (org-attach-open)))
+           ;; HACK To enable marginalia annotations (and embark-act, which relies
+           ;; on the metadata marginalia sets), we either need to bind this-command
+           ;; to org-attach-open or call it with execute-extended-command
+           (let ((this-command #'org-attach-open))
+             (org-attach-open))))
 
         (`clock (org-clock-update-time-maybe))
 

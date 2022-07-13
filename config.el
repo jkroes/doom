@@ -269,6 +269,21 @@ module."
 ;; Make "C-h h" do the same thing without a key prefix as with one
 (general-def help-map "h" #'my/embark-bindings)
 
+;; TODO Replace attach and properies with icons
+;; https://thibautbenjamin.github.io/emacs/org-icons
+;; Smaller org drawers
+;; (custom-set-faces! '(org-drawer :height 100))
+
+;; Don't truncate results when using edebug
+(setq edebug-print-length 1000)
+
+;; Try xref-find-definitions without anything at point and with something
+;; at point. Notice that "gd" or "SPC c d" can't do both!
+(setq xref-show-definitions-function #'xref-show-definitions-completing-read)
+
+;; TODO Checkout shortdoc-display-group! It's a cheatsheet!
+
+
 ;; doom-init-leader-keys-h binds to general-override-mode-map and calls
 ;; general-override-mode (see also general-override-auto-enable). The only
 ;; bindings are those leader and localleader, M-x, and A-x. This overrides
@@ -498,6 +513,7 @@ comments underneath, and display the buffer"
                               ;; we get the "zotero:"-less url, so we put it back.
                               (format "zotero:%s" zpath)))))
 
+;; Open non-text files in Windows instead of WSL
 (setq IS-WSL (and (string-match "-[Mm]icrosoft" operating-system-release)
                   (eq system-type 'gnu/linux)))
 (when IS-WSL
@@ -519,37 +535,49 @@ comments underneath, and display the buffer"
     (add-to-list 'org-file-apps '("\\.docx?\\'" . open-in-windows) t)
     (add-to-list 'org-file-apps '("\\.pptx?\\'" . open-in-windows) t)))
 
-;;(add-to-list 'marginalia-command-categories (cons 'org-attach-open 'file))
-;; HACK Configure org-attach-open to work with embark-act
-;; embark-act identifies the target (file) to act on via embark--vertico-selected.
-;; org-attach-open only makes the attachment filename available, so embark-act
-;; tries files actions on the relative name and fails
-;; TODO There has to be a less invasive way of doing this than replacing
-;; completing-read with read-file-name.
-(after! org
-  (defun org-attach-open (&optional in-emacs)
-    "Open an attachment of the current outline node.
-If there are more than one attachment, you will be prompted for the file name.
-This command will open the file using the settings in `org-file-apps'
-and in the system-specific variants of this variable.
-If IN-EMACS is non-nil, force opening in Emacs."
-    (interactive "P")
-    (let ((attach-dir (org-attach-dir)))
-      (if attach-dir
-	  (let* ((file (pcase (org-attach-file-list attach-dir)
-		         (`(,file) file)
-		         (files (read-file-name "Open attachment: " (file-name-as-directory attach-dir) nil t))))
-	         (path (expand-file-name file attach-dir)))
-	    (run-hook-with-args 'org-attach-open-hook path)
-	    (org-open-file path in-emacs))
-        (error "No attachment directory exist")))))
+;; NOTE Marginalia annotates minibuffer completions, but if a minibuffer-completion
+;; command is not the top-level command executed, it might not be annotated
+;; correctly. E.g. I modified +org/dwim-at-point to call org-attach-open. To
+;; have these commands annotated correctly, you need to either rebind this-command
+;; to the command you want annotated before executing it, or else execute it
+;; via execute-extended-command; e.g.
+;; (execute-extended-command nil "org-attach-open")
 
-;; TODO Replace attach and properies with icons
-;; https://thibautbenjamin.github.io/emacs/org-icons
-;; Smaller org drawers
-;; (custom-set-faces! '(org-drawer :height 100))
+;; Configure org-attach-open to work with embark
+;; Unlike e.g. `find-file', `org-attach-open' does not use the path returned by
+;; `org-attach-dir' as minibuffer input. `embark--vertico-selected' constructs
+;; embark targets from the candidate and the minibuffer input, so the target
+;; does not have the full path. By associating `org-attach-open' to a novel
+;; marginalia category, and this category to an embark transformer function, we
+;; end up with the full filepath and a final `file' category that allows us to
+;; execute actions from `embark-file-map' apples
+(after! marginalia
+  (add-to-list 'marginalia-command-categories '(org-attach-open . attach)))
+(after! embark
+  (add-to-list 'embark-transformer-alist
+               '(attach . embark--expand-attachment)))
+(defun embark--expand-attachment (_type target)
+  (with-current-buffer (window-buffer (minibuffer-selected-window))
+    (cons 'file (expand-file-name target (org-attach-dir)))))
 
-;; Don't truncate results when using edebug
-(setq edebug-print-length 1000)
 
-;; TODO Checkout shortdoc-display-group! It's a cheatsheet!
+;; HACK org-attach commands ignore ., .., and files ending in ~, but
+;; we also want to ignore .DS_STORE on MacOS.
+(defvar org-attach-ignore-regexp-list (list "." ".." ".DS_STORE")
+  "A list of filenames for org-attach to ignore")
+(after! org-attach
+  (defun org-attach-file-list (directory)
+    "Return a list of files in the attachment DIRECTORY.
+This ignores files ending in \"~\"."
+    (delq nil
+	  (mapcar (lambda (x)
+                    (if (string-match
+                         (concat "^"
+                                 (regexp-opt
+                                  org-attach-ignore-regexp-list)
+                                 "\\'")
+                         x) nil x))
+		  (directory-files directory nil "[^~]\\'")))))
+
+;; TODO Setup org-transclusion
+;; TODO Set up biblio module
