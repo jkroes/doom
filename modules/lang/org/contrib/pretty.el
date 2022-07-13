@@ -20,10 +20,8 @@
         org-appear-delay 1)
   :hook (org-mode . org-appear-mode))
 
-(setq org-hide-leading-stars nil
-      org-startup-indented nil)
-
 (use-package! org-visual-indent
+  :if (display-graphic-p)
   :hook (org-mode . org-visual-indent-mode))
 
 (use-package! org-dynamic-bullets

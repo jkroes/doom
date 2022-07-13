@@ -118,14 +118,14 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
         ;; NOTE Large code blocks can slow down e.g.
         ;; org-cycle-global noticeably
         org-src-fontify-natively nil
-        org-hide-leading-stars t
+        org-hide-leading-stars nil
         org-image-actual-width nil
         org-imenu-depth 6
         org-priority-faces
         '((?A . error)
           (?B . warning)
           (?C . success))
-        org-startup-indented t
+        org-startup-indented (if (display-graphic-p) nil t)
         org-tags-column 0
         org-use-sub-superscripts '{}
         ;; `showeverything' is org's default, but it doesn't respect
