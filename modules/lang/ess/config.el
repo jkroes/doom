@@ -10,8 +10,6 @@
 (use-package! ess
   :commands stata SAS
   :hook
-  ;; NOTE This isn't necessary when using the ligatures feature
-  (ess-mode . prettify-symbols-mode) ; pretty ligatures
   ;; Nice default behavior. Delete delimiter pair when deleting opening paren of
   ;; empty pair (electric-pair-delete-adjacent-pairs). Skips over closing delim
   ;; when you try to insert over an existing delim (electric-pair-skip-self).
@@ -21,6 +19,11 @@
   ;; inserts `'.")
   (ess-r-mode . electric-pair-mode)
   :init
+  ;; prettify-symbols-mode breaks lsp-mode when running in the
+  ;; terminal
+  ;; NOTE This isn't necessary when using the ligatures feature
+  (when (display-graphic-p)
+    (add-hook 'ess-mode-hook #'prettify-symbols-mode)) ; pretty ligatures
   (unless (featurep! :lang julia)
     (add-to-list 'auto-mode-alist '("\\.jl\\'" . ess-julia-mode)))
   :config
