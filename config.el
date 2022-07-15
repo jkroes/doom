@@ -581,3 +581,26 @@ This ignores files ending in \"~\"."
 
 ;; TODO Setup org-transclusion
 ;; TODO Set up biblio module
+
+;; Note about keybindings in -nw (terminal) mode:
+;; On MacOS, I configure Emacs to translate the CMD to CTRL key. For whatever
+;; reason--perhaps because CMD isn't a recognized key for terminal input--
+;; CMD-h doesn't produce C-h. It runs the system binding, which by default hides
+;; windows. One way to get around this is to remap CMD to CTRL in iTerm's
+;; settings. This overrides all uses of cmd shortcuts for iTerm and MacOS.
+;; To allow specific exceptions: Disable remapping. Disable the MacOS shortcut.
+;; iTerm preferences>Keys>Key Bindings>+>click then type keybinding, and set
+;; action to "do not remap modifiers">reenable remapping and system shortcut
+
+;; HACK r languageserver apparently returns an unformatted sring when pressing
+;; "C-h" during completion
+;; TODO Even with wrapping, the formatting is still wildly off compared to
+;; pressing "K" over a symbol
+;; NOTE Today I learned you can use "C-h" when completing a function parameter, and
+;; it works in ess-r-mode.
+(add-hook 'window-configuration-change-hook
+          (defun test()
+            (dolist (buff (buffer-list))
+              (when (string= (buffer-name buff) " *eglot doc*")
+                (with-current-buffer buff
+                  (visual-line-mode))))))
