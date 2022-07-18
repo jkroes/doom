@@ -1,7 +1,0 @@
-:PROPERTIES:
-:ID:       AE3D7641-8B1D-4169-8CA0-2578FBA61954
-:ROAM_REFS: cite:santosOrgnoter2021
-:END:
-#+title: Org-Noter
-
-See the [[~/.emacs.d/straight/repos/org-noter/Demo/Notes.org][demo]].

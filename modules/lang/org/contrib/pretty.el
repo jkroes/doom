@@ -25,6 +25,7 @@
   :hook (org-mode . org-visual-indent-mode))
 
 (use-package! org-dynamic-bullets
+  :if (display-graphic-p)
   :hook (org-mode . org-dynamic-bullets-mode))
 
 ;; HACK org versions later than at least 9.5.1 result in an error

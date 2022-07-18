@@ -135,10 +135,6 @@ tasks."
           'todo))
     nil 'first-match))
 
-;; TODO Necessary for org-visual-outline?
-;; (setq org-hide-leading-stars nil
-;;       org-startup-indented nil)
-
   ;; NOTE: For now, this cannot be set via file-local variable list:
   ;; # Local Variables:
   ;; # eval: (make-local-variable 'org-todo-keywords)

@@ -124,8 +124,6 @@ Note that the documented load order in the source and doc files is currently inc
 ;; Assumes a fringe of 12
 (setq-default fill-column 79)
 
-(add-hook 'org-mode-hook (lambda () (highlight-indent-guides-mode -1)))
-
 ;; TODO Settings for module to implement
 ;; (setq org-startup-indented t
 ;;       org-hide-emphasis-markers t

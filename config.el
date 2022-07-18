@@ -28,7 +28,7 @@
 ;; up, `M-x eval-region' to execute elisp code, and 'M-x doom/reload-font' to
 ;; refresh your font settings. If Emacs still can't find your font, it likely
 ;; wasn't installed correctly. Font issues are rarely Doom issues!
-(setq doom-font (font-spec :family "Hack" :size (cond (IS-MAC 14) (IS-LINUX 12))))
+(setq doom-font (font-spec :family "Hack" :size 14))
 
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
@@ -294,8 +294,16 @@ module."
 ;; https://github.com/noctuid/general.el#override-keymaps-and-buffer-local-keybindings
 ;; https://github.com/noctuid/evil-guide#keymap-precedence
 ;; ~/doom-emacs/.local/straight/repos/evil/evil-core.el
-(setq doom-leader-alt-key "M-SPC")
+(setq doom-leader-alt-key "M-SPC") ; In Windows Terminal actions settings unbind alt+space and save settings.
 (setq doom-localleader-alt-key "M-SPC m")
+
+;; Doom doesn't setup embark bindings that work in the terminal (i.e., C-; -> <escape>)
+;; Ad-hoc bindings below. Note that C-/ translates to C-_ on Windows Terminal (elsewhere?)
+(when (not (display-graphic-p))
+  (map! "C-_" #'embark-act
+        (:map minibuffer-local-map
+         "C-_"               #'embark-act
+         "C-c C-_"           #'embark-export)))
 
 ;; See core-ui.el
 (after! ediff
@@ -319,6 +327,7 @@ module."
         corfu-quit-at-boundary 'separator
         ;; What to insert by `corfu-insert-separator'
         corfu-separator ?\s
+        corfu-on-exact-match nil ; Don't insert; if you want org-roam to complete to a link, press tab
         corfu-echo-documentation nil)
   (setq tab-always-indent 'complete)
   (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
@@ -334,6 +343,13 @@ module."
 ;;     ;; (setq-local corfu-auto nil) Enable/disable auto completion
 ;;     (corfu-mode 1)))
 ;; (add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer)
+
+;; TODO Add corfu-doc-terminal
+(use-package! corfu-terminal
+  :defer t
+  :init
+  (unless (display-graphic-p)
+    (corfu-terminal-mode +1)))
 
 ;; (use-package! corfu-doc
 ;;   :init (setq corfu-doc-auto t)
@@ -359,6 +375,7 @@ module."
   ;; ~/doom-emacs/modules/editor/evil/config.el
   (kbd "C-g")   #'corfu-reset
   (kbd "C-SPC") #'corfu-insert-separator
+  (kbd "C-@") #'corfu-insert-separator ; For the terminal
   (kbd "C-h")   #'corfu-info-documentation ; Works with scroll-other-window(-down)
   [tab]         #'corfu-insert
   (kbd "TAB")   #'corfu-insert
@@ -431,6 +448,8 @@ module."
 
 ;; insert state -> org-tab-first-hook -> org-indent-maybe-h -> indent-for-tab-command (src); else org-cycle -> global-key-binding TAB -> indent-for-tab-command
 ;; not org -> indent-for-tab-command (see tab-always-indent and indent-line-function)
+
+
 
 
 ;;; notes
@@ -513,6 +532,35 @@ comments underneath, and display the buffer"
                               ;; we get the "zotero:"-less url, so we put it back.
                               (format "zotero:%s" zpath)))))
 
+
+;; TODO Bind org-attach-dired-to-subtree
+;; HACK Make this work with ranger
+(after! org-attach
+  (defun org-attach-dired-to-subtree (files)
+    "Attach FILES marked or current file in `dired' to subtree in other window.
+Takes the method given in `org-attach-method' for the attach action.
+Precondition: Point must be in a `dired' buffer.
+Idea taken from `gnus-dired-attach'."
+    (interactive
+     (list (dired-get-marked-files)))
+    (unless (memq major-mode '(dired-mode ranger-mode))
+      (user-error "This command must be triggered in a `dired' buffer"))
+    (let ((start-win (selected-window))
+          (other-win
+           (get-window-with-predicate
+            (lambda (window)
+              (with-current-buffer (window-buffer window)
+                (eq major-mode 'org-mode))))))
+      (unless other-win
+        (user-error
+         "Can't attach to subtree.  No window displaying an Org buffer"))
+      (select-window other-win)
+      (dolist (file files)
+        (org-attach-attach file))
+      (select-window start-win)
+      (when (eq 'mv org-attach-method)
+        (revert-buffer)))))
+
 ;; Open non-text files in Windows instead of WSL
 (setq IS-WSL (and (string-match "-[Mm]icrosoft" operating-system-release)
                   (eq system-type 'gnu/linux)))
@@ -531,6 +579,7 @@ comments underneath, and display the buffer"
   (after! org
     (setf (alist-get "\\.pdf\\'" org-file-apps nil nil #'string=) #'open-in-windows)
     ;; (add-to-list 'org-file-apps '("^/mnt/" . #'open-in-windows))
+    (add-to-list 'org-file-apps '("\\.png?\\'" . open-in-windows) t)
     (add-to-list 'org-file-apps '("\\.xlsx?\\'" . open-in-windows) t)
     (add-to-list 'org-file-apps '("\\.docx?\\'" . open-in-windows) t)
     (add-to-list 'org-file-apps '("\\.pptx?\\'" . open-in-windows) t)))
@@ -560,12 +609,10 @@ comments underneath, and display the buffer"
   (with-current-buffer (window-buffer (minibuffer-selected-window))
     (cons 'file (expand-file-name target (org-attach-dir)))))
 
-
 ;; HACK org-attach commands ignore ., .., and files ending in ~, but
 ;; we also want to ignore .DS_STORE on MacOS.
 (defvar org-attach-ignore-regexp-list (list "." ".." ".DS_STORE")
-  "A list of filenames for org-attach to ignore")
-(after! org-attach
+  "A list of filenames for org-attach to ignore") (after! org-attach
   (defun org-attach-file-list (directory)
     "Return a list of files in the attachment DIRECTORY.
 This ignores files ending in \"~\"."
@@ -579,7 +626,54 @@ This ignores files ending in \"~\"."
                          x) nil x))
 		  (directory-files directory nil "[^~]\\'")))))
 
-;; TODO Setup org-transclusion
+
+;; TODO The fringe indicators used to show transcluded text do not
+;; appear on Doom. The actual transcluded content doesn't appear
+;; to have a face applied, but you might want to make that tweak.
+;; The only other indicator where transcluded content is inserted
+;; is that editing it will inform you that it is read-only.
+;; See org-transclusion-after-add-functions in manual
+;; TODO Further customization for non-target content (e.g. subtrees and files)
+(use-package! org-transclusion
+  ;; Don't display target in transclusions
+  :config (add-to-list 'org-transclusion-exclude-elements 'target)
+  :after org
+  :hook (org-mode . org-transclusion-mode))
+;; TODO This should be on localleader for org-mode
+;; TODO Prefix doesn't show up as "transclude"
+(after! org-transclusion
+  ;; (add-to-list 'org-transclusion-extensions 'org-transclusion-indent-mode)
+  ;; (require 'org-transclusion-indent-mode)
+  (map! :map doom-leader-notes-map
+        (:prefix ("T" . "transclude")
+         ;; Copy an ID link, insert on next line, add transclude keyword
+         "l" #'org-transclusion-make-from-link
+         "t" #'org-transclusion-make-uuid-target)))
+
+;; TODO Make additional functions for other types of transclusion links
+;; (e.g., heading, content, heading+content). See manual.
+(defun org-transclusion-make-uuid-target ()
+  "Insert a UUID dedicated target and store a link usable by org-transclude"
+  (interactive)
+  (let ((uuid (org-id-new)))
+    (insert (format "%s<<%s>>" (if (looking-back " ") "" " ") uuid))
+    (push (list (concat "file:" (buffer-file-name) "::" uuid))
+          org-stored-links)))
+
+;; TODO Bookmark annotations
+;; Auto-save all changes to bookmark list
+(setq bookmark-save-flag 0)
+;; Bookmark previews
+(after! consult
+  (consult-customize consult-bookmark :preview-key (kbd (if (display-graphic-p) "C-SPC" "C-@"))))
+
+;; TODO I can remove my changes to org-attach functions related to
+;; resolving links recursively if I set org-attach-store-link-p to
+;; 'file. But it might not matter since org-insert-link currently
+;; completes attachment links. Links resolve recursively, but
+
+;; TODO Check out superlinks
+
 ;; TODO Set up biblio module
 
 ;; Note about keybindings in -nw (terminal) mode:
@@ -604,3 +698,6 @@ This ignores files ending in \"~\"."
               (when (string= (buffer-name buff) " *eglot doc*")
                 (with-current-buffer buff
                   (visual-line-mode))))))
+
+;; TODO evil-search no longer searches folded org headings
+;; See https://www.reddit.com/r/orgmode/comments/vs0ew0/search_on_buffer_with_folded_headings

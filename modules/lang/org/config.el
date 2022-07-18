@@ -1,7 +1,5 @@
 ;;; lang/org/config.el -*- lexical-binding: t; -*-
 
-(defvar +org-resolve-attachment-links-recursively t)
-
 (defvar +org-babel-native-async-langs '(python)
   "Languages that will use `ob-comint' instead of `ob-async' for `:async'.")
 
@@ -118,7 +116,7 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
         ;; NOTE Large code blocks can slow down e.g.
         ;; org-cycle-global noticeably
         org-src-fontify-natively nil
-        org-hide-leading-stars nil
+        org-hide-leading-stars (if (display-graphic-p) nil t)
         org-image-actual-width nil
         org-imenu-depth 6
         org-priority-faces
@@ -508,15 +506,9 @@ relative to `org-directory', unless it is an absolute path."
 
 (defun +org-init-attachments-h ()
   "Sets up org's attachment system."
-  (setq org-attach-store-link-p t     ; store link after attaching files
-        org-attach-use-inheritance
-        (if +org-resolve-attachment-links-recursively nil t))
-
-  (when +org-resolve-attachment-links-recursively
-    (advice-add #'org-attach-follow :override #'my/org-attach-follow)
-    (advice-add #'org-attach-expand :override #'my/org-attach-expand)
-    (advice-add #'org-attach-dir :override #'my/org-attach-dir)
-    (advice-add #'org-entry-get-with-inheritance :override #'my/org-entry-get-with-inheritance))
+  ;; NOTE You can also run org-attach-open, embark-act, @w (embark-copy-as-kill), any yank command
+  (setq org-attach-store-link-p 'attached
+        org-attach-use-inheritance nil)
 
   ;; Autoload all these commands that org-attach doesn't autoload itself
   (use-package! org-attach
@@ -743,14 +735,16 @@ Unlike showNlevels, this will also unfold parent trees."
     :before-while #'org-fix-tags-on-the-fly
     org-auto-align-tags)
 
-  (defadvice! +org--recenter-after-follow-link-a (&rest _args)
-    "Recenter after following a link, but only internal or file links."
-    :after '(org-footnote-action
-             org-follow-timestamp-link
-             org-link-open-as-file
-             org-link-search)
-    (when (get-buffer-window)
-      (recenter)))
+  ;; BUG The org-transclude manual describes this block as incompatible
+  ;; in the Known Limitations section
+  ;; (defadvice! +org--recenter-after-follow-link-a (&rest _args)
+  ;;   "Recenter after following a link, but only internal or file links."
+  ;;   :after '(org-footnote-action
+  ;;            org-follow-timestamp-link
+  ;;            org-link-open-as-file
+  ;;            org-link-search)
+  ;;   (when (get-buffer-window)
+  ;;     (recenter)))
 
   (defadvice! +org--strip-properties-from-outline-a (fn &rest args)
     "Fix variable height faces in eldoc breadcrumbs."

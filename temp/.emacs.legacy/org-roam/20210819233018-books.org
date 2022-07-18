@@ -1,9 +1,0 @@
-:PROPERTIES:
-:ID:       C06BF23E-5218-4345-8213-F061D8418EB4
-:END:
-#+title: books
-#+category: books
-
-* Wish List
-** Edward Tufte's works
-https://www.edwardtufte.com/tufte/seeing-with-fresh-eyes?utm_source=facebook&utm_medium=ppc-social&utm_campaign=GD-5th-Book&fbclid=IwAR3rTECj7XekZUEz8VGQ2jxwM_D5iUJ01rJTvGX4LAyoHdPkZGhcHVhs7GI

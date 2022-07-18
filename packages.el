@@ -63,6 +63,13 @@
 ;; Can tempel replace yasnippet for Python arg completion in lsp? See
 ;; https://github.com/minad/corfu/issues/116
 ;;(package! tempel)
+(package! corfu-terminal
+  :recipe (:repo "https://codeberg.org/akib/emacs-corfu-terminal.git"))
+(package! popon
+  :recipe (:repo "https://codeberg.org/akib/emacs-popon.git"))
+
+;; org
+(package! org-transclusion)
 
 ;; From old config
 ;; (package! outline-minor-faces)

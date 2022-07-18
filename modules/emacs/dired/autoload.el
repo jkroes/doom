@@ -27,6 +27,8 @@ or ranger-mode buffers."
                                    (next-window nil 'nomini all-frames)
                                    'nomini all-frames))))
 
+(defvar browse-url-generic-program)
+(defvar browse-url-generic-args)
 (defun open-in-windows (path &rest _)
   (let ((browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe")
         (browse-url-generic-args '("/c" "start" "")))
@@ -52,7 +54,9 @@ in Windows."
             marked-files))
           ;; WSL1 has "-Microsoft", WSL2 has "-microsoft-standard"
           ((string-match "-[Mm]icrosoft" operating-system-release)
-           (lambda (f) (open-in-windows f)))
+           (mapc
+            (lambda (f) (open-in-windows f))
+            marked-files))
           ((string-equal system-type "gnu/linux")
            (mapc
             (lambda (f) (let ((process-connection-type nil)) (start-process "" nil "xdg-open" f)))

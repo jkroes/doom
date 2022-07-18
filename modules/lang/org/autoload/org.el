@@ -182,7 +182,13 @@ If on a:
          (org-cite-follow context arg))
 
         (`headline
-         (cond ((memq (bound-and-true-p org-goto-map)
+         (cond ((member "ATTACH" (org-get-tags nil t))
+                ;; HACK To enable marginalia annotations (and embark-act, which relies
+                ;; on the metadata marginalia sets), we either need to bind this-command
+                ;; to org-attach-open or call it with execute-extended-command
+                (let ((this-command #'org-attach-open))
+                  (org-attach-open)))
+               ((memq (bound-and-true-p org-goto-map)
                       (current-active-maps))
                 (org-goto-ret))
                ((and (fboundp 'toc-org-insert-toc)
@@ -204,31 +210,26 @@ If on a:
          (when (and (fboundp 'toc-org-insert-toc)
                     (member "TOC" (org-get-tags)))
            (toc-org-insert-toc)
-           (message "Updating table of contents"))
-         (let* ((beg (if (org-before-first-heading-p)
-                         (line-beginning-position)
-                       (save-excursion (org-back-to-heading) (point))))
-                (end (if (org-before-first-heading-p)
-                         (line-end-position)
-                       (save-excursion (org-end-of-subtree) (point))))
-                (overlays (ignore-errors (overlays-in beg end)))
-                (latex-overlays
-                 (cl-find-if (lambda (o) (eq (overlay-get o 'org-overlay-type) 'org-latex-overlay))
-                             overlays))
-                (image-overlays
-                 (cl-find-if (lambda (o) (overlay-get o 'org-image-overlay))
-                             overlays)))
-           ;; BUG This throws an error and ends execution
-           ;; (+org--toggle-inline-images-in-subtree beg end)
-           (if (or image-overlays latex-overlays)
-               (org-clear-latex-preview beg end)
-             (org--latex-preview-region beg end)))
-         (when (member "ATTACH" (org-get-tags nil t))
-           ;; HACK To enable marginalia annotations (and embark-act, which relies
-           ;; on the metadata marginalia sets), we either need to bind this-command
-           ;; to org-attach-open or call it with execute-extended-command
-           (let ((this-command #'org-attach-open))
-             (org-attach-open))))
+           (message "Updating table of contents")))
+         ;; (let* ((beg (if (org-before-first-heading-p)
+         ;;                 (line-beginning-position)
+         ;;               (save-excursion (org-back-to-heading) (point))))
+         ;;        (end (if (org-before-first-heading-p)
+         ;;                 (line-end-position)
+         ;;               (save-excursion (org-end-of-subtree) (point))))
+         ;;        (overlays (ignore-errors (overlays-in beg end)))
+         ;;        (latex-overlays
+         ;;         (cl-find-if (lambda (o) (eq (overlay-get o 'org-overlay-type) 'org-latex-overlay))
+         ;;                     overlays))
+         ;;        (image-overlays
+         ;;         (cl-find-if (lambda (o) (overlay-get o 'org-image-overlay))
+         ;;                     overlays)))
+         ;;   ;; BUG This throws an error and ends execution
+         ;;   (+org--toggle-inline-images-in-subtree beg end)
+         ;;   ;; This throws an error about window system frames on terminal
+         ;;   (if (or image-overlays latex-overlays)
+         ;;       (org-clear-latex-preview beg end)
+         ;;     (org--latex-preview-region beg end)))
 
         (`clock (org-clock-update-time-maybe))
 
