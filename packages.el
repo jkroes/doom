@@ -68,7 +68,6 @@
 (package! popon
   :recipe (:repo "https://codeberg.org/akib/emacs-popon.git"))
 
-;; org
 (package! org-transclusion)
 
 ;; From old config
