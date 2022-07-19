@@ -70,6 +70,8 @@
 
 (package! org-transclusion)
 (package! citar-embark)
+;; (package! zotxt-emacs
+;;           :recipe (:host github :repo "egh/zotxt-emacs"))
 
 
 ;; From old config
