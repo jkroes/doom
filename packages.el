@@ -69,6 +69,8 @@
   :recipe (:repo "https://codeberg.org/akib/emacs-popon.git"))
 
 (package! org-transclusion)
+(package! citar-embark)
+
 
 ;; From old config
 ;; (package! outline-minor-faces)

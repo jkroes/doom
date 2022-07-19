@@ -191,14 +191,6 @@ https://emacs.stackexchange.com/questions/31908/remove-mark-from-ring-in-org-mod
     (message "No previous org-mark.")))
 
 
-;; C-RET already enters insert state, so make M-RET and C-M-RET do the same
-;; We eschew evil-org-define-(b|e)ol-command so that different behavior can
-;; be used at beg and end of line
-(advice-add 'org-meta-return :after #'evil-insert-state)
-(advice-add 'org-insert-subheading
-            :after (lambda (&rest _) evil-insert-state))
-
-
 ;; TODO Don't treat visibility cycling (?) as undo step
 ;; TODO M-RET makes it impossible to tab to show drawers with tab
 ;; (can still use org-show-subtree). Need to undo outline-flag-region

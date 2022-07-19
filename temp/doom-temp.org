@@ -1081,8 +1081,6 @@ link on the current line as the link description text."
 ;;  "S" 'org-sort-entries
 ;;  )
 
-(setq org-directory (expand-file-name "org/" doom-private-dir))
-
 ;; (after! org
 ;;   (setq org-attach-method 'mv))
 

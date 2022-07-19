@@ -59,8 +59,7 @@
 
   ;;; general
 
-(setq org-directory (expand-file-name "org" user-emacs-directory)
-      org-id-locations-file (expand-file-name ".org-id-locations" org-directory)
+(setq
       ;; TODO This is an ad-hoc list I created and should be modified with time
       org-structure-template-alist '(("e" . "src emacs-lisp ")
                                      ("r" . "src R :tangle no")

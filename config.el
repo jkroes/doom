@@ -180,19 +180,6 @@ module."
            'no-dirs))
          (file-B (replace-regexp-in-string (car doom-modules-dirs) doom-modules-dir file-A)))
     (ediff-files-internal file-A file-B nil nil 'ediff-files)))
-;; TODO Delete this after migrating .doom.d.bck modules
-(defun doom/ediff2 ()
-  (interactive)
-  (let* ((file-A
-          (ediff-read-file-name
-	   "Private module file"
-           (if (string-prefix-p (car doom-modules-dirs) default-directory)
-               default-directory
-             (car doom-modules-dirs))
-           (ediff-get-default-file-name)
-           'no-dirs))
-         (file-B (replace-regexp-in-string (car doom-modules-dirs) "/Users/jkroes/.doom.d.bck/modules/" file-A)))
-    (ediff-files-internal file-A file-B nil nil 'ediff-files)))
 
 (setq mac-pass-command-to-system nil ; So C-h doesn't hide Emacs
       mac-pass-control-to-system nil
@@ -459,6 +446,9 @@ module."
       (lambda ()
         (not (member org-attach-auto-tag (org-get-tags nil t)))))
 
+;; Make org-directory available early
+(setq org-directory "~/org")
+
 ;; Use org-directory as org-roam-directory
 (setq org-roam-directory "")
 (after! org-roam
@@ -672,10 +662,6 @@ This ignores files ending in \"~\"."
 ;; 'file. But it might not matter since org-insert-link currently
 ;; completes attachment links. Links resolve recursively, but
 
-;; TODO Check out superlinks
-
-;; TODO Set up biblio module
-
 ;; Note about keybindings in -nw (terminal) mode:
 ;; On MacOS, I configure Emacs to translate the CMD to CTRL key. For whatever
 ;; reason--perhaps because CMD isn't a recognized key for terminal input--
@@ -701,3 +687,145 @@ This ignores files ending in \"~\"."
 
 ;; TODO evil-search no longer searches folded org headings
 ;; See https://www.reddit.com/r/orgmode/comments/vs0ew0/search_on_buffer_with_folded_headings
+
+;;; biblio
+
+;; Background reading:
+;; https://orgmode.org/manual/Citation-handling.html
+;; https://blog.tecosaur.com/tmio/2021-07-31-citations.html#fn.3
+
+(use-package! citar-embark
+  :after citar embark
+  :no-require
+  :config (citar-embark-mode))
+
+;; Bibliography file locations
+(setq! citar-bibliography
+       (cond (IS-WSL '("/mnt/c/Users/jkroes/Documents/org-cite.bib"))
+             (t (list (expand-file-name "org-cite.bib" org-directory)))))
+
+;; Use icons to indicate resources associated with a bib entry
+(setq citar-symbols
+      `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
+        (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
+        (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " ")))
+
+;; citar templates for displaying candidates and create notes
+(after! citar
+  (setf (alist-get 'main citar-templates)
+        "${date year issued:4} ${title:80}")
+  (setf (alist-get 'suffix citar-templates)
+        " ${tags keywords:*}")
+  (setf (alist-get 'note citar-templates)
+        "${title}"))
+
+;; Location of notes associated with bib entries
+(setq citar-notes-paths (list (expand-file-name "cite" org-directory)))
+
+;; How to open files (as opposed to notes or URLs)
+(setq citar-file-open-function
+      (cond (IS-WSL #'open-in-windows)
+            (t #'citar-file-open-external)))
+
+;; Function for creating new note (see also citar-templates)
+(setq citar-note-format-function #'citar-org-format-note-no-bib)
+(defun citar-org-format-note-no-bib (key entry)
+  "`citar-org-format-note-default' without
+#+print_bibliography"
+  (let* ((template (citar--get-template 'note))
+         (note-meta (when template
+                      (citar-format--entry template entry)))
+         (filepath (expand-file-name
+                    (concat key ".org")
+                    (car citar-notes-paths)))
+         (buffer (find-file filepath)))
+    (with-current-buffer buffer
+      ;; This just overrides other template insertion.
+      (erase-buffer)
+      (citar-org-roam-make-preamble key)
+      (insert "#+title: ")
+      (when template (insert note-meta))
+      (insert "\n\n")
+      (when (fboundp 'evil-insert)
+        (evil-insert 1)))))
+
+;; Make embark-act recognize org-cite keys at point in roam_refs
+(after! citar
+  (setf (alist-get
+         'key-at-point
+         (alist-get '(org-mode) citar-major-mode-functions nil nil #'equal))
+        #'aj/citar-org-key-at-point))
+(defun aj/citar-org-key-at-point ()
+  "Return key at point for org-cite citation-reference or citekey."
+  (or (citar-org-key-at-point)
+      (when (org-in-regexp org-element-citation-key-re)
+        (cons (substring (match-string 0) 1)
+              (cons (match-beginning 0)
+                    (match-end 0))))))
+
+;; citar-open first prompts for a key, then for a resource (file, URL, or note).
+;; Here we skip the key-prompt by using the key stored in ROAM_REFS of the
+;; current note
+(defun org-roam-open-refs ()
+  "Open resources associated with citation key, or open URL, from ROAM_REFS
+of current note"
+  (interactive)
+  (save-excursion
+    (goto-char (org-roam-node-point (org-roam-node-at-point 'assert)))
+    (when-let* ((p (org-entry-get (point) "ROAM_REFS"))
+                (refs (when p (split-string-and-unquote p)))
+                (user-error "No ROAM_REFS found"))
+      ;; Open ref citation keys
+      (when-let ((oc-cites
+                  (seq-map
+                   (lambda (ref) (substring ref 1))
+                   (seq-filter (apply-partially #'string-prefix-p "@") refs))))
+        (citar-open-from-note oc-cites))
+      ;; Open ref URLs
+      (dolist (ref refs)
+        (unless (string-prefix-p "@" ref)
+          (browse-url ref))))))
+(defun citar-open-from-note (keys)
+  "Like citar-open but excludes notes from candidates."
+  (interactive (list (citar-select-refs)))
+  (if-let ((selected (let* ((actions (bound-and-true-p embark-default-action-overrides))
+                            (embark-default-action-overrides `((t . ,#'citar--open-resource) . ,actions)))
+                       (citar--select-resource keys :files t :links t
+                                               :always-prompt citar-open-prompt))))
+      (citar--open-resource (cdr selected) (car selected))
+    (error "No associated resources: %s" keys)))
+
+;; Translate filepaths in a bib file generated on Windows for WSL Emacs
+;; (with-eval-after-load 'citar-file
+;;   (add-to-list 'citar-file-parser-functions 'citar-file-parser-wsl))
+(defun citar-file-parser-wsl (dirs file-field)
+  ;; To avoid errors with e.g. citar-refresh when wslpath is not a real command.
+  ;; TODO This is hacky and needs to be fixed eventually
+  (when (eq system-type 'gnu/linux)
+    (let* ((files (split-string file-field ";"))
+           (wsl-files (mapcar #'wslify-bib-path files)))
+      (delete-dups
+       (seq-mapcat
+        (lambda (dir)
+          (mapcar
+           (lambda (file)
+             (expand-file-name file dir)) wsl-files))
+        dirs)))))
+(defun wslify-bib-path (file)
+  "For WSL, convert paths assumed to be Windows files to WSL paths. Otherwise,
+return the path"
+  (if IS-WSL
+      (substring
+       (shell-command-to-string
+        (format
+         "wslpath '%s'"
+         (replace-regexp-in-string
+          "\\\\\\\\"
+          "/"
+          (replace-regexp-in-string "\\\\:" ":" file))))
+       0 -1)
+    file))
+
+;; citar-insert-citation
+;; citar-insert-preset (potentially set to M-b on minibuffer-local-map)
+;; citar-at-point, embark-dwim, citar-default-action
