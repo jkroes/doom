@@ -510,13 +510,10 @@ comments underneath, and display the buffer"
     (org-mode))
   (pop-to-buffer buf))
 
-;; TODO This only works on MacOS
 (after! dnd
   (add-to-list 'dnd-protocol-alist
                (cons "zotero://" #'dnd-transform-zotero)))
-;; For some reason I couldn't redefine xterm-paste, and I
-;; didn't want to use advice while writing the code
-(global-set-key (kbd "<xterm-paste>") #'my/xterm-paste)
+(advice-add 'xterm-paste :override 'my/xterm-paste)
 (defun my/xterm-paste (event)
   (interactive "e")
   (unless (eq (car-safe event) 'xterm-paste)
