@@ -510,22 +510,42 @@ comments underneath, and display the buffer"
     (org-mode))
   (pop-to-buffer buf))
 
+;; TODO This only works on MacOS
 (after! dnd
   (add-to-list 'dnd-protocol-alist
                (cons "zotero://" #'dnd-transform-zotero)))
-(defun dnd-transform-zotero (url _action)
+;; For some reason I couldn't redefine xterm-paste, and I
+;; didn't want to use advice while writing the code
+(global-set-key (kbd "<xterm-paste>") #'my/xterm-paste)
+(defun my/xterm-paste (event)
+  (interactive "e")
+  (unless (eq (car-safe event) 'xterm-paste)
+    (error "xterm-paste must be found to xterm-paste event"))
+  (let ((pasted-text (dnd-transform-zotero (nth 1 event) 'return)))
+    (if xterm-store-paste-on-kill-ring
+        ;; Put the text onto the kill ring and then insert it into the
+        ;; buffer.
+        (let ((interprogram-paste-function (lambda () pasted-text)))
+          (yank))
+      ;; Insert the text without putting it onto the kill ring.
+      (push-mark)
+      (insert-for-yank pasted-text))))
+(defun dnd-transform-zotero (url action)
   "Transform Zotero highlight annotations that are dragged to Emacs from the PDF
 viewer into org-mode links. These annotations consist of highlighted text
 surrounded by Unicode quotes and followed by two links in markdown format:
 zotero select and zotero open-pdf."
-  (string-match "^\u201C\\(.*\\)\u201D.*(\\[pdf](\\(.*\\))) ?\\(.*\\)" url)
-  (insert (replace-match "\n[[\\2][\\1]]\n" nil nil url))
-  (let ((comment (replace-match "\\3" nil nil url)))
-    (unless (string-empty-p comment)
-      (insert (concat "\n" comment "\n")))))
-
-
-
+  (if (string-match "^\u201C\\(.*\\)\u201D.*(\\[pdf](\\(.*\\))) ?\\(.*\\)" url)
+      (progn
+        (let* ((annot-link (replace-match "\n[[\\2][\\1]]\n" nil nil url))
+               (comment (replace-match "\\3" nil nil url))
+               (all (if (string-empty-p comment)
+                        annot-link
+                      (concat annot-link "\n" comment "\n"))))
+          (if (eq action 'return)
+              all
+            (insert all))))
+    url))
 
 
 ;; Setup within WSL Ubuntu (based on zotero.org/support/installation
@@ -729,14 +749,15 @@ This ignores files ending in \"~\"."
 
 ;;(setq org-cite-csl-styles-dir "~/Zotero/styles")
 (setq! citar-bibliography
-       (cond (IS-WSL '("/mnt/c/Users/jkroes/Documents/org-cite.bib"))
+       (cond (IS-WSL '("/mnt/d/org-cite.bib"))
              (t (list (expand-file-name "org-cite.bib" org-directory)))))
 
 ;; Use icons to indicate resources associated with a bib entry
-(setq citar-symbols
-      `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
-        (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
-        (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " ")))
+(when (display-graphic-p)
+       (setq citar-symbols
+             `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
+               (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
+               (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " "))))
 
 ;; citar templates for displaying candidates and create notes
 (after! citar
@@ -839,3 +860,31 @@ of current note"
 
 ;; NOTE This works on MacOS but won't work in WSL
 ;;(use-package! zotxt)
+
+;; Convert Windows paths to WSL
+(after! citar-file
+  ;; Convert Windows to WSL paths when opening PDFs
+  (add-to-list 'citar-file-parser-functions 'citar-file--parser-default-wsl))
+(defun citar-file--parser-default-wsl (file-field)
+  "Split FILE-FIELD by `;'."
+  (mapcar
+   #'wslify-bib-path
+   (seq-remove
+    #'string-empty-p
+    (mapcar
+     #'string-trim
+     (citar-file--split-escaped-string file-field ?\;)))))
+(defun wslify-bib-path (file)
+  "For WSL, convert paths assumed to be Windows files to WSL paths. Otherwise,
+return the path"
+  (if (eq system-type 'gnu/linux)
+      (substring
+       (shell-command-to-string
+        (format
+         "wslpath '%s'"
+         (replace-regexp-in-string
+          "\\\\\\\\"
+          "/"
+          (replace-regexp-in-string "\\\\:" ":" file))))
+       0 -1)
+    file))
