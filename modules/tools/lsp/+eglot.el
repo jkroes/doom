@@ -11,8 +11,9 @@
         ;; NOTE We disable eglot-auto-display-help-buffer because :select t in
         ;;      its popup rule causes eglot to steal focus too often.
         eglot-auto-display-help-buffer nil)
-  (when (featurep! :checkers syntax)
-    (setq eglot-stay-out-of '(flymake)))
+  (setq eglot-stay-out-of '(flymake))
+  ;; (when (featurep! :checkers syntax)
+  ;;   (setq eglot-stay-out-of '(flymake)))
 
   :config
   (set-popup-rule! "^\\*eglot-help" :size 0.15 :quit t :select t)

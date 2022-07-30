@@ -246,9 +246,37 @@ module."
 ;; (map! :mode python-mode
 ;;       :gin "C-RET" #'+eval/line-or-region
 ;;       :gin "<C-return>" #'+eval/line-or-region)
-;; (map! :mode ess-r-mode
-;;       :gin "C-RET" #'ess-eval-region-line-and-step
-;;       :gin "<C-return>" #'ess-eval-region-or-line-and-step)
+(map! :mode ess-r-mode
+      :gin "C-RET" #'ess-eval-line-and-step
+      :gin "<C-return>" #'ess-eval-line-and-step
+      :gin "C-j" #'ess-eval-line-and-step)
+
+;; (after! ess-inf
+;;   (defun inferior-ess-strip-ctrl-g (string)
+;;     "Strip leading `^G' character.
+;; If STRING starts with a `^G', ring the Emacs bell and strip it.
+;; Depending on the value of `visible-bell', either the frame will
+;; flash or you'll hear a beep.  Taken from octave-mod.el."
+;;     (setq string (inferior-ess-strip-plus string))
+;;     (setq string (inferior-ess-strip-prompts string))
+;;     (if (string-match "^\a" string)
+;;         (progn
+;;           (ding)
+;;           (setq string (substring string 1))))
+;;     string))
+;; (defun inferior-ess-strip-plus (string)
+;;   "Remove leading plus signs from single-line process output.
+;; E.g., when evaluating a function."
+;;   (if (string-match (format "\\`\\(\\+ \\)+%s\\'" inferior-ess-primary-prompt) string)
+;;       inferior-ess-primary-prompt
+;;     string))
+;; (defun inferior-ess-strip-prompts (string)
+;;   "Remove repeated ess prompt from the start of each line in process output.
+;; E.g., when evaluating a paragraph that consists of library statements for libraries
+;; that don't exist and throw an error."
+;;   (while (string-match (format "^\\(\\(%s\\)\\{2,\\}\\).*" inferior-ess-primary-prompt) string)
+;;     (setq string (replace-match inferior-ess-primary-prompt nil nil string 1)))
+;;   string)
 
 ;; Free up "q" in lots of modes
 (general-unbind evil-normal-state-map "q")
@@ -306,7 +334,7 @@ module."
   :init
   (setq corfu-cycle nil
         corfu-auto t
-        corfu-auto-prefix 1
+        corfu-auto-prefix 2
         ;; Keep corfu alive without a match after `corfu-insert-separator'
         corfu-quit-no-match 'separator
         ;; After `corfu-insert-separator', do not quit at word boundary
@@ -314,7 +342,7 @@ module."
         corfu-quit-at-boundary 'separator
         ;; What to insert by `corfu-insert-separator'
         corfu-separator ?\s
-        corfu-on-exact-match nil ; Don't insert; if you want org-roam to complete to a link, press tab
+        corfu-on-exact-match 'quit
         corfu-echo-documentation nil)
   (setq tab-always-indent 'complete)
   (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
@@ -696,9 +724,6 @@ This ignores files ending in \"~\"."
 ;; TODO Bookmark annotations
 ;; Auto-save all changes to bookmark list
 (setq bookmark-save-flag 0)
-;; Bookmark previews
-(after! consult
-  (consult-customize consult-bookmark :preview-key (kbd (if (display-graphic-p) "C-SPC" "C-@"))))
 
 ;; TODO I can remove my changes to org-attach functions related to
 ;; resolving links recursively if I set org-attach-store-link-p to
@@ -885,3 +910,135 @@ return the path"
           (replace-regexp-in-string "\\\\:" ":" file))))
        0 -1)
     file))
+
+;; TODO Bind to something. This is a dumb replacement for counsel-org-entity,
+;; which has actions to insert the different forms an org entity takes (name,
+;; latex, html, and utf-8). This function only inserts the latex version, which
+;; displays as utf-8 when `org-pretty-entities'
+(defun insert-org-entity ()
+  (interactive)
+  (let* ((str (completing-read
+               "Entity: "
+               (cl-loop for element in (append org-entities org-entities-user)
+                        unless (stringp element)
+                        collect (cons
+                                 (format "%s | %s | %s"
+                                         (cl-first element)    ; name
+                                         (cl-second element)   ; latex
+                                         (cl-seventh element)) ; utf-8
+                                 element))))
+         (latex (nth 1 (split-string str "|" t " "))))
+    (insert latex)))
+
+;; TODO Come up with an automated solution for opening certain files externally for
+;; commands like find-file
+(defun my/consult-file-externally (file)
+  "Open FILE externally using the default application of the system."
+  (interactive "fOpen externally: ")
+  (recentf-add-file file) ; I noticed external files aren't added to recentf
+  (recentf-save-list)
+  (recentf-load-list)
+  (if (and (eq system-type 'windows-nt)
+           (fboundp 'w32-shell-execute))
+      (w32-shell-execute "open" file)
+    (if IS-WSL
+        (open-in-windows file)
+      (call-process (pcase system-type
+                      ('darwin "open")
+                      ('cygwin "cygstart")
+                      (_ "xdg-open"))
+                    nil 0 nil
+                    (expand-file-name file)))))
+(advice-add #'consult-file-externally :override #'my/consult-file-externally)
+
+
+(setq ess-R-font-lock-keywords
+  '((ess-R-fl-keyword:keywords   . t)
+    (ess-R-fl-keyword:constants  . t)
+    (ess-R-fl-keyword:modifiers  . t)
+    (ess-R-fl-keyword:fun-defs   . t)
+    (ess-R-fl-keyword:assign-ops . t)
+    (ess-R-fl-keyword:%op%       . t)
+    (ess-fl-keyword:fun-calls . t)
+    (ess-fl-keyword:numbers . t)
+    (ess-fl-keyword:operators . t)
+    (ess-fl-keyword:delimiters . t)
+    (ess-fl-keyword:= . t)
+    (ess-R-fl-keyword:F&T . t)))
+
+(map! :map evil-window-map
+      "a" #'ace-window)
+
+
+;; Not all attributes can be changed on terminal; e.g., height is not meaningful
+;; (custom-set-faces!
+;;   '(aw-key-face
+;;     :foreground "white" :background "red"
+;;     :weight bold :height 500 :box (:line-width 10 :color "red")))
+
+(setq eglot-ignored-server-capabilities
+      '(:hoverProvider
+        :documentFormattingProvider
+        :documentRangeFormattingProvider
+        :documentOnTypeFormattingProvider))
+
+;; TODO Add smart whitespace handling
+(defun ess-r-toggle-pipe ()
+  (interactive)
+  (evil-emacs-state)
+  (save-excursion
+    (end-of-line)
+    (if (re-search-backward " %>%" (line-beginning-position) t)
+        (kill-line)
+      (insert " %>%")))
+  (evil-exit-emacs-state))
+
+(defun ess-eval-symbol-at-point (&optional vis)
+  (interactive "P")
+  (let* ((bounds (bounds-of-thing-at-point 'symbol))
+         (beg (car bounds))
+         (end (cdr bounds))
+         (msg (format "Loading symbol: %s" (thing-at-point 'symbol))))
+    (ess-eval-region beg end vis msg)))
+
+(map! (:map ess-mode-map
+       :localleader
+       "." #'ess-r-toggle-pipe
+       "s" #'ess-eval-symbol-at-point))
+
+(map! :when (not (display-graphic-p)) :map org-mode-map "C-j" #'org-insert-heading-respect-content)
+
+;; TODO Newlines randomly sent to inferior buffer when tracebug disabled
+;;https://github.com/emacs-ess/ESS/issues/973
+
+;; HACK Disable visual-line-mode only for prog-mode
+;;https://stackoverflow.com/questions/6837511/automatically-disable-a-global-minor-mode-for-a-specific-major-mode
+;; (global-visual-line-mode)
+;; (defun my/inhibit-visual-line-mode ()
+;;   (add-hook 'after-change-major-mode-hook
+;;             (lambda ()
+;;               (visual-line-mode -1)
+;;               (toggle-truncate-lines 1))
+;;             99 :local))
+;; (add-hook 'prog-mode-hook 'my/inhibit-visual-line-mode)
+;; NOTE The above disables visual-line-mode in e.g. pp-eval-last-sexp buffers,
+;; so simply wrapping popups is a better option
+;;(add-hook '+popup-buffer-mode-hook #'turn-on-visual-line-mode)
+(defun my/consult-recent-file ()
+  "Find recent file using `completing-read'.
+Exclude directories."
+  (interactive)
+  (find-file
+   (consult--read
+    (or (mapcar #'abbreviate-file-name
+                (seq-filter (lambda (x) (not (file-directory-p x))) recentf-list))
+        (user-error "No recent files, `recentf-mode' is %s"
+                    (if recentf-mode "on" "off")))
+    :prompt "Find recent file: "
+    :sort nil
+    :require-match t
+    :category 'file
+    :state (consult--file-preview)
+    :history 'file-name-history)))
+
+(advice-add #'consult-recent-file :override #'my/consult-recent-file)

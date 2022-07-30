@@ -1127,24 +1127,6 @@ link on the current line as the link description text."
           (org-babel-demarcate-block)))))
 
 
-;; TODO Bind to something. This is a dumb replacement for counsel-org-entity,
-;; which has actions to insert the different forms an org entity takes (name,
-;; latex, html, and utf-8). This function only inserts the latex version, which
-;; displays as utf-8 when `org-pretty-entities'
-(defun insert-org-entity ()
-  (interactive)
-  (let* ((str (completing-read
-               "Entity: "
-               (cl-loop for element in (append org-entities org-entities-user)
-                        unless (stringp element)
-                        collect (cons
-                                 (format "%s | %s | %s"
-                                         (cl-first element)    ; name
-                                         (cl-second element)   ; latex
-                                         (cl-seventh element)) ; utf-8
-                                 element))))
-         (latex (nth 1 (split-string str "|" t " "))))
-    (insert latex)))
 #+end_src
 
 ** org-super-agenda

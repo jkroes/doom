@@ -144,7 +144,8 @@ orderless."
         consult-async-min-input 2
         consult-async-refresh-delay  0.15
         consult-async-input-throttle 0.2
-        consult-async-input-debounce 0.1)
+        consult-async-input-debounce 0.1
+        consult-preview-key (if (display-graphic-p) (kbd "C-SPC") (kbd "C-@")))
   (when IS-MAC (setq consult-locate-args "mdfind"))
   (unless +vertico-consult-fd-args
     (setq +vertico-consult-fd-args

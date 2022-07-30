@@ -31,6 +31,7 @@
 ;; HACK org versions later than at least 9.5.1 result in an error
 ;; for org-dynamic-bullets--body-p. Seems there may have been
 ;; breaking changes to the org-element library.
+;; TODO Indentation on continuing lines is off. Related to this or to other changes in org-mode?
 (after! org-dynamic-bullets
   (defun org-dynamic-bullets--body-p ()
     "Does the current heading have text in its body? \"Body\" is

@@ -507,7 +507,7 @@ relative to `org-directory', unless it is an absolute path."
 (defun +org-init-attachments-h ()
   "Sets up org's attachment system."
   ;; NOTE You can also run org-attach-open, embark-act, @w (embark-copy-as-kill), any yank command
-  (setq org-attach-store-link-p 'attached
+  (setq org-attach-store-link-p 'file
         org-attach-use-inheritance nil)
 
   ;; Autoload all these commands that org-attach doesn't autoload itself

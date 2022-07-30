@@ -44,6 +44,9 @@ or ranger-mode buffers."
 in Windows."
   (interactive)
   (let ((marked-files (dired-get-marked-files)))
+    (mapc (lambda (f) (recentf-add-file f)) marked-files) ; I noticed external files aren't added to recentf
+    (recentf-save-list)
+    (recentf-load-list)
     (cond ((string-equal system-type "windows-nt")
            (mapc
             (lambda (f) (w32-shell-execute "open" (replace-regexp-in-string "/" "\\" f t t)) )

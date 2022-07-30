@@ -26,9 +26,12 @@
     (add-hook 'ess-mode-hook #'prettify-symbols-mode)) ; pretty ligatures
   (unless (featurep! :lang julia)
     (add-to-list 'auto-mode-alist '("\\.jl\\'" . ess-julia-mode)))
-  :config
-  (setq ess-offset-continued 'straight
-        ess-use-flymake (not (featurep! :checkers syntax))
+  ;; ess sets this to 1, so comments are doubled up like lisp. WTF.
+  (setq-hook! 'ess-r-mode-hook comment-add 0)
+  (setq ess-history-file nil
+        ess-offset-continued 'straight
+        ;;ess-use-flymake (not (featurep! :checkers syntax))
+        ess-use-flymake nil
         ess-nuke-trailing-whitespace-p t
         ess-style 'RStudio
         ess-history-directory (expand-file-name "ess-history/" doom-cache-dir)
@@ -37,6 +40,11 @@
         ess-ask-for-ess-directory nil
         ess-indent-with-fancy-comments nil
         ess-use-company nil
+        ;; Until ess fixes the display of output when ess-eval-visibly is
+        ;; 'nowait or nil (with ess-use-tracebug disabled), disable printing
+        ;; of evaluated R code entirely and just show the output.
+        ess-eval-visibly nil
+        ess-use-tracebug t
         ;; Prefer lsp to eldoc signatures for ess-r-mode. Better to have
         ;; barebones signatures for S3 generic functions like print and
         ;; data.frame, and some tidyverse functions like select(), than to
@@ -45,7 +53,7 @@
         ;; signatures.) Either way, enable only one. Otherwise, there are two
         ;; signatures.
         ess-use-eldoc (not (featurep! :tools lsp)))
-
+  :config
   (set-docsets! 'ess-r-mode "R")
 
   ;; NOTE: lsp-enable-snippet has no effect on ess-r-mode. Unclear if a bug or
@@ -112,6 +120,7 @@
         ;; TODO: Shouldn't this also be bound in the inferior buffer? I've
         ;; noticed those don't bind to localleader
         [tab]     #'ess-switch-to-inferior-or-script-buffer
+        "TAB"   #'ess-switch-to-inferior-or-script-buffer
         [backtab] #'ess-switch-process
         ;; REPL
         "B" #'ess-eval-buffer-and-go
