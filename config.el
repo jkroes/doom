@@ -388,15 +388,16 @@ module."
   (kbd "C-.")   #'corfu-last
   ;; This will shadow the binding to evil-escape in
   ;; ~/doom-emacs/modules/editor/evil/config.el
-  (kbd "C-g")   #'corfu-reset
+  (kbd "C-g")   #'corfu-abort
   (kbd "C-SPC") #'corfu-insert-separator
   (kbd "C-@") #'corfu-insert-separator ; For the terminal
   (kbd "C-h")   #'corfu-info-documentation ; Works with scroll-other-window(-down)
   [tab]         #'corfu-insert
   (kbd "TAB")   #'corfu-insert
   ;;(kbd "C-h")   #'corfu-doc-toggle
-  (kbd "M-p")   #'corfu-doc-scroll-down
-  (kbd "M-n")   #'corfu-doc-scroll-up)
+  ;; (kbd "M-p")   #'corfu-doc-scroll-down
+  ;; (kbd "M-n")   #'corfu-doc-scroll-up
+  )
 ;; TODO evil-org interferes with RET. This doesn't seem to be an issue in the
 ;; company module. See the fix for #1335 in company/config.el.
 ;; Elsewhere, unbinding RET when `corfu-preselect-first' is enabled allows us to
@@ -404,15 +405,13 @@ module."
 (after! corfu
   (define-key corfu-map (kbd "RET") nil))
 
-;; NOTE This has the side effect of quiting corfu rather than banishing a
-;; doc buffer created by `corfu-info-documentation' when it is called
-;; (defun corfu-abort ()
-;;   "Undo changes made while corfu was active and quit. Takes one keystroke compared
-;; to two to three for corfu-reset but resets changes all at once rather than
-;; incrementally."
-;;   (interactive)
-;;   (cancel-change-group corfu--change-group)
-;;   (corfu-quit))
+(defun corfu-abort ()
+  "Undo changes made while corfu was active and quit. Takes one keystroke compared
+to two to three for corfu-reset but resets changes all at once rather than
+incrementally."
+  (interactive)
+  (cancel-change-group corfu--change-group)
+  (corfu-quit))
 
 ;; HACK `corfu-info-documentation' spawns a help buffer, which the popup module
 ;; catches, but the two are not yet compatible. `scroll-other-window' will
