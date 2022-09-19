@@ -218,6 +218,7 @@ module."
       comint-use-prompt-regexp nil ; nil enables evil motions
       inhibit-field-text-motion nil ; Read-only prompt acts as beginning of line for motions
       comint-scroll-to-bottom-on-input t ; Prevent modifying outside prompt line
+      comint-scroll-to-bottom-on-output t
       comint-scroll-show-maximum-output t)
 
 ;; See core-keybinds.el for additional settings
@@ -247,9 +248,9 @@ module."
 ;;       :gin "C-RET" #'+eval/line-or-region
 ;;       :gin "<C-return>" #'+eval/line-or-region)
 (map! :mode ess-r-mode
-      :gin "C-RET" #'ess-eval-line-and-step
-      :gin "<C-return>" #'ess-eval-line-and-step
-      :gin "C-j" #'ess-eval-line-and-step)
+      :gin "C-RET" #'ess-eval-paragraph-and-step
+      :gin "<C-return>" #'ess-eval-paragraph-and-step
+      )
 
 ;; (after! ess-inf
 ;;   (defun inferior-ess-strip-ctrl-g (string)
@@ -491,14 +492,14 @@ incrementally."
 
 ;; See https://retorque.re/zotero-better-bibtex/exporting/pull/
 ;; Right click a Zotero collection and select "Download Betterbibtex export" to get the URL
-;; TODO This doesn't work on WSL because firewall rules must be disabled to allow WSL to connect to Windows
+;; TODO This doesn't work on WSL because firewall rules must be disabled to allow WSL to connect to Windows,
+;; and that requires admin approval
 (defun update-bib-file ()
   (interactive)
   (let ((root_url (shell-quote-argument
                    ;; Use $(hostname).local in lieu of the IP for localhost on WSL
                    "http://127.0.0.1:23119/better-bibtex/export/collection?/1/org-cite.biblatex"))) ; &exportNotes=true
     (shell-command (format "wget %s -O %s" root_url citar-bibliography))))
-
 
 ;; Set extensions.zotero.annotations.noteTemplates.title to "annotations"
 ;; (without the quotes). Delete the entry for
@@ -970,11 +971,6 @@ return the path"
 
 
 ;; Not all attributes can be changed on terminal; e.g., height is not meaningful
-;; (custom-set-faces!
-;;   '(aw-key-face
-;;     :foreground "white" :background "red"
-;;     :weight bold :height 500 :box (:line-width 10 :color "red")))
-
 (setq eglot-ignored-server-capabilities
       '(:hoverProvider
         :documentFormattingProvider
@@ -1041,3 +1037,30 @@ Exclude directories."
     :history 'file-name-history)))
 
 (advice-add #'consult-recent-file :override #'my/consult-recent-file)
+
+;; Preview lines in current buffer
+(after! consult
+  (consult-customize +default/search-buffer :preview-key 'any))
+
+;; TODO This might cause unanticipated issues.
+;; Attempt to disable messages only while in minibuffer
+(setq-hook! 'minibuffer-mode-hook inhibit-message t)
+
+;; TODO evilify vundo
+(use-package! vundo)
+
+;; How to search-replace in a project:
+;; SPC s d
+;; Search text
+;; C-c C-e (embark-export)
+;; Search replace in export buffer
+;; C-c C-c (wgrep-finish-edit)
+
+(map! :leader
+      "<backspace>" #'ace-window
+      "DEL" #'ace-window)
+(custom-set-faces!
+  '(aw-leading-char-face
+    :foreground "white" :background "red" :height 500))
+
+(map! :leader ";" #'execute-extended-command)
