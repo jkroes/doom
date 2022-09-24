@@ -1041,3 +1041,35 @@ Exclude directories."
     :history 'file-name-history)))
 
 (advice-add #'consult-recent-file :override #'my/consult-recent-file)
+
+;; org-store-link when within file in git repo
+;; Or org-git-insert-link-interactively
+;; TODO Learn how to use magit to checkout a file in a revision so that you can
+;; use org-store-link on it
+;; NOTE Check (org-store-link-functions) to see whether it might be shadowing
+;; other possible links to be stored.
+;; NOTE Contrary to the docs, org-store-link does store line number!
+;; TODO See also magit/orgit
+(require 'ol-git-link)
+
+(defun my/org-git-open-file-internal (gitdir object)
+  (let* ((sha (org-git-blob-sha gitdir object))
+         (tmpdir (concat temporary-file-directory "org-git-" sha))
+         (filename (org-git-link-filename object))
+         ;; HACK On MacOS, /var (tmpdir) is a symlink to /private/var. This
+         ;; breaks this function b/c get-file-buffer requires the exact path
+         (tmpfile (file-truename (expand-file-name filename tmpdir))))
+    (unless (file-readable-p tmpfile)
+      (make-directory tmpdir)
+      (with-temp-file tmpfile
+        (org-git-show gitdir object (current-buffer))))
+    (org-open-file tmpfile)
+    (set-buffer (get-file-buffer tmpfile))
+    (setq buffer-read-only t)))
+(advice-add 'org-git-open-file-internal :override 'my/org-git-open-file-internal)
+
+;; TODO Modify orgit-rev-store-1 to store links to magit revision buffers
+;; with file filters and diff args and orgit-rev-open to open them. See
+;; diff args in the magit manual, magit-diff-toggle-file-filter, and
+;; orgit-rev-open (args passed to magit-revision-setup-buffer)
+(use-package! ledger-mode)

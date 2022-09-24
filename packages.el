@@ -73,6 +73,7 @@
 ;; (package! zotxt-emacs
 ;;           :recipe (:host github :repo "egh/zotxt-emacs"))
 
+(package! ledger-mode)
 
 ;; From old config
 ;; (package! outline-minor-faces)
