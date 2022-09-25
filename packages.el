@@ -84,3 +84,6 @@
 ;; (package! org-super-agenda)
 ;; (package! vulpea)
 ;; (package! fira-code-mode)
+
+(package! vundo
+  :recipe (:host github :repo "casouri/vundo"))
