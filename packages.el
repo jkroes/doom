@@ -69,7 +69,6 @@
   :recipe (:repo "https://codeberg.org/akib/emacs-popon.git"))
 
 (package! org-transclusion)
-(package! citar-embark)
 ;; (package! zotxt-emacs
 ;;           :recipe (:host github :repo "egh/zotxt-emacs"))
 

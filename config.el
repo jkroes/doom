@@ -762,39 +762,15 @@ This ignores files ending in \"~\"."
 ;; https://orgmode.org/manual/Citation-handling.html
 ;; https://blog.tecosaur.com/tmio/2021-07-31-citations.html#fn.3
 
-(use-package! citar-embark
-  :after citar embark
-  :no-require
-  :config (citar-embark-mode))
-
 ;; Bibliography file locations
-
 ;;(setq org-cite-csl-styles-dir "~/Zotero/styles")
 (setq! citar-bibliography
        (cond (IS-WSL '("/mnt/d/org-cite.bib"))
              (t (list (expand-file-name "org-cite.bib" org-directory)))))
 
-;; Use icons to indicate resources associated with a bib entry
-(when (display-graphic-p)
-       (setq citar-symbols
-             `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
-               (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
-               (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " "))))
-
-;; citar templates for displaying candidates and create notes
-(after! citar
-  (setf (alist-get 'main citar-templates)
-        "${date year issued:4} ${title:80}")
-  (setf (alist-get 'suffix citar-templates)
-        " ${tags keywords:*}")
-  (setf (alist-get 'note citar-templates)
-        "${title}"))
-
 ;; Location of notes associated with bib entries
 (setq citar-notes-paths (list (expand-file-name "cite" org-directory)))
 
-;; Function for creating new note (see also citar-templates)
-(setq citar-note-format-function #'citar-org-format-note-no-bib)
 (defun citar-org-format-note-no-bib (key entry)
   "`citar-org-format-note-default' without
 #+print_bibliography"
