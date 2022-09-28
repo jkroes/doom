@@ -153,8 +153,31 @@ we have to clean it up ourselves."
        ((bound-and-true-p ido-mode)
         (ranger-find-file (ido-read-file-name prompt)))
        (t
-        (ranger-find-file (read-file-name prompt)))))))
+        (ranger-find-file (read-file-name prompt))))))
 
+  (defadvice! org-attach-ranger-to-subtree (files)
+    "Enable org-attach-dired-to-subtree for ranger-mode"
+    :override #'org-attach-dired-to-subtree
+    (interactive
+     (list (dired-get-marked-files)))
+    ;; HACK Makes this work with ranger
+    (unless (memq major-mode '(dired-mode ranger-mode))
+      (user-error "This command must be triggered in a `dired' or `ranger' buffer"))
+    (let ((start-win (selected-window))
+          (other-win
+           (get-window-with-predicate
+            (lambda (window)
+              (with-current-buffer (window-buffer window)
+                (eq major-mode 'org-mode))))))
+      (unless other-win
+        (user-error
+         "Can't attach to subtree.  No window displaying an Org buffer"))
+      (select-window other-win)
+      (dolist (file files)
+        (org-attach-attach file))
+      (select-window start-win)
+      (when (eq 'mv org-attach-method)
+        (revert-buffer)))))
 
 (use-package! all-the-icons-dired
   :when (featurep! +icons)

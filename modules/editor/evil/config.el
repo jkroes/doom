@@ -557,6 +557,7 @@ directives. By default, this only recognizes C directives.")
        "K"       #'+evil/window-move-up
        "L"       #'+evil/window-move-right
        "C-S-w"   #'ace-swap-window
+       "a"       #'ace-window
        ;; Window undo/redo
        (:prefix "m"
         "m"       #'doom/window-maximize-buffer

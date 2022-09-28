@@ -261,8 +261,10 @@
 ;;; <leader>
 
 (map! :leader
-      :desc "Eval expression"       ";"    #'pp-eval-expression
-      :desc "M-x"                   ":"    #'execute-extended-command
+      "<backspace>" #'ace-window
+      "DEL" #'ace-window
+      :desc "M-x"                   ";"    #'execute-extended-command
+      :desc "Eval expression"       ":"    #'pp-eval-expression
       :desc "Pop up scratch buffer" "x"    #'doom/open-scratch-buffer
       :desc "Org Capture"           "X"    #'org-capture
       ;; C-u is used by evil
@@ -505,6 +507,7 @@
 
        :desc "Find file in notes"           "f" #'+default/find-in-notes
        :desc "Browse notes"                 "F" #'+default/browse-notes
+       :desc "Import notes"                 "i" #'import-zotero-annotations-from-note
        :desc "Org store link"               "l" #'org-store-link
        :desc "Tags search"                  "m" #'org-tags-view
        :desc "Org capture"                  "n" #'org-capture

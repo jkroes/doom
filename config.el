@@ -35,9 +35,9 @@
 ;; `load-theme' function. This is the default:
 (setq doom-theme 'doom-one)
 
-;; This determines the style of line numbers in effect. If set to `nil', line
-;; numbers are disabled. For relative line numbers, set this to `relative'.
-(setq display-line-numbers-type t)
+;; Relative numbering of lines around current line, which continues to show
+;; absolute line number. Enables easier evil navigation.
+(setq display-line-numbers-type 'relative)
 
 ;; Whenever you reconfigure a package, make sure to wrap your config in an
 ;; `after!' block, otherwise Doom's defaults may override your settings. E.g.
@@ -249,8 +249,7 @@ module."
 ;;       :gin "<C-return>" #'+eval/line-or-region)
 (map! :mode ess-r-mode
       :gin "C-RET" #'ess-eval-paragraph-and-step
-      :gin "<C-return>" #'ess-eval-paragraph-and-step
-      )
+      :gin "<C-return>" #'ess-eval-paragraph-and-step)
 
 ;; (after! ess-inf
 ;;   (defun inferior-ess-strip-ctrl-g (string)
@@ -468,225 +467,15 @@ incrementally."
 
 
 ;;; notes
+:PROPERTIES:
+:END:
 
-;; Exclude ATTACH tags from org-roam database
-(setq org-roam-db-node-include-function
-      (lambda ()
-        (not (member org-attach-auto-tag (org-get-tags nil t)))))
-
-;; Make org-directory available early
-(setq org-directory "~/org")
-
-;; Use org-directory as org-roam-directory
-(setq org-roam-directory "")
-(after! org-roam
-  ;; Since doom already displays subdirectories kind of like tags in org-roam-node-find,
-  ;; why not make capturing to a subdirectory painless?
-  (setq org-roam-capture-templates nil)
-  (add-to-list 'org-roam-capture-templates
-               '("d" "default" plain "%?"
-                 :target (file+head
-                          "%(read-directory-name \"path: \" org-roam-directory)/%<%Y%m%d%H%M%S>-${slug}.org"
-                          "#+title: ${title}\n")
-                 :unnarrowed t)))
-
-;; See https://retorque.re/zotero-better-bibtex/exporting/pull/
-;; Right click a Zotero collection and select "Download Betterbibtex export" to get the URL
-;; TODO This doesn't work on WSL because firewall rules must be disabled to allow WSL to connect to Windows,
-;; and that requires admin approval
-(defun update-bib-file ()
-  (interactive)
-  (let ((root_url (shell-quote-argument
-                   ;; Use $(hostname).local in lieu of the IP for localhost on WSL
-                   "http://127.0.0.1:23119/better-bibtex/export/collection?/1/org-cite.biblatex"))) ; &exportNotes=true
-    (shell-command (format "wget %s -O %s" root_url citar-bibliography))))
-
-;; Set extensions.zotero.annotations.noteTemplates.title to "annotations"
-;; (without the quotes). Delete the entry for
-;; extensions.zotero.annotations.noteTemplates.note. Then only highlight
-;; annotations will be exported, which simplifies the regexp. This is fine
-;; because only highlight annotations contain a link back to the location in the
-;; PDF.
-;; Right click one or more items, "Add note from annotations"
-;; Right click a single note, "Export note" as markdown including zotero links
-;; Export as ~/Downloads/annotations.md (after a couple times, this should be
-;; the default, on MacOS at least
-;; TODO You can select multiple notes, and they will be separated by "---"
-;; https://www.zotero.org/support/note_templates
-;; NOTE May have to delete previous annotation file for subsequent export to
-;; succeed. If note template contains no title, you need to choose a filename
-(defun import-zotero-annotations-from-note (buf)
-  "Import Zotero annotations from a markdown notes-export file,
-convert the annotations to org-mode links with annotation
-comments underneath, and display the buffer"
-  (interactive
-   (list (find-file-noselect (read-file-name
-                              "Note file (default Annotations.md): "
-                              "~/Downloads/"
-                              "~/Downloads/Annotations.md"))))
-  (with-current-buffer buf
-    (beginning-of-buffer)
-    (kill-whole-line 2)
-    (while (re-search-forward "(\\[.*?](zotero://select.*?)) " nil t)
-      (replace-match ""))
-    (beginning-of-buffer)
-    (while (re-search-forward "^\u201C\\(.*\\)\u201D (\\[pdf](\\(zotero://open-pdf.*?\\)))[ ]*" nil t)
-      (replace-match "[[\\2][\\1]]\n\n"))
-    (beginning-of-buffer)
-    (while (re-search-forward "\n\n\n" nil t)
-      (replace-match "\n"))
-    (org-mode))
-  (pop-to-buffer buf))
-
-(after! dnd
-  (add-to-list 'dnd-protocol-alist
-               (cons "zotero://" #'dnd-transform-zotero)))
-(advice-add 'xterm-paste :override 'my/xterm-paste)
-(defun my/xterm-paste (event)
-  (interactive "e")
-  (unless (eq (car-safe event) 'xterm-paste)
-    (error "xterm-paste must be found to xterm-paste event"))
-  (let ((pasted-text (dnd-transform-zotero (nth 1 event) 'return)))
-    (if xterm-store-paste-on-kill-ring
-        ;; Put the text onto the kill ring and then insert it into the
-        ;; buffer.
-        (let ((interprogram-paste-function (lambda () pasted-text)))
-          (yank))
-      ;; Insert the text without putting it onto the kill ring.
-      (push-mark)
-      (insert-for-yank pasted-text))))
-(defun dnd-transform-zotero (url action)
-  "Transform Zotero highlight annotations that are dragged to Emacs from the PDF
-viewer into org-mode links. These annotations consist of highlighted text
-surrounded by Unicode quotes and followed by two links in markdown format:
-zotero select and zotero open-pdf."
-  (if (string-match "^\u201C\\(.*\\)\u201D.*(\\[pdf](\\(.*\\))) ?\\(.*\\)" url)
-      (progn
-        (let* ((annot-link (replace-match "\n[[\\2][\\1]]\n" nil nil url))
-               (comment (replace-match "\\3" nil nil url))
-               (all (if (string-empty-p comment)
-                        annot-link
-                      (concat annot-link "\n" comment "\n"))))
-          (if (eq action 'return)
-              all
-            (insert all))))
-    url))
-
-
-;; Setup within WSL Ubuntu (based on zotero.org/support/installation
-;; and "create a custom url protocol with xdg in ubuntu" and
-;; "url protocol handlers in basic ubuntu desktop"
-;; 1. Create ~/.local/share/applications/Zotero.desktop
-;; 2. Add the following to the file:
-;; [Desktop Entry]
-;; Name=Zotero
-;; Exec="/mnt/c/Users/jkroes/AppData/Local/Zotero/zotero.exe" -url %U
-;; Terminal=false
-;; Type=Application
-;; MimeType=x-scheme-handler/zotero
-;; 3. Run (without quotes) "xdg-mime default Zotero.desktop x-scheme-handler/zotero
-;; NOTE This last step might not be necessary
-(after! ol
-  (org-link-set-parameters "zotero" :follow
-                           (lambda (zpath)
-                             (browse-url
-                              ;; we get the "zotero:"-less url, so we put it back.
-                              (format "zotero:%s" zpath)))))
-
-
-;; TODO Bind org-attach-dired-to-subtree
-;; HACK Make this work with ranger
-(after! org-attach
-  (defun org-attach-dired-to-subtree (files)
-    "Attach FILES marked or current file in `dired' to subtree in other window.
-Takes the method given in `org-attach-method' for the attach action.
-Precondition: Point must be in a `dired' buffer.
-Idea taken from `gnus-dired-attach'."
-    (interactive
-     (list (dired-get-marked-files)))
-    (unless (memq major-mode '(dired-mode ranger-mode))
-      (user-error "This command must be triggered in a `dired' buffer"))
-    (let ((start-win (selected-window))
-          (other-win
-           (get-window-with-predicate
-            (lambda (window)
-              (with-current-buffer (window-buffer window)
-                (eq major-mode 'org-mode))))))
-      (unless other-win
-        (user-error
-         "Can't attach to subtree.  No window displaying an Org buffer"))
-      (select-window other-win)
-      (dolist (file files)
-        (org-attach-attach file))
-      (select-window start-win)
-      (when (eq 'mv org-attach-method)
-        (revert-buffer)))))
 
 ;; Open non-text files in Windows instead of WSL
-(setq IS-WSL (and (string-match "-[Mm]icrosoft" operating-system-release)
-                  (eq system-type 'gnu/linux)))
 (when IS-WSL
-  ;; TODO Migrate attachments?
-  (setq org-attach-id-dir "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation/org-attach")
-  ;; (setq browse-url-generic-program "wslview"
-  ;;       browse-url-browser-function 'browse-url-generic)
-  ;; (setf (alist-get 'system org-file-apps-gnu) "wslview \"%s\"")
-  ;; (setf (alist-get t org-file-apps-gnu) "wslview \"%s\""))
-  ;; NOTE open-in-windows is faster than wslview and seems to work more consistently
-  ;; Not sure why wslview doesn't open PDFs at all, let alone in windows
   (setq browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe"
         browse-url-generic-args '("/c" "start" "")
-        browse-url-browser-function 'browse-url-generic)
-  (after! org
-    (setf (alist-get "\\.pdf\\'" org-file-apps nil nil #'string=) #'open-in-windows)
-    ;; (add-to-list 'org-file-apps '("^/mnt/" . #'open-in-windows))
-    (add-to-list 'org-file-apps '("\\.png?\\'" . open-in-windows) t)
-    (add-to-list 'org-file-apps '("\\.xlsx?\\'" . open-in-windows) t)
-    (add-to-list 'org-file-apps '("\\.docx?\\'" . open-in-windows) t)
-    (add-to-list 'org-file-apps '("\\.pptx?\\'" . open-in-windows) t)))
-
-;; NOTE Marginalia annotates minibuffer completions, but if a minibuffer-completion
-;; command is not the top-level command executed, it might not be annotated
-;; correctly. E.g. I modified +org/dwim-at-point to call org-attach-open. To
-;; have these commands annotated correctly, you need to either rebind this-command
-;; to the command you want annotated before executing it, or else execute it
-;; via execute-extended-command; e.g.
-;; (execute-extended-command nil "org-attach-open")
-
-;; Configure org-attach-open to work with embark
-;; Unlike e.g. `find-file', `org-attach-open' does not use the path returned by
-;; `org-attach-dir' as minibuffer input. `embark--vertico-selected' constructs
-;; embark targets from the candidate and the minibuffer input, so the target
-;; does not have the full path. By associating `org-attach-open' to a novel
-;; marginalia category, and this category to an embark transformer function, we
-;; end up with the full filepath and a final `file' category that allows us to
-;; execute actions from `embark-file-map' apples
-(after! marginalia
-  (add-to-list 'marginalia-command-categories '(org-attach-open . attach)))
-(after! embark
-  (add-to-list 'embark-transformer-alist
-               '(attach . embark--expand-attachment)))
-(defun embark--expand-attachment (_type target)
-  (with-current-buffer (window-buffer (minibuffer-selected-window))
-    (cons 'file (expand-file-name target (org-attach-dir)))))
-
-;; HACK org-attach commands ignore ., .., and files ending in ~, but
-;; we also want to ignore .DS_STORE on MacOS.
-(defvar org-attach-ignore-regexp-list (list "." ".." ".DS_STORE")
-  "A list of filenames for org-attach to ignore") (after! org-attach
-  (defun org-attach-file-list (directory)
-    "Return a list of files in the attachment DIRECTORY.
-This ignores files ending in \"~\"."
-    (delq nil
-	  (mapcar (lambda (x)
-                    (if (string-match
-                         (concat "^"
-                                 (regexp-opt
-                                  org-attach-ignore-regexp-list)
-                                 "\\'")
-                         x) nil x))
-		  (directory-files directory nil "[^~]\\'")))))
-
+        browse-url-browser-function 'browse-url-generic))
 
 ;; TODO The fringe indicators used to show transcluded text do not
 ;; appear on Doom. The actual transcluded content doesn't appear
@@ -756,137 +545,6 @@ This ignores files ending in \"~\"."
 ;; TODO evil-search no longer searches folded org headings
 ;; See https://www.reddit.com/r/orgmode/comments/vs0ew0/search_on_buffer_with_folded_headings
 
-;;; biblio
-
-;; Background reading:
-;; https://orgmode.org/manual/Citation-handling.html
-;; https://blog.tecosaur.com/tmio/2021-07-31-citations.html#fn.3
-
-;; Bibliography file locations
-;;(setq org-cite-csl-styles-dir "~/Zotero/styles")
-(setq! citar-bibliography
-       (cond (IS-WSL '("/mnt/d/org-cite.bib"))
-             (t (list (expand-file-name "org-cite.bib" org-directory)))))
-
-;; Location of notes associated with bib entries
-(setq citar-notes-paths (list (expand-file-name "cite" org-directory)))
-
-(defun citar-org-format-note-no-bib (key entry)
-  "`citar-org-format-note-default' without
-#+print_bibliography"
-  (let* ((template (citar--get-template 'note))
-         (note-meta (when template
-                      (citar-format--entry template entry)))
-         (filepath (expand-file-name
-                    (concat key ".org")
-                    (car citar-notes-paths)))
-         (buffer (find-file filepath)))
-    (with-current-buffer buffer
-      ;; This just overrides other template insertion.
-      (erase-buffer)
-      (citar-org-roam-make-preamble key)
-      (insert "#+title: ")
-      (when template (insert note-meta))
-      (insert "\n\n")
-      (when (fboundp 'evil-insert)
-        (evil-insert 1)))))
-
-;; Make embark-act recognize org-cite keys at point in roam_refs
-(after! citar
-  (setf (alist-get
-         'key-at-point
-         (alist-get '(org-mode) citar-major-mode-functions nil nil #'equal))
-        #'aj/citar-org-key-at-point))
-(defun aj/citar-org-key-at-point ()
-  "Return key at point for org-cite citation-reference or citekey."
-  (or (citar-org-key-at-point)
-      (when (org-in-regexp org-element-citation-key-re)
-        (cons (substring (match-string 0) 1)
-              (cons (match-beginning 0)
-                    (match-end 0))))))
-
-;; citar-open first prompts for a key, then for a resource (file, URL, or note).
-;; Here we skip the key-prompt by using the key stored in ROAM_REFS of the
-;; current note
-(defun org-roam-open-refs ()
-  "Open resources associated with citation key, or open URL, from ROAM_REFS
-of current note"
-  (interactive)
-  (save-excursion
-    (goto-char (org-roam-node-point (org-roam-node-at-point 'assert)))
-    (when-let* ((p (org-entry-get (point) "ROAM_REFS"))
-                (refs (when p (split-string-and-unquote p)))
-                (user-error "No ROAM_REFS found"))
-      ;; Open ref citation keys
-      (when-let ((oc-cites
-                  (seq-map
-                   (lambda (ref) (substring ref 1))
-                   (seq-filter (apply-partially #'string-prefix-p "@") refs))))
-        (citar-open-from-note oc-cites))
-      ;; Open ref URLs
-      (dolist (ref refs)
-        (unless (string-prefix-p "@" ref)
-          (browse-url ref))))))
-(defun citar-open-from-note (keys)
-  "Like citar-open but excludes notes from candidates."
-  (interactive (list (citar-select-refs)))
-  (if-let ((selected (let* ((actions (bound-and-true-p embark-default-action-overrides))
-                            (embark-default-action-overrides `((t . ,#'citar--open-resource) . ,actions)))
-                       (citar--select-resource keys :files t :links t
-                                               :always-prompt citar-open-prompt))))
-      (citar--open-resource (cdr selected) (car selected))
-    (error "No associated resources: %s" keys)))
-
-;; How to open files (as opposed to notes or URLs)
-;; (setq citar-file-open-function
-;;       (cond (IS-WSL #'open-in-windows)
-;;             (t #'citar-file-open-external)))
-(setq citar-file-open-function #'open-in-zotero)
-(defun open-in-zotero (file)
-  "Open file resources in Zotero PDF viewer."
-  (string-match ".*/storage/\\(.*\\)/.*\\.pdf" file)
-  (browse-url
-   ;; NOTE You can also use select instead of open-pdf to see the
-   ;; attachment item in the item pane
-   (replace-match "zotero://open-pdf/library/items/\\1" nil nil file)))
-
-;; citar-insert-citation
-;; citar-insert-preset (potentially set to M-b on minibuffer-local-map)
-;; citar-at-point, embark-dwim, citar-default-action
-;;citar-format-reference
-;;citar-citeproc-format-reference
-
-;; NOTE This works on MacOS but won't work in WSL
-;;(use-package! zotxt)
-
-;; Convert Windows paths to WSL
-(after! citar-file
-  ;; Convert Windows to WSL paths when opening PDFs
-  (add-to-list 'citar-file-parser-functions 'citar-file--parser-default-wsl))
-(defun citar-file--parser-default-wsl (file-field)
-  "Split FILE-FIELD by `;'."
-  (mapcar
-   #'wslify-bib-path
-   (seq-remove
-    #'string-empty-p
-    (mapcar
-     #'string-trim
-     (citar-file--split-escaped-string file-field ?\;)))))
-(defun wslify-bib-path (file)
-  "For WSL, convert paths assumed to be Windows files to WSL paths. Otherwise,
-return the path"
-  (if (eq system-type 'gnu/linux)
-      (substring
-       (shell-command-to-string
-        (format
-         "wslpath '%s'"
-         (replace-regexp-in-string
-          "\\\\\\\\"
-          "/"
-          (replace-regexp-in-string "\\\\:" ":" file))))
-       0 -1)
-    file))
-
 ;; TODO Bind to something. This is a dumb replacement for counsel-org-entity,
 ;; which has actions to insert the different forms an org entity takes (name,
 ;; latex, html, and utf-8). This function only inserts the latex version, which
@@ -941,10 +599,6 @@ return the path"
     (ess-fl-keyword:delimiters . t)
     (ess-fl-keyword:= . t)
     (ess-R-fl-keyword:F&T . t)))
-
-(map! :map evil-window-map
-      "a" #'ace-window)
-
 
 ;; Not all attributes can be changed on terminal; e.g., height is not meaningful
 (setq eglot-ignored-server-capabilities
@@ -1063,12 +717,3 @@ Exclude directories."
 ;; C-c C-e (embark-export)
 ;; Search replace in export buffer
 ;; C-c C-c (wgrep-finish-edit)
-
-(map! :leader
-      "<backspace>" #'ace-window
-      "DEL" #'ace-window)
-(custom-set-faces!
-  '(aw-leading-char-face
-    :foreground "white" :background "red" :height 500))
-
-(map! :leader ";" #'execute-extended-command)

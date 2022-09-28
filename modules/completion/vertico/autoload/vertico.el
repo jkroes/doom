@@ -296,3 +296,8 @@ by passing a PREFIX key."
       (propertize (format " (%s)" (if remap remap
                                     (key-description key)))
                   'face 'marginalia-key))))
+
+;;;###autoload
+(defun embark--expand-attachment (_type target)
+  (with-current-buffer (window-buffer (minibuffer-selected-window))
+    (cons 'file (expand-file-name target (org-attach-dir)))))

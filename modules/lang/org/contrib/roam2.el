@@ -20,10 +20,8 @@ of org-mode to properly utilize ID links.")
 (use-package! org-roam
   :hook (org-load . +org-init-roam-h)
   :preface
-  ;; Set this to nil so we can later detect if the user has set custom values
-  ;; for these variables. If not, default values will be set in the :config
-  ;; section.
-  (defvar org-roam-directory nil)
+  ;; HACK Use org-directory as org-roam-directory (see where it is set below)
+  (defvar org-roam-directory "")
 
   :init
   (doom-load-packages-incrementally
@@ -84,7 +82,20 @@ In case of failure, fail gracefully."
         org-roam-completion-everywhere t
         org-roam-db-gc-threshold most-positive-fixnum
         ;; Reverse the default to favor faster searchers over slower ones.
-        org-roam-list-files-commands '(fd fdfind rg find))
+        org-roam-list-files-commands '(fd fdfind rg find)
+        ;; Since doom already displays subdirectories kind of like tags in org-roam-node-find,
+        ;; why not make capturing to a subdirectory painless?
+        org-roam-capture-templates
+        '(("d" "default" plain "%?"
+           :target (file+head
+                    "%(read-directory-name \"path: \" org-roam-directory)/%<%Y%m%d%H%M%S>-${slug}.org"
+                    "#+title: ${title}\n")
+           :unnarrowed t))
+        ;; Exclude ATTACH tags from org-roam database
+        org-roam-db-node-include-function
+        (lambda ()
+          (not (member org-attach-auto-tag (org-get-tags nil t)))))
+
 
   (add-to-list 'org-roam-node-template-prefixes '("doom-tags" . "#"))
   (add-to-list 'org-roam-node-template-prefixes '("doom-type" . "@"))

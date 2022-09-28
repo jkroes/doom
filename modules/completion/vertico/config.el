@@ -254,6 +254,10 @@ orderless."
   (setq embark-prompter 'embark-completing-read-prompter
         embark-indicators '(embark-minimal-indicator embark-highlight-indicator))
 
+  ;; Configure org-attach-open to work with embark:
+  ;; 2. Transform marginalia category from `attach' to `file' and convert target to filepath
+  (add-to-list 'embark-transformer-alist '(attach . embark--expand-attachment))
+
   ;; add the package! target finder before the file target finder,
   ;; so we don't get a false positive match.
   (let ((pos (or (cl-position
@@ -278,6 +282,20 @@ orderless."
          (:when (featurep! :ui workspaces)
           :desc "Open in new workspace"       "TAB" #'+vertico/embark-open-in-new-workspace))))
 
+;; NOTE Marginalia annotates minibuffer completions, but if a minibuffer-completion
+;; command is not the top-level command executed, it might not be annotated
+;; correctly. E.g. I modified +org/dwim-at-point to call org-attach-open. To
+;; have these commands annotated correctly, you need to either rebind this-command
+;; to the command you want annotated before executing it, or else execute it
+;; via execute-extended-command; e.g.
+;; (execute-extended-command nil "org-attach-open")
+
+;; `org-attach-open' does not use the path returned by `org-attach-dir' as
+;; minibuffer input. `embark--vertico-selected' constructs embark targets from
+;; the candidate and the minibuffer input, so the target is not the full
+;; path. By associating `org-attach-open' to a novel marginalia category, and
+;; this category to an embark transformer function, we can execute actions from
+;; `embark-file-map' on the full filepath of an attachment.
 
 (use-package! marginalia
   :hook (doom-first-input . marginalia-mode)
@@ -300,7 +318,10 @@ orderless."
             '(projectile-find-file . project-file)
             '(projectile-recentf . project-file)
             '(projectile-switch-to-buffer . buffer)
-            '(projectile-switch-project . project-file)))
+            '(projectile-switch-project . project-file)
+            ;; Configure org-attach-open to work with embark:
+            ;; 1. Create a novel marginalia category
+            '(org-attach-open . attach)))
 
 
 (use-package! embark-consult

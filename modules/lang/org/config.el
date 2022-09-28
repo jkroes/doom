@@ -506,7 +506,8 @@ relative to `org-directory', unless it is an absolute path."
 
 (defun +org-init-attachments-h ()
   "Sets up org's attachment system."
-  ;; NOTE You can also run org-attach-open, embark-act, @w (embark-copy-as-kill), any yank command
+  ;; NOTE You can also store links to attachments via org-attach-open, embark-act,
+  ;; @w (embark-copy-as-kill), then yank.
   (setq org-attach-store-link-p 'file
         org-attach-use-inheritance nil)
 
@@ -520,11 +521,30 @@ relative to `org-directory', unless it is an absolute path."
                org-attach-set-directory
                org-attach-sync)
     :config
+    (when IS-WSL
+      (setq org-attach-id-dir
+            "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation/org-attach"))
     (unless org-attach-id-dir
       ;; Centralized attachments directory by default
       (setq-default org-attach-id-dir (expand-file-name ".attach/" org-directory)))
     (after! projectile
-      (add-to-list 'projectile-globally-ignored-directories org-attach-id-dir)))
+      (add-to-list 'projectile-globally-ignored-directories org-attach-id-dir))
+
+    (defvar org-attach-ignore-regexp-list (list "." ".." ".DS_STORE")
+      "A list of filenames for org-attach to ignore")
+    (defadvice! +org-attach-file-list-a (directory)
+      "Return a list of files in the attachment DIRECTORY.
+This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
+      :override #'org-attach-file-list
+      (delq nil
+            (mapcar (lambda (x)
+                      (if (string-match
+                           (concat "^"
+                                   (regexp-opt
+                                    org-attach-ignore-regexp-list)
+                                   "\\'")
+                           x) nil x))
+                    (directory-files directory nil "[^~]\\'")))))
 
   ;; Add inline image previews for attachment links
   (org-link-set-parameters "attachment" :image-data-fun #'+org-inline-image-data-fn))
@@ -693,6 +713,17 @@ relative to `org-directory', unless it is an absolute path."
   ;; Open directory links in dired
   (add-to-list 'org-file-apps '(directory . emacs))
   (add-to-list 'org-file-apps '(remote . emacs))
+
+  ;; Open non-text files in Windows instead of WSL
+  ;; See also browse-url-browser-function
+  ;; (when IS-WSL
+  ;;   (setf (alist-get "\\.pdf\\'" org-file-apps nil nil #'string=) #'open-in-windows)
+  ;;   ;; (add-to-list 'org-file-apps '("^/mnt/" . #'open-in-windows))
+  ;;   (add-to-list 'org-file-apps '("\\.png?\\'" . open-in-windows) t)
+  ;;   (add-to-list 'org-file-apps '("\\.xlsx?\\'" . open-in-windows) t)
+  ;;   (add-to-list 'org-file-apps '("\\.docx?\\'" . open-in-windows) t)
+  ;;   (add-to-list 'org-file-apps '("\\.pptx?\\'" . open-in-windows) t))
+
 
   ;; Open help:* links with helpful-* instead of describe-*
   (advice-add #'org-link--open-help :around #'doom-use-helpful-a)
