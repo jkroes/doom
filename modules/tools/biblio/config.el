@@ -32,6 +32,13 @@
   (setq citar-bibliography
        (cond (IS-WSL '("/mnt/d/org-cite.bib"))
              (t (list (expand-file-name "org-cite.bib" org-directory))))
+       citar-templates
+       '((main . "${title:140}")
+         (suffix . " ${=key= id:15} ${tags keywords:*}")
+         ;; Used by citar-insert-reference
+         (preview . "${author editor} (${year issued date}) ${title}, ${journal publisher container-title collection-title}.\n")
+         ;; Used by citar-open-notes to create new note
+         (note . "${title}"))
        ;; Location of notes associated with bib entries
        citar-notes-paths (list (expand-file-name "cite" org-directory))
        ;; Open files (as opposed to notes or URLs) in Zotero
@@ -39,7 +46,11 @@
        ;; (cond (IS-WSL #'open-in-windows)
        ;;       (t #'citar-file-open-external))
        ;; Function for creating new note (see also citar-templates)
-       citar-note-format-function #'citar-org-format-note-no-bib)
+       citar-note-format-function #'citar-org-format-note-no-bib
+       ;; Padding between resource indicators (icons)
+       citar-symbol-separator "  "
+       ;; Whether to use multiple selection
+       citar-select-multiple nil)
 
   :config
   (setq org-cite-insert-processor 'citar
@@ -49,7 +60,6 @@
   ;; TODO Why is after! necessary here within :config? Getting a void-variable
   ;; error for citar-major-mode-functions
   (after! citar
-    ;; Make embark-act recognize org-cite keys at point in roam_refs
     (setf (alist-get
            'key-at-point
            (alist-get '(org-mode) citar-major-mode-functions nil nil #'equal))
@@ -62,10 +72,19 @@
             (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
             (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " ")))))
 
-(use-package! citar-file
-  :after citar
-  :config
-  ;; Convert Windows to WSL paths when opening PDF files
+
+;; Make embark-act recognize org-cite keys at point in roam_refs
+;; BUG Why does after! work when :config results in a void-variable error
+;; for citar-major-mode-functions
+;; My issue about this: https://github.com/doomemacs/doomemacs/issues/6367
+(after! citar
+  (setf (alist-get
+         'key-at-point
+         (alist-get '(org-mode) citar-major-mode-functions nil nil #'equal))
+        #'aj/citar-org-key-at-point))
+
+;; Convert Windows to WSL paths when opening PDF files
+(after! citar-file
   (add-to-list 'citar-file-parser-functions 'citar-file--parser-default-wsl))
 
 ;; `org-cite' processors
@@ -147,12 +166,17 @@
 ;;             (insert all))))
 ;;     url))
 
+(defvar zotero-annotations-file
+  (cond (IS-WSL "/mnt/d/annotations.md")
+        (t "~/Downloads/annotations.md")))
 ;; Set extensions.zotero.annotations.noteTemplates.title to "annotations"
 ;; (without the quotes). Delete the entry for
 ;; extensions.zotero.annotations.noteTemplates.note. Then only highlight
 ;; annotations will be exported, which simplifies the regexp. This is fine
 ;; because only highlight annotations contain a link back to the location in the
-;; PDF.
+;; PDF. Furthermore, the default filename is the title, so you can use that in the
+;; code below.
+;; In zotero, create annotations in a PDF attachment.
 ;; Right click one or more items, "Add note from annotations"
 ;; Right click a single note, "Export note" as markdown including zotero links
 ;; Export as ~/Downloads/annotations.md (after a couple times, this should be
@@ -168,11 +192,11 @@ comments underneath, and display the buffer"
   (interactive
    (list (find-file-noselect (read-file-name
                               "Note file (default Annotations.md): "
-                              "~/Downloads/"
-                              "~/Downloads/Annotations.md"))))
+                              (file-name-directory zotero-annotations-file)
+                              zotero-annotations-file))))
   (with-current-buffer buf
     (beginning-of-buffer)
-    (kill-whole-line 2)
+    (kill-whole-line 2) ; Delete the title and subsequent line
     (while (re-search-forward "(\\[.*?](zotero://select.*?)) " nil t)
       (replace-match ""))
     (beginning-of-buffer)
@@ -206,3 +230,24 @@ comments underneath, and display the buffer"
 
 ;; NOTE This works on MacOS but won't work in WSL
 ;;(use-package! zotxt)
+
+;; NOTE Unlike import-zotero-annotations-from-note, which have Zotero open-pdf links, this will insert
+;; an absolute filepath. The absolute filepath is useful if we need to export the org-mode file to
+;; another format. We can copy that file to a common directory then search-replace the links in the
+;; exported file, to preserve access for those who can't access Emacs or my Zotero library (i.e.,
+;; everyone who is not me)
+(defun citar-insert-file-link ()
+  "Insert an org-mode link to a selected file attachment with the parent item title as the description"
+  (interactive)
+  (require 'citar)
+  (let* ((key (citar-select-ref))
+         (file (cdr (citar--select-resource key :files t)))
+         (title (cdr (assoc "title" (citar-get-entry key)))))
+    (org-insert-link nil file title)))
+
+;; TODO Open note matching file link
+;; TODO Export and replace links
+;; TODO Search citar PDF text like Zotero (?):
+;; https://github.com/emacs-citar/citar/wiki/Example-functions#search-contents-of-pdfs
+;; TODO Alternative Zotero integration ideas
+;; https://github.com/emacs-citar/citar/issues/685

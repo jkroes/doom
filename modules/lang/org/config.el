@@ -716,13 +716,13 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
 
   ;; Open non-text files in Windows instead of WSL
   ;; See also browse-url-browser-function
-  ;; (when IS-WSL
-  ;;   (setf (alist-get "\\.pdf\\'" org-file-apps nil nil #'string=) #'open-in-windows)
-  ;;   ;; (add-to-list 'org-file-apps '("^/mnt/" . #'open-in-windows))
-  ;;   (add-to-list 'org-file-apps '("\\.png?\\'" . open-in-windows) t)
-  ;;   (add-to-list 'org-file-apps '("\\.xlsx?\\'" . open-in-windows) t)
-  ;;   (add-to-list 'org-file-apps '("\\.docx?\\'" . open-in-windows) t)
-  ;;   (add-to-list 'org-file-apps '("\\.pptx?\\'" . open-in-windows) t))
+  (when IS-WSL
+    (setf (alist-get "\\.pdf\\'" org-file-apps nil nil #'string=) #'open-in-windows)
+    ;; (add-to-list 'org-file-apps '("^/mnt/" . #'open-in-windows))
+    (add-to-list 'org-file-apps '("\\.png?\\'" . open-in-windows) t)
+    (add-to-list 'org-file-apps '("\\.xlsx?\\'" . open-in-windows) t)
+    (add-to-list 'org-file-apps '("\\.docx?\\'" . open-in-windows) t)
+    (add-to-list 'org-file-apps '("\\.pptx?\\'" . open-in-windows) t))
 
 
   ;; Open help:* links with helpful-* instead of describe-*

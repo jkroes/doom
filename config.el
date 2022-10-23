@@ -717,3 +717,19 @@ Exclude directories."
 ;; C-c C-e (embark-export)
 ;; Search replace in export buffer
 ;; C-c C-c (wgrep-finish-edit)
+
+(setq org-export-with-broken-links t
+      ;;org-export-with-emphasize nil
+      org-export-with-sub-superscripts '{})
+
+;; TODO org-attach-set-directory doesn't add an :ATTACH: tag
+;; This prevents +org/dwim-at-point from working. I might
+;; need to modify the function to check for an attachment
+;; dir.
+
+ ;; Doom makes the unreasonable assumption that we should prefer splits left
+ ;; or right. I use a vertical monitor...
+ ;; TODO Find a way to detect vertical monitors (in WSL especially) and set
+ ;; this accordingly
+(setq split-width-threshold nil
+      split-height-threshold 20)

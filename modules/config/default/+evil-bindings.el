@@ -509,6 +509,7 @@
        :desc "Browse notes"                 "F" #'+default/browse-notes
        :desc "Import notes"                 "i" #'import-zotero-annotations-from-note
        :desc "Org store link"               "l" #'org-store-link
+       :desc "Insert citar link"            "L" #'citar-insert-file-link
        :desc "Tags search"                  "m" #'org-tags-view
        :desc "Org capture"                  "n" #'org-capture
        :desc "Goto capture"                 "N" #'org-capture-goto-target

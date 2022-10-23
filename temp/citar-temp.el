@@ -41,56 +41,12 @@
   ;;       ;;          " | sudo -S mount -t drvfs A: /mnt/a"))
   ;;       (cond ((eq system-type 'gnu/linux) 'open-in-windows)
   ;;             ((eq system-type 'darwin) 'citar-file-open-external))
-  (setq citar-bibliography
-        (cond ((eq system-type 'gnu/linux)
-               '("/mnt/c/Users/jkroes/Documents/org-cite.bib"))
-              ((eq system-type 'darwin)
-               '("~/.doom.d/org/org-cite.bib")))
-        ;; 1. Doom doesn't set org-cite-global-bibliography properly. When
-        ;; :tools magit is enabled, org is loaded early, and oc loads before
-        ;; citar. B/c of this, citar-bibliography needs to be reliably set
-        ;; 2. citar only seems to use org-cite-global-bibliography for
-        ;; functionality related to local bib files specified by the org-cite
-        ;; #+bibliography keyword, but the README recommends setting it
-        org-cite-global-bibliography citar-bibliography
-        org-cite-insert-processor 'citar
-        org-cite-follow-processor 'citar
-        org-cite-activate-processor 'citar
-        ;; Used by e.g. citar-open-notes to display bib entry candidates
-        citar-templates
-        '((main . "${title:140}")
-          (suffix . " ${=key= id:15} ${tags keywords:*}")
-          ;; Used by citar-insert-reference
-          (preview . "${author editor} (${year issued date}) ${title}, ${journal publisher container-title collection-title}.\n")
-          ;; Used by citar-open-notes to create new note
-          (note . "${title}"))
-        ;; Use icons to indicate resources associated with a bib entry
-        citar-symbols
-        `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
-          (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
-          (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " "))
-        ;; Padding between resource indicators (icons)
-        citar-symbol-separator "  "
+  (setq
+   ;; Used by e.g. citar-open-notes to display bib entry candidates
         ;; citar-default-action 'embark-act
-        ;; Location of notes associated with bib entries
-        citar-notes-paths '("~/.doom.d/org/cite/")
         ;; Used by citar-open-notes
-        citar-open-note-function 'citar--open-noter
-        citar-format-note-function 'citar-org-format-note-no-bib))
+        citar-open-note-function 'citar--open-noter)
 
-(with-eval-after-load 'citar-file
-  ;; Convert Windows to WSL paths when opening PDFs
-  (add-to-list 'citar-file-parser-functions 'citar-file-parser-wsl))
-
-;; BUG Why do these fail when used in :config rather than after!? E.g.,
-;; void-variable citar-major-mode-function, or failing to redefine a function
-;; defined in citar? See https://github.com/doomemacs/doomemacs/issues/6367
-(after! citar
-  ;; Let embark-act work with org-cite citation keys in roam_refs at point
-  (setf (alist-get
-         'key-at-point
-         (alist-get '(org-mode) citar-major-mode-functions nil nil #'equal))
-        #'aj/citar-org-key-at-point)
 
   ;; NOTE Makes embark-act>citar-run-default-action (where default action is
   ;; citar-open) work the same as +org/dwim-at-point (RET) or embark-dwim
@@ -317,21 +273,3 @@ FILTER: if non-nil, should be a predicate function taking
              (expand-file-name file dir)) wsl-files))
         dirs)))))
 
-(defun wslify-bib-path (file)
-  "For WSL, convert paths assumed to be Windows files to WSL paths. Otherwise,
-return the path"
-  (if (eq system-type 'gnu/linux)
-      (substring
-       (shell-command-to-string
-        (format
-         "wslpath '%s'"
-         (replace-regexp-in-string
-          "\\\\\\\\"
-          "/"
-          (replace-regexp-in-string "\\\\:" ":" file))))
-       0 -1)
-    file))
-
-;; Backgrond reading:
-;; https://orgmode.org/manual/Citation-handling.html
-;; https://blog.tecosaur.com/tmio/2021-07-31-citations.html#fn.3
