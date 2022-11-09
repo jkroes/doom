@@ -731,5 +731,5 @@ Exclude directories."
  ;; or right. I use a vertical monitor...
  ;; TODO Find a way to detect vertical monitors (in WSL especially) and set
  ;; this accordingly
-(setq split-width-threshold nil
-      split-height-threshold 20)
+;; (setq split-width-threshold nil
+;;       split-height-threshold 20)
