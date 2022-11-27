@@ -733,3 +733,4 @@ Exclude directories."
  ;; this accordingly
 ;; (setq split-width-threshold nil
 ;;       split-height-threshold 20)
+
