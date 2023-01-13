@@ -734,3 +734,5 @@ Exclude directories."
 ;; (setq split-width-threshold nil
 ;;       split-height-threshold 20)
 
+;; Last comment shows how to call Python scripts and pass arguments:
+;; https://org-roam.discourse.group/t/any-recommended-methodology-to-delete-an-org-roam-file/54/4

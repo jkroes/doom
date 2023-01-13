@@ -40,7 +40,8 @@
          ;; Used by citar-open-notes to create new note
          (note . "${title}"))
        ;; Location of notes associated with bib entries
-       citar-notes-paths (list (expand-file-name "cite" org-directory))
+       ;; citar-notes-paths (list (expand-file-name "cite" org-directory))
+       citar-notes-paths (list org-directory)
        ;; Open files (as opposed to notes or URLs) in Zotero
        citar-file-open-function #'open-in-zotero
        ;; (cond (IS-WSL #'open-in-windows)
