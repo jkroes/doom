@@ -78,5 +78,42 @@
 
 ;; -----------------------------------------------------------------------------
 
+;; Notes on working with Doom:
+;;
+;; As with many software projects, the documentation is a mix of outdated and
+;; never accurate to begin with. The following is a best guess, given this:
+;;
+;; doom h[elp]: Show help for doom cli.
+;;
+;; doom help sync: Show help for doom sync.
+;;
+;; doom sync: Run after modifying init.el (your `doom!' block); packages.el
+;; (`package!' blocks); autoload.el, or any file within an autoload/ folder,
+;; within a private module. I suspect this is related to `doom compile', which
+;; compiles part of your config (init.el and packages.el) and modules. Changes
+;; to all but config.el are not recognized automatically because those changes
+;; need to be re-compiled.
+;;
+;; doom sync -u: Also update emacs package versions. This needs to run the
+;; first time Doom is installed.
+;;
+;; Note that not all changes to packages.el are changes to package versions,
+;; which explains why packages.el is mentioned in both `doom sync' and
+;; `doom sync -u'.
+;;
+;; doom upgrade: Upgrade doom emacs and, like `doom sync -u', its packages.
+;; After upgrading, you might also have to run `pdf-tools-install'.
+;;
+;; Editing modules may break lazy loading and lead to unexpected results when
+;; trying to defer a package. To see what loads and when, enable
+;; force-load-messages in early-init.el
+;;
+;; doom install/sync/upgrade might fail on work computers, possibly because
+;; recipes clone from gitlab, and gitlab is blocked. Clone the package manually
+;; (from github potentially) while inside ~/.emacs.d/.local/straight/repos, then
+;; try again. Try also disconnecting from the VPN. Alternatively, a package may
+;; have renamed its branch from master to main. Delete the repo at issue and try
+;; again.
+
 (setq ns-command-modifier 'control ; For Kinesis Advantage 2 keyboard
       mac-command-modifier 'control)
