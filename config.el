@@ -116,4 +116,5 @@
 ;; again.
 
 (setq ns-command-modifier 'control ; For Kinesis Advantage 2 keyboard
-      mac-command-modifier 'control)
+      mac-command-modifier 'control
+      confirm-kill-emacs nil)
