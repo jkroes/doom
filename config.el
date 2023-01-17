@@ -74,3 +74,8 @@
 ;;
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
+
+;; -----------------------------------------------------------------------------
+
+(setq ns-command-modifier 'control ; For Kinesis Advantage 2 keyboard
+      mac-command-modifier 'control)
