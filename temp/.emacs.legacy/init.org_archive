@@ -1,0 +1,141 @@
+#    -*- mode: org -*-
+
+
+Archived entries from file /Users/jkroes/.emacs.d/init.org
+
+
+* tabnine
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2021-09-30 Thu 17:53
+  :ARCHIVE_FILE: ~/.emacs.d/init.org
+  :ARCHIVE_OLPATH: root
+  :ARCHIVE_CATEGORY: init.org
+  :END:
+#+begin_src emacs-lisp :tangle no
+(straight-use-package 'company-tabnine)
+(require 'company-tabnine)
+
+;; (add-to-list 'company-backends #'company-tabnine)
+;; Type "TabNine::config" in a buffer to spawn the TabNine hub. It's magic.
+
+;; As mentioned in the company-tabnine README
+;; https://github.com/emacs-ess/ESS/issues/955
+(setq ess-r-company-backends
+      '((company-tabnine company-R-library company-R-args company-R-objects
+         :separate)))
+
+;; Discard useless backends. See which modes might use a backend by
+;; e.g. company-bbdb-modes
+(require 'company)
+(let ((tail (memq 'company-capf company-backends)))
+  (setcar tail (list (car tail) 'company-tabnine)))
+#+end_src
+
+* faces
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2021-10-01 Fri 22:20
+  :ARCHIVE_FILE: ~/.emacs.d/init.org
+  :ARCHIVE_OLPATH: root
+  :ARCHIVE_CATEGORY: init.org
+  :END:
+#+begin_src emacs-lisp
+(customize-package-faces
+ '(default ((((class color) (min-colors 89)) (:foreground "#DCDCCC" :background "#3F3F3F"))))
+ )
+#+end_src
+
+* org-icons
+  :PROPERTIES:
+  :ARCHIVE_TIME: 2021-10-07 Thu 09:29
+  :ARCHIVE_FILE: ~/.emacs.d/init.org
+  :ARCHIVE_OLPATH: root
+  :ARCHIVE_CATEGORY: init.org
+  :END:
+#+begin_src emacs-lisp
+;;; Integrate org-roam and org-agenda
+;; (defun org-add-category ()
+;;   "org-roam uses filetags, but org-agenda-category-icon-alist uses
+;; category. This function creates a category, if missing, from the first tag in
+;; filetags or else from title."
+;;   (let* ((title (cadr (assoc "TITLE" (org-collect-keywords '("title")))))
+;;          (filetags (cadr (assoc "FILETAGS"
+;;                                 (org-collect-keywords '("filetags")))))
+;;          (filetag1 (if filetags (car (split-string filetags ":" t))))
+;;          (category (cadr (assoc "CATEGORY" (org-collect-keywords
+;;                                             '("category"))))))
+;;     (if (not category)
+;;         (if filetag1
+;;             (org-roam-set-keyword "category" filetag1)
+;;           (org-roam-set-keyword "category" title)))))
+
+;; This line seems to break org-roam backlinks. It's probably the use of
+;; org-roam-set-keyword
+;; (add-hook 'org-mode-hook 'org-add-category)
+
+;; (defun my/agenda-category ()
+;;   "Simply returns the title of an org-roam file"
+;;   (cadr (assoc "TITLE" (org-collect-keywords '("title")))))
+
+;; (setq org-agenda-prefix-format
+;;       '((agenda . " %i %(my/agenda-category)->%b%?-12t% s")
+;;         (todo . " %i %(my/agenda-category)->%b")
+;;         (tags . " %i %(my/agenda-category)->%b")
+;;         (search . " %i %(my/agenda-category)->%b")))
+
+;; On Mac all-the-icons-install-fonts installs to
+;; ~/Library/Fonts/all-the-icons.ttf
+;; Browse icons via all-the-icons-insert
+;; (straight-use-package all-the-icons)
+;; (require 'all-the-icons)
+;; The car of each alist should be the category of the org file in
+;; org-agenda (see org-agenda-files, org-add-category, and
+;; org-agenda-prefix-format)
+;; (setq org-agenda-category-icon-alist
+;;       `(("elisp" ,(list (all-the-icons-fileicon "lisp")) nil nil :ascent center)
+;;         ("Emacs" ,(list (all-the-icons-fileicon "emacs")) nil nil :ascent center)
+;;         ("work" ,(list (all-the-icons-material "work")) nil nil :ascent center)
+;;         ("init.org" ,(list (all-the-icons-faicon "home")) nil nil :ascent
+;;          center))
+;;       )
+
+;; Colored examples
+;; (insert (all-the-icons-wicon "tornado" :face 'all-the-icons-blue))
+;; (insert (all-the-icons-icon-for-file "foo.js"))
+;; (insert (all-the-icons-icon-for-buffer))
+;; I think multicolored icons may require SVG icons:
+;; https://www.reddit.com/r/emacs/comments/hnf3cw/my_orgmode_agenda_much_better_now_with_category/
+;; https://frontstuff.io/multi-colored-svg-symbol-icons-with-css-variables
+;;;
+#+end_src
+
+* desktop-save-mode
+:PROPERTIES:
+:ARCHIVE_TIME: 2021-10-12 Tue 08:24
+:ARCHIVE_FILE: ~/.emacs.d/init.org
+:ARCHIVE_OLPATH: root/workspace
+:ARCHIVE_CATEGORY: init.org
+:END:
+See [[info:emacs#Saving Emacs Sessions][desktop]]. This does not work with perspective-el
+
+#+begin_src emacs-lisp
+;; When modifying existing elements...
+(setq frameset-filter-alist (copy-tree frameset-filter-alist))
+;; AFAIK don't save/restore background and foreground(?) colors
+(setf (alist-get 'background-color frameset-filter-alist) :never)
+(setf (alist-get 'foreground-color frameset-filter-alist) :never)
+
+;; https://emacs.stackexchange.com/questions/62015/closing-emacs-results-in-current-desktop-was-not-loaded-from-a-file-even-thoug
+(desktop-read)
+(desktop-save-mode)
+
+;; When killing Emacss, save the desktop and release the lockfile.
+;; Removes need for desktop-auto-save-timeout
+(add-hook 'kill-emacs-hook (lambda () (desktop-save desktop-dirname t)))
+#+end_src
+
+** TODO Investigate frameset-filter-alist
+In particular is there any way to close buffers that are not visible? Open buffers may prompt the user about safe local variables every time the desktop is restored, depending on the buffers.
+** TODO desktop-save-mode sometimes prompts for directory when debugging config
+Trying to quit is blocked by the prompt. Force quit is also blocked by the prompt. I'm not sure why without reading the source code. Someone proposed the following [[https://gist.github.com/syl20bnr/4425094][solution]]. Issue may stem from the fact that I was not running ~desktop-read~, only automatic ~desktop-save~.
+** TODO Stale lockfiles
+     Hopefully fixed via kill-emacs-hook
