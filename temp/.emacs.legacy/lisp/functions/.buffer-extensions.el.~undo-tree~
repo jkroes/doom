@@ -1,0 +1,16 @@
+(undo-tree-save-format-version . 1)
+"da39a3ee5e6b4b0d3255bfef95601890afd80709"
+[nil nil nil nil (25268 33334 406978 0) 0 nil]
+([nil current ((#("(defun my/switch-to-scratch ()
+  \"Switch buffer to *Scratch*.\"
+  (interactive)
+  (switch-to-buffer \"*scratch*\"))
+
+(defun my/kill-other-buffers ()
+  \"Kill other buffers.\"
+  (interactive)
+  (mapc 'kill-buffer
+        (delq (current-buffer)
+              (buffer-list))))
+" 0 1 (fontified t) 1 6 (fontified t face font-lock-keyword-face) 6 7 (fontified t) 7 27 (fontified t face font-lock-function-name-face) 27 33 (fontified t) 33 62 (fontified t face font-lock-doc-face) 62 66 (fontified t) 66 77 (fontified t face font-lock-keyword-face) 77 99 (fontified t) 99 110 (fontified t face font-lock-string-face) 110 115 (fontified t) 115 120 (fontified t face font-lock-keyword-face) 120 121 (fontified t) 121 142 (fontified t face font-lock-function-name-face) 142 148 (fontified t) 148 169 (fontified t face font-lock-doc-face) 169 173 (fontified t) 173 184 (fontified t face font-lock-keyword-face) 184 269 (fontified t)) . 1) (undo-tree-id0 . -269) (undo-tree-id1 . -238) (undo-tree-id2 . -238) (undo-tree-id3 . -238) (undo-tree-id4 . -238) 239 (t 25242 21595 402327 351000)) nil (25268 33334 406975 0) 0 nil])
+nil
