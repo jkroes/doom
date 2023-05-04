@@ -239,8 +239,9 @@ filename with the root private module dir as initial input"
 
 (use-package! vundo
   :init
+  ;; Run evil-collection/modes/vundo/evil-collection-vundo.el
   (push 'vundo evil-collection-mode-list))
-
+fdsa
 ;;; corfu -------------------------------------------------------------
 
 (use-package! corfu
