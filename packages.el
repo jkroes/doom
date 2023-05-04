@@ -55,10 +55,6 @@
 ;; Don't download any snippets
 ;;(package! doom-snippets :ignore t)
 
-;; undo-tree alternative
-(package! vundo
-  :recipe (:host github :repo "casouri/vundo"))
-
 ;; Alternative to company completion module
 (package! corfu
   :recipe (:host github :repo "minad/corfu"
@@ -95,3 +91,4 @@
 (package! transient :pin "c2bdf7e12c530eb85476d3aef317eb2941ab9440")
 (package! with-editor :pin "391e76a256aeec6b9e4cbd733088f30c677d965b")
 
+(package! vundo)
