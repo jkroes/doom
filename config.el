@@ -405,20 +405,21 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
   (advice-remove 'org-export-to-file '+org--dont-trigger-save-hooks-a)
   (advice-remove 'org-babel-tangle '+org--dont-trigger-save-hooks-a))
 
-(when IS-WSL
-  ;; Open non-text files in Windows instead of WSL
-  (setf (alist-get "\\.pdf\\'" org-file-apps nil nil #'string=) #'open-in-windows)
-  ;; dired is unbelievably slow on Windows shared network drives
-  (setf (alist-get 'directory org-file-apps) #'open-in-windows)
-  (add-to-list 'org-file-apps '("\\.png?\\'" . open-in-windows) t)
-  (add-to-list 'org-file-apps '("\\.xlsx?\\'" . open-in-windows) t)
-  (add-to-list 'org-file-apps '("\\.docx?\\'" . open-in-windows) t)
-  (add-to-list 'org-file-apps '("\\.pptx?\\'" . open-in-windows) t)
-  (setq browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe"
-        browse-url-generic-args '("/c" "start" "")
-        browse-url-browser-function 'browse-url-generic)
-  ;; Windows-based attachment directory for WSL Emacs
-  (setq org-attach-id-dir "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation (1)/org-attach"))
+(after! org
+  (when IS-WSL
+    ;; Open non-text files in Windows instead of WSL
+    (setf (alist-get "\\.pdf\\'" org-file-apps nil nil #'string=) #'open-in-windows)
+    ;; dired is unbelievably slow on Windows shared network drives
+    (setf (alist-get 'directory org-file-apps) #'open-in-windows)
+    (add-to-list 'org-file-apps '("\\.png?\\'" . open-in-windows) t)
+    (add-to-list 'org-file-apps '("\\.xlsx?\\'" . open-in-windows) t)
+    (add-to-list 'org-file-apps '("\\.docx?\\'" . open-in-windows) t)
+    (add-to-list 'org-file-apps '("\\.pptx?\\'" . open-in-windows) t)
+    (setq browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe"
+          browse-url-generic-args '("/c" "start" "")
+          browse-url-browser-function 'browse-url-generic)
+    ;; Windows-based attachment directory for WSL Emacs
+    (setq org-attach-id-dir "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation (1)/org-attach")))
 
 ;; The org-transclude manual recommends removing this advice
 (after! org
