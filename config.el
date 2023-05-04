@@ -1142,3 +1142,6 @@ This is a convenience function that skips the org-roam-node-find."
                         ;; without initial input in non-(dend)roam files
                         :desc "Find node (current)" "F" #'dendroam-find)))
                         ;;:desc "Find sibling nodes" "F" #'dendroam-find-siblings)))
+
+;; For WSL
+(map! :i "C-v" #'evil-paste-after)
