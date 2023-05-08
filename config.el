@@ -1149,11 +1149,71 @@ This is a convenience function that skips the org-roam-node-find."
 ;; vterm-undo isn't working on macos; it inserts "C-_"
 (after! vterm (define-key vterm-mode-map [remap vterm-undo] #'ignore))
 
-;;; biblio --------------------------------------------------------------
+;;; zotero --------------------------------------------------------------
 
+;; NOTE This works on MacOS but won't work in WSL
+;;(use-package! zotxt)
+
+;; Setup within WSL Ubuntu (based on zotero.org/support/installation
+;; and "create a custom url protocol with xdg in ubuntu" and
+;; "url protocol handlers in basic ubuntu desktop"
+;; 1. Create ~/.local/share/applications/Zotero.desktop
+;; 2. Add the following to the file:
+;; [Desktop Entry]
+;; Name=Zotero
+;; Exec="/mnt/c/Users/jkroes/AppData/Local/Zotero/zotero.exe" -url %U
+;; Terminal=false
+;; Type=Application
+;; MimeType=x-scheme-handler/zotero
+;; 3. Run (without quotes) "xdg-mime default Zotero.desktop x-scheme-handler/zotero
+;; NOTE This last step might not be necessary
 (after! ol
   (org-link-set-parameters "zotero" :follow
                            (lambda (zpath) (browse-url (format "zotero:%s" zpath)))))
+
+
+
+(defvar zotero-annotations-file
+  (cond (IS-WSL "/mnt/d/annotations.md")
+        (t "~/Downloads/annotations.md")))
+;; Set extensions.zotero.annotations.noteTemplates.title to "annotations"
+;; (without the quotes). Delete the entry for
+;; extensions.zotero.annotations.noteTemplates.note. Then only highlight
+;; annotations will be exported, which simplifies the regexp. This is fine
+;; because only highlight annotations contain a link back to the location in the
+;; PDF. Furthermore, the default filename is the title, so you can use that in the
+;; code below.
+;; In zotero, create annotations in a PDF attachment.
+;; Right click one or more items, "Add note from annotations"
+;; Right click a single note, "Export note" as markdown including zotero links
+;; Export as ~/Downloads/annotations.md (after a couple times, this should be
+;; the default, on MacOS at least
+;; TODO You can select multiple notes, and they will be separated by "---"
+;; https://www.zotero.org/support/note_templates
+;; NOTE May have to delete previous annotation file for subsequent export to
+;; succeed. If note template contains no title, you need to choose a filename
+(defun import-zotero-annotations-from-note (buf)
+  "Import Zotero annotations from a markdown notes-export file,
+convert the annotations to org-mode links with annotation
+comments underneath, and display the buffer"
+  (interactive
+   (list (find-file-noselect (read-file-name
+                              "Note file (default Annotations.md): "
+                              (file-name-directory zotero-annotations-file)
+                              zotero-annotations-file))))
+  (with-current-buffer buf
+    (beginning-of-buffer)
+    (kill-whole-line 2) ; Delete the title and subsequent line
+    (while (re-search-forward "(\\[.*?](zotero://select.*?)) " nil t)
+      (replace-match ""))
+    (beginning-of-buffer)
+    (while (re-search-forward "^\u201C\\(.*\\)\u201D (\\[pdf](\\(zotero://open-pdf.*?\\)))[ ]*" nil t)
+      (replace-match "[[\\2][\\1]]\n\n"))
+    (beginning-of-buffer)
+    (while (re-search-forward "\n\n\n" nil t)
+      (replace-match "\n"))
+    (org-mode))
+  (pop-to-buffer buf))
 
 ;;; shell snippets -------------------------------------------------------
 
