@@ -87,7 +87,13 @@
       ;; Blacklist all modes by default
       evil-collection-mode-list nil
       doom-theme 'doom-one
-      doom-font (font-spec :family "Hack" :size 14)
+      ;; Different font size for laptop vs my current dual monitor setup. Inspired by
+      ;; https://christiantietze.de/posts/2021/06/emacs-center-window-on-current-monitor/.
+      ;; NOTE This only affects font on Emacs startup, and subsequent changes
+      ;; in monitor setup (e.g., undocking your laptop) will not trigger a font
+      ;; size change.
+      doom-font (font-spec :family "Hack"
+                           :size (if (length= (display-monitor-attributes-list) 2) 18 14))
       ;; `doom-init-leader-keys-h' binds to general-override-mode-map and calls
       ;; `'general-override-mode' (see also `general-override-auto-enable'). This
       ;; binds `doom-leader-key' and `doom-leader-alt-key', overriding any other
@@ -862,20 +868,10 @@ except for periods, dashes, and underscores."
   (defun dendroam-up-hierarchy (hierarchy)
     (string-join (butlast (split-string hierarchy "\\.")) "."))
 
-
-  ;; BUG When using "${dendroam-full-hierarchy:*}", vertico-insert cannot
-  ;; properly insert candidates into the minibuffer for functions like
-  ;; org-roam-node-find that rely on this template. If you check *Messages*
-  ;; buffer when debugging vertico-insert, the insertion is a node, not text.
-  ;; Insertion comes with wrapping as well.
-  ;; See https://github.com/org-roam/org-roam/issues/2066
-  ;; +org--roam-fix-completion-width-for-vertico-a is doom's fix, but this
-  ;; advice no longer works after a recent update
   (setq org-roam-node-display-template
-        ;; (format "${dendroam-full-hierarchy:*} %s"
-        ;;         ;; Zero-width components can still be filtered/searched on
-        ;;         (propertize "${doom-tags2:40}" 'face 'org-tag)))
-        "${dendroam-full-hierarchy}")
+        (format "${dendroam-full-hierarchy:*} %s"
+                ;; Zero-width components can still be filtered/searched on.
+                (propertize "${doom-tags2:0}" 'face 'org-tag)))
 
   (cl-defmethod org-roam-node-dendroam-full-hierarchy ((node org-roam-node))
     "Return hierarchy for NODE, constructed of its file title, OLP and direct title.
@@ -1147,3 +1143,50 @@ This is a convenience function that skips the org-roam-node-find."
 
 ;; For WSL
 (map! :i "C-v" #'evil-paste-after)
+
+;;; vterm ---------------------------------------------------------------
+
+;; vterm-undo isn't working on macos; it inserts "C-_"
+(after! vterm (define-key vterm-mode-map [remap vterm-undo] #'ignore))
+
+;;; shell snippets -------------------------------------------------------
+
+;; NOTE Abandoning this project in favor of running the-way out of vterm. It
+;; can search both description and shell snippet, and it allows spaces within
+;; the description. It's live preview is similar to annotatins provided with
+;; tempel-insert. And it provides placeholders as well.
+
+;; (use-package! tempel)
+;; (use-package! tempel-collection)
+
+;; ;; User-defined templates live in ~/.config/doom/templates
+;; (unless (listp tempel-path) (setq tempel-path (list tempel-path)))
+;; (push (expand-file-name "~/.config/doom/templates") tempel-path)
+
+;; ;; Originally inspired by:
+;; ;; https://github.com/akermu/emacs-libvterm/issues/50.
+;; ;; https://www.reddit.com/r/emacs/comments/jd4tu4/how_does_one_insert_text_in_vterm_from_elisp/
+;; (defun my/tempel-insert ()
+;;   "When used within vterm-mode, insert the snippet into a temporary
+;; buffer to allow for snippet completiong using bindings in
+;; tempel-map (e.g., tempel-next). As soon as the snippet is
+;; finalized by calling `tempel-next' or `tempel-previous' enough
+;; times (see TempEl's README.org), insert the results into the original
+;; buffer."
+;;   (interactive)
+;;   (when (eq major-mode 'vterm-mode) ; TODO Handle other terminal and shell modes
+;;     (let ((old (current-buffer))
+;;           (scratch (make-temp-name "scratch")))
+;;       (switch-to-buffer scratch)
+;;       (sh-mode) ; Can't use vterm-mode, might as well use mode w/ shell syntax
+;;       (when evil-mode (evil-insert-state)) ; For placeholder completion
+;;       (defadvice! my/tempel--disable (fn &rest args)
+;;         :around #'tempel--disable
+;;         (apply fn args)
+;;         (when (null tempel--active)
+;;           (copy-region-as-kill (point-min) (point-max))
+;;           (kill-buffer scratch)
+;;           (switch-to-buffer old)
+;;           (vterm-yank)
+;;           (advice-remove 'tempel--disable 'my/tempel--disable)))))
+;;     (call-interactively 'tempel-insert))

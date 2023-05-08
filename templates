@@ -1,0 +1,19 @@
+;; NOTE my/tempel-insert requires that sh-mdoe include all of the templates in
+;; vterm-mode
+
+;; NOTE Consecutive fields (i.e., without strings between them) cause issues:
+;; https://github.com/minad/tempel/issues/99#issuecomment-1514635365
+
+sh-mode
+
+(git_help_for_command "git help " (p "command"))
+
+vterm-mode
+
+(git_help_for_command "git help " (p "command"))
+
+
+;; Local Variables:
+;; mode: lisp-data
+;; outline-regexp: "[a-z]"
+;; End:
