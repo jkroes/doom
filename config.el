@@ -1149,6 +1149,12 @@ This is a convenience function that skips the org-roam-node-find."
 ;; vterm-undo isn't working on macos; it inserts "C-_"
 (after! vterm (define-key vterm-mode-map [remap vterm-undo] #'ignore))
 
+;;; biblio --------------------------------------------------------------
+
+(after! ol
+  (org-link-set-parameters "zotero" :follow
+                           (lambda (zpath) (browse-url (format "zotero:%s" zpath)))))
+
 ;;; shell snippets -------------------------------------------------------
 
 ;; NOTE Abandoning this project in favor of running the-way out of vterm. It
