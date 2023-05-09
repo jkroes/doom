@@ -1058,7 +1058,8 @@ This is a convenience function that skips the org-roam-node-find."
         org-pretty-entities t
         org-appear-autoentities t
         org-link-descriptive t
-        org-appear-autolinks t
+        ;; Don't trigger link literal display; edit links with spc-m-l-l
+        org-appear-autolinks nil
         ;; TODO Can't get this working
         org-appear-autosubmarkers t
         ;; Toggle org-appear off after 1-second idle over an element
@@ -1171,11 +1172,6 @@ This is a convenience function that skips the org-roam-node-find."
   (org-link-set-parameters "zotero" :follow
                            (lambda (zpath) (browse-url (format "zotero:%s" zpath)))))
 
-
-
-(defvar zotero-annotations-file
-  (cond (IS-WSL "/mnt/d/annotations.md")
-        (t "~/Downloads/annotations.md")))
 ;; Set extensions.zotero.annotations.noteTemplates.title to "annotations"
 ;; (without the quotes). Delete the entry for
 ;; extensions.zotero.annotations.noteTemplates.note. Then only highlight
@@ -1192,6 +1188,9 @@ This is a convenience function that skips the org-roam-node-find."
 ;; https://www.zotero.org/support/note_templates
 ;; NOTE May have to delete previous annotation file for subsequent export to
 ;; succeed. If note template contains no title, you need to choose a filename
+(defvar zotero-annotations-file
+  (cond (IS-WSL "/mnt/d/annotations.md")
+        (t "~/Downloads/annotations.md")))
 (defun import-zotero-annotations-from-note (buf)
   "Import Zotero annotations from a markdown notes-export file,
 convert the annotations to org-mode links with annotation
