@@ -255,7 +255,7 @@ filename with the root private module dir as initial input"
   :init
   (setq corfu-cycle nil
         corfu-auto t
-        corfu-auto-prefix 2
+        corfu-auto-prefix 1
         ;; What `corfu-insert-separator' (bound to M-SPC during completion)
         ;; inserts. (Note that Doom's default binding for doom-leader-alt-key
         ;; shadows the default binding for `corfu-insert-separator'.)
@@ -1046,6 +1046,297 @@ This is a convenience function that skips the org-roam-node-find."
           ))))
   )
 
+;;; biblio --------------------------------------------------------------
+
+;; https://orgmode.org/manual/Citation-handling.html
+;; https://blog.tecosaur.com/tmio/2021-07-31-citations.html#fn.3
+;; https://github.com/emacs-citar/citar
+
+;; TODO Open note matching file link
+;; TODO Export and replace links
+;; TODO Search citar PDF text like Zotero (?):
+;; https://github.com/emacs-citar/citar/wiki/Example-functions#search-contents-of-pdfs
+;; TODO Alternative Zotero integration ideas
+;; https://github.com/emacs-citar/citar/issues/685
+
+;; NOTE You're better off using org-cite-insert, since there's no way you'll
+;; remember the citation key, and it takes longer to type out.
+;; With corfu and org-cite: type "[cite:@X]", where X are the first letters of
+;; length corfu-auto-prefix.
+;; (add-hook 'org-mode-hook #'citar-capf-setup)
+
+(setq citar-bibliography
+      (cond (IS-WSL (list "/mnt/d/org-cite.bib")) ; Windows Zotero can't write to org-directory
+            (t (list (expand-file-name "org-cite.bib" org-directory))))
+      ;; biblio/config.el does not set this correctly
+      org-cite-global-bibliography citar-bibliography
+      citar-templates
+      ;; main and suffix are used by citar-open and friends to display
+      ;; existing notes
+      '((main . "${title:*}")
+        (suffix . " ${tags keywords:20}")
+        ;; Used by citar-insert-reference
+        (preview . "${author editor} (${year issued date}) ${title}, ${journal journaltitle publisher container-title collection-title}.\n")
+        ;; Used by citar-open-notes to create new note
+        (note . "${title}"))
+      ;; Location of notes associated with bib entries
+      ;; citar-notes-paths (list (expand-file-name "cite" org-directory))
+      citar-notes-paths (list org-directory)
+      ;; Open files (as opposed to notes or URLs) in Zotero
+      citar-file-open-functions (list (cons "pdf" #'open-in-zotero)
+                                      (cons "html" #'citar-file-open-external)
+                                      (cons t (cond (IS-WSL #'open-in-windows)
+                                                    (t #'find-file))))
+      ;; TODO Make this work again. See citar-create-note, which calls the
+      ;; :create function wtihin citar-notes-sources (citar-org-roam--create-capture-note)
+      ;; Function for creating new note (see also citar-templates)
+      citar-note-format-function #'citar-org-format-note-no-bib
+      ;; Padding between resource indicators (icons)
+      citar-symbol-separator "  "
+      ;; Whether to use multiple selection
+      citar-select-multiple nil)
+
+;; Use icons to indicate resources associated with a bib entry
+(when (display-graphic-p)
+  (setq citar-symbols
+        `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
+          (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
+          (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " "))))
+
+;; Make embark-act recognize org-cite keys at point in roam_refs
+(after! citar
+  (setf (alist-get
+         'key-at-point
+         (alist-get '(org-mode) citar-major-mode-functions nil nil #'equal))
+        #'aj/citar-org-key-at-point))
+
+;; Convert Windows to WSL paths when opening PDF files
+(after! citar-file
+  (add-to-list 'citar-file-parser-functions 'citar-file--parser-default-wsl))
+
+;; NOTE Unlike import-zotero-annotations-from-note, which have Zotero open-pdf
+;; links, this will insert an absolute filepath. The absolute filepath is useful
+;; if we need to export the org-mode file to another format. We can copy that
+;; file to a common directory then search-replace the links in the exported
+;; file, to preserve access for those who can't access Emacs or my Zotero
+;; library (i.e., everyone who is not me)
+;; (defun citar-insert-file-link ()
+;;   "Insert an org-mode link to a selected file attachment with the parent item title as the description"
+;;   (interactive)
+;;   (require 'citar)
+;;   (let* ((key (citar-select-ref))
+;;          (file (cdr (citar--select-resource key :files t)))
+;;          (title (cdr (assoc "title" (citar-get-entry key)))))
+;;     (org-insert-link nil file title)))
+
+(defun citar-org-format-note-no-bib (key entry)
+  "`citar-org-format-note-default' without
+#+print_bibliography"
+  (let* ((template (citar--get-template 'note))
+         (note-meta (when template
+                      (citar-format--entry template entry)))
+         (filepath (expand-file-name
+                    (concat key ".org")
+                    (car citar-notes-paths)))
+         (buffer (find-file filepath)))
+    (with-current-buffer buffer
+      ;; This just overrides other template insertion.
+      (erase-buffer)
+      (citar-org-roam-make-preamble key)
+      (insert "#+title: ")
+      (when template (insert note-meta))
+      (insert "\n\n")
+      (when (fboundp 'evil-insert)
+        (evil-insert 1)))))
+
+(defun aj/citar-org-key-at-point ()
+  "Return key at point for org-cite citation-reference or citekey."
+  (or (citar-org-key-at-point)
+      (when (org-in-regexp org-element-citation-key-re)
+        (cons (substring (match-string 0) 1)
+              (cons (match-beginning 0)
+                    (match-end 0))))))
+
+;; citar-open first prompts for a key, then for a resource (file, URL, or note).
+;; Here we skip the key-prompt by using the key stored in ROAM_REFS of the
+;; current note
+(defun org-roam-open-refs ()
+  "Open resources associated with citation key, or open URL, from ROAM_REFS
+of current note"
+  (interactive)
+  (save-excursion
+    (goto-char (org-roam-node-point (org-roam-node-at-point 'assert)))
+    (when-let* ((p (org-entry-get (point) "ROAM_REFS"))
+                (refs (when p (split-string-and-unquote p)))
+                (user-error "No ROAM_REFS found"))
+      ;; Open ref citation keys
+      (when-let ((oc-cites
+                  (seq-map
+                   (lambda (ref) (substring ref 1))
+                   (seq-filter (apply-partially #'string-prefix-p "@") refs))))
+        (citar-open-from-note oc-cites))
+      ;; Open ref URLs
+      (dolist (ref refs)
+        (unless (string-prefix-p "@" ref)
+          (browse-url ref))))))
+
+(defun citar-open-from-note (keys)
+  "Like citar-open but excludes notes from candidates."
+  (interactive (list (citar-select-refs)))
+  (if-let ((selected (let* ((actions (bound-and-true-p embark-default-action-overrides))
+                            (embark-default-action-overrides `((t . ,#'citar--open-resource) . ,actions)))
+                       (citar--select-resource keys :files t :links t
+                                               :always-prompt citar-open-prompt))))
+      (citar--open-resource (cdr selected) (car selected))
+    (error "No associated resources: %s" keys)))
+
+(defun open-in-zotero (file)
+  "Open file resources in Zotero PDF viewer."
+  (string-match ".*/storage/\\(.*\\)/.*\\.pdf" file)
+  (browse-url
+   ;; NOTE You can also use select instead of open-pdf to see the
+   ;; attachment item in the item pane
+   (replace-match "zotero://open-pdf/library/items/\\1" nil nil file)))
+
+(defun citar-file--parser-default-wsl (file-field)
+  "Split FILE-FIELD by `;'."
+  (mapcar
+   #'wslify-bib-path
+   (seq-remove
+    #'string-empty-p
+    (mapcar
+     #'string-trim
+     (citar-file--split-escaped-string file-field ?\;)))))
+
+(defun wslify-bib-path (file)
+  "For WSL, convert paths assumed to be Windows files to WSL paths. Otherwise,
+return the path"
+  (if (eq system-type 'gnu/linux)
+      (substring
+       (shell-command-to-string
+        (format
+         "wslpath '%s'"
+         (replace-regexp-in-string
+          "\\\\\\\\"
+          "/"
+          (replace-regexp-in-string "\\\\:" ":" file))))
+       0 -1)
+    file))
+
+
+;;; zotero --------------------------------------------------------------
+
+;; NOTE This works on MacOS but won't work in WSL
+;;(use-package! zotxt)
+
+;; Setup within WSL Ubuntu (based on zotero.org/support/installation
+;; and "create a custom url protocol with xdg in ubuntu" and
+;; "url protocol handlers in basic ubuntu desktop"
+;; 1. Create ~/.local/share/applications/Zotero.desktop
+;; 2. Add the following to the file:
+;; [Desktop Entry]
+;; Name=Zotero
+;; Exec="/mnt/c/Users/jkroes/AppData/Local/Zotero/zotero.exe" -url %U
+;; Terminal=false
+;; Type=Application
+;; MimeType=x-scheme-handler/zotero
+;; 3. Run (without quotes) "xdg-mime default Zotero.desktop x-scheme-handler/zotero
+(after! ol
+  (org-link-set-parameters "zotero" :follow
+                           (lambda (zpath) (browse-url (format "zotero:%s" zpath)))))
+
+;; Set extensions.zotero.annotations.noteTemplates.title to "annotations"
+;; (without the quotes). Delete the entry for
+;; extensions.zotero.annotations.noteTemplates.note. Then only highlight
+;; annotations will be exported, which simplifies the regexp. This is fine
+;; because only highlight annotations contain a link back to the location in the
+;; PDF. Furthermore, the default filename is the title, so you can use that in the
+;; code below.
+;; In zotero, create annotations in a PDF attachment.
+;; Right click one or more items, "Add note from annotations"
+;; Right click a single note, "Export note" as markdown including zotero links
+;; Export as ~/Downloads/annotations.md (after a couple times, this should be
+;; the default, on MacOS at least
+;; TODO You can select multiple notes, and they will be separated by "---"
+;; https://www.zotero.org/support/note_templates
+;; NOTE May have to delete previous annotation file for subsequent export to
+;; succeed. If note template contains no title, you need to choose a filename
+(defvar zotero-annotations-file
+  (cond (IS-WSL "/mnt/d/annotations.md")
+        (t "~/Downloads/annotations.md")))
+(defun import-zotero-annotations-from-note (buf)
+  "Import Zotero annotations from a markdown notes-export file,
+convert the annotations to org-mode links with annotation
+comments underneath, and display the buffer"
+  (interactive
+   (list (find-file-noselect (read-file-name
+                              "Note file (default Annotations.md): "
+                              (file-name-directory zotero-annotations-file)
+                              zotero-annotations-file))))
+  (with-current-buffer buf
+    (beginning-of-buffer)
+    (kill-whole-line 2) ; Delete the title and subsequent line
+    (while (re-search-forward "(\\[.*?](zotero://select.*?)) " nil t)
+      (replace-match ""))
+    (beginning-of-buffer)
+    (while (re-search-forward "^\u201C\\(.*\\)\u201D (\\[pdf](\\(zotero://open-pdf.*?\\)))[ ]*" nil t)
+      (replace-match "[[\\2][\\1]]\n\n"))
+    (beginning-of-buffer)
+    (while (re-search-forward "\n\n\n" nil t)
+      (replace-match "\n"))
+    (org-mode))
+  (pop-to-buffer buf))
+
+;; Zotero annotations in Emacs:
+
+;; TODO This doesn't work on WSL because firewall rules must be disabled to
+;; allow WSL to connect to Windows, and that requires admin approval See
+;; https://retorque.re/zotero-better-bibtex/exporting/pull/
+;;
+;; Right click a Zotero collection and select "Download Betterbibtex export" to
+;; get the URL
+;; (defun update-bib-file ()
+;;   (interactive)
+;;   (let ((root_url (shell-quote-argument
+;;                    ;; use $(hostname).local in lieu of the ip for localhost on wsl
+;;                    "http://127.0.0.1:23119/better-bibtex/export/collection?/1/org-cite.biblatex"))) ; &exportnotes=true
+;;     (shell-command (format "wget %s -o %s" root_url citar-bibliography))))
+
+;; TODO drag and drop for text doesn't work with mobaxterm Emacs and Windows.
+;; It does work for terminal emacs.
+;; (after! dnd
+;;   (add-to-list 'dnd-protocol-alist
+;;                (cons "zotero://" #'dnd-transform-zotero)))
+;; (advice-add 'xterm-paste :override 'my/xterm-paste)
+;; (defun my/xterm-paste (event)
+;;   (interactive "e")
+;;   (unless (eq (car-safe event) 'xterm-paste)
+;;     (error "xterm-paste must be found to xterm-paste event"))
+;;   (let ((pasted-text (dnd-transform-zotero (nth 1 event) 'return)))
+;;     (if xterm-store-paste-on-kill-ring
+;;         ;; Put the text onto the kill ring and then insert it into the
+;;         ;; buffer.
+;;         (let ((interprogram-paste-function (lambda () pasted-text)))
+;;           (yank))
+;;       ;; Insert the text without putting it onto the kill ring.
+;;       (push-mark)
+;;       (insert-for-yank pasted-text))))
+;; (defun dnd-transform-zotero (url action)
+;;   "Transform Zotero highlight annotations that are dragged to Emacs from the PDF
+;; viewer into org-mode links. These annotations consist of highlighted text
+;; surrounded by Unicode quotes and followed by two links in markdown format:
+;; zotero select and zotero open-pdf."
+;;   (if (string-match "^\u201C\\(.*\\)\u201D.*(\\[pdf](\\(.*\\))) ?\\(.*\\)" url)
+;;       (progn
+;;         (let* ((annot-link (replace-match "\n[[\\2][\\1]]\n" nil nil url))
+;;                (comment (replace-match "\\3" nil nil url))
+;;                (all (if (string-empty-p comment)
+;;                         annot-link
+;;                       (concat annot-link "\n" comment "\n"))))
+;;           (if (eq action 'return)
+;;               all
+;;             (insert all))))
+;;     url))
 
 
 ;;; org-appear -------------------------------------------
@@ -1149,70 +1440,6 @@ This is a convenience function that skips the org-roam-node-find."
 
 ;; vterm-undo isn't working on macos; it inserts "C-_"
 (after! vterm (define-key vterm-mode-map [remap vterm-undo] #'ignore))
-
-;;; zotero --------------------------------------------------------------
-
-;; NOTE This works on MacOS but won't work in WSL
-;;(use-package! zotxt)
-
-;; Setup within WSL Ubuntu (based on zotero.org/support/installation
-;; and "create a custom url protocol with xdg in ubuntu" and
-;; "url protocol handlers in basic ubuntu desktop"
-;; 1. Create ~/.local/share/applications/Zotero.desktop
-;; 2. Add the following to the file:
-;; [Desktop Entry]
-;; Name=Zotero
-;; Exec="/mnt/c/Users/jkroes/AppData/Local/Zotero/zotero.exe" -url %U
-;; Terminal=false
-;; Type=Application
-;; MimeType=x-scheme-handler/zotero
-;; 3. Run (without quotes) "xdg-mime default Zotero.desktop x-scheme-handler/zotero
-;; NOTE This last step might not be necessary
-(after! ol
-  (org-link-set-parameters "zotero" :follow
-                           (lambda (zpath) (browse-url (format "zotero:%s" zpath)))))
-
-;; Set extensions.zotero.annotations.noteTemplates.title to "annotations"
-;; (without the quotes). Delete the entry for
-;; extensions.zotero.annotations.noteTemplates.note. Then only highlight
-;; annotations will be exported, which simplifies the regexp. This is fine
-;; because only highlight annotations contain a link back to the location in the
-;; PDF. Furthermore, the default filename is the title, so you can use that in the
-;; code below.
-;; In zotero, create annotations in a PDF attachment.
-;; Right click one or more items, "Add note from annotations"
-;; Right click a single note, "Export note" as markdown including zotero links
-;; Export as ~/Downloads/annotations.md (after a couple times, this should be
-;; the default, on MacOS at least
-;; TODO You can select multiple notes, and they will be separated by "---"
-;; https://www.zotero.org/support/note_templates
-;; NOTE May have to delete previous annotation file for subsequent export to
-;; succeed. If note template contains no title, you need to choose a filename
-(defvar zotero-annotations-file
-  (cond (IS-WSL "/mnt/d/annotations.md")
-        (t "~/Downloads/annotations.md")))
-(defun import-zotero-annotations-from-note (buf)
-  "Import Zotero annotations from a markdown notes-export file,
-convert the annotations to org-mode links with annotation
-comments underneath, and display the buffer"
-  (interactive
-   (list (find-file-noselect (read-file-name
-                              "Note file (default Annotations.md): "
-                              (file-name-directory zotero-annotations-file)
-                              zotero-annotations-file))))
-  (with-current-buffer buf
-    (beginning-of-buffer)
-    (kill-whole-line 2) ; Delete the title and subsequent line
-    (while (re-search-forward "(\\[.*?](zotero://select.*?)) " nil t)
-      (replace-match ""))
-    (beginning-of-buffer)
-    (while (re-search-forward "^\u201C\\(.*\\)\u201D (\\[pdf](\\(zotero://open-pdf.*?\\)))[ ]*" nil t)
-      (replace-match "[[\\2][\\1]]\n\n"))
-    (beginning-of-buffer)
-    (while (re-search-forward "\n\n\n" nil t)
-      (replace-match "\n"))
-    (org-mode))
-  (pop-to-buffer buf))
 
 ;;; shell snippets -------------------------------------------------------
 
