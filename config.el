@@ -690,7 +690,8 @@ headings."
         ;; try running `org-roam-db-clear-all',then `org-roam-db-sync'
         org-roam-db-node-include-function
         (lambda ()
-          (not (member org-attach-auto-tag (org-get-tags nil t))))))
+          (or
+           (not (member org-attach-auto-tag (org-get-tags nil t)))))))
 
 ;; NOTE This hides and prevents searching on tags in e.g. org-roam-node-find
 ;; but does not exclude nodes with those tags. To excludes nodes by tag, see
@@ -847,6 +848,7 @@ except for periods, dashes, and underscores."
                                                                  (string-glyph-decompose s)))))
                  (cl-replace (title pair) (replace-regexp-in-string (car pair) (cdr pair) title)))
         (let* ((pairs `(("[^[:alnum:][:digit:].-]" . "_")
+                        (" " . "_")     ; replace spaces
                         ("__*" . "_")   ; remove sequential underscore
                         ("^_*" . "")    ; remove starting underscore
                         ("_*$" . "")    ; remove ending underscore
@@ -868,10 +870,19 @@ except for periods, dashes, and underscores."
   (defun dendroam-up-hierarchy (hierarchy)
     (string-join (butlast (split-string hierarchy "\\.")) "."))
 
+  ;; NOTE zero-length components can still be searched
   (setq org-roam-node-display-template
-        (format "${dendroam-full-hierarchy:*} %s"
-                ;; Zero-width components can still be filtered/searched on.
-                (propertize "${doom-tags2:0}" 'face 'org-tag)))
+        (format "${display-text:*} %s"
+                (propertize "${doom-tags2:5}" 'face 'org-tag)))
+
+  (cl-defmethod org-roam-node-display-text ((node org-roam-node))
+    (require 'citar)
+    (if (string= (concat-path org-roam-directory citar-org-roam-subdir)
+                 (directory-file-name (file-name-directory (org-roam-node-file node))))
+        ;; citar reference notes
+        (org-roam-node-title node)
+      ;; other org-roam notes
+      (org-roam-node-dendroam-full-hierarchy node)))
 
   (cl-defmethod org-roam-node-dendroam-full-hierarchy ((node org-roam-node))
     "Return hierarchy for NODE, constructed of its file title, OLP and direct title.
@@ -974,32 +985,33 @@ If some elements are missing, they will be stripped out."
   ;; is a period and not the first component deletes to the nearest period. In
   ;; other words, it does like `vertico-directory-delete-char' but with `.'
   ;; instead of `/'.
-  ;; NOTE You can always just use C-w if you always want to delete back to `.'
-  (defun dendroam-up (&optional n)
-    "Delete N directories before point."
-    (interactive "p")
-    (when (and (> (point) (minibuffer-prompt-end))
-               (eq (char-before) ?.)
-               (eq 'org-roam-node (vertico--metadata-get 'category)))
-      (let ((path (buffer-substring (minibuffer-prompt-end) (point))) found)
-        (dotimes (_ (or n 1) found)
-          (save-excursion
-            (let ((end (point)))
-              (goto-char (1- end))
-              (when (search-backward "." (minibuffer-prompt-end) t)
-                (delete-region (1+ (point)) end)
-                (setq found t))))))))
-
-  (defun delete-dendroam (&optional n)
-    "Delete N directories or chars before point."
-    (interactive "p")
-    (unless (dendroam-up n)
-      (backward-delete-char n)))
-
-  (defadvice! my/delete--dendroam (fn &rest args)
-    :around #'org-roam-node-read
-    (cl-letf (((symbol-function  'vertico-directory-delete-char) #'delete-dendroam))
-      (apply fn args)))
+  ;; NOTE You can always just use vertico-directory-delete-word if you always
+  ;; want to delete back to `.'
+  ;; (defun dendroam-up (&optional n)
+  ;;   "Delete N directories before point."
+  ;;   (interactive "p")
+  ;;   (when (and (> (point) (minibuffer-prompt-end))
+  ;;              (eq (char-before) ?.)
+  ;;              (eq 'org-roam-node (vertico--metadata-get 'category)))
+  ;;     (let ((path (buffer-substring (minibuffer-prompt-end) (point))) found)
+  ;;       (dotimes (_ (or n 1) found)
+  ;;         (save-excursion
+  ;;           (let ((end (point)))
+  ;;             (goto-char (1- end))
+  ;;             (when (search-backward "." (minibuffer-prompt-end) t)
+  ;;               (delete-region (1+ (point)) end)
+  ;;               (setq found t))))))))
+  ;;
+  ;; (defun delete-dendroam (&optional n)
+  ;;   "Delete N directories or chars before point."
+  ;;   (interactive "p")
+  ;;   (unless (dendroam-up n)
+  ;;     (backward-delete-char n)))
+  ;;
+  ;; (defadvice! my/delete--dendroam (fn &rest args)
+  ;;   :around #'org-roam-node-read
+  ;;   (cl-letf (((symbol-function  'vertico-directory-delete-char) #'delete-dendroam))
+  ;;     (apply fn args)))
 
   (defun dendroam-find-siblings ()
     (interactive)
@@ -1052,15 +1064,40 @@ This is a convenience function that skips the org-roam-node-find."
 ;; https://blog.tecosaur.com/tmio/2021-07-31-citations.html#fn.3
 ;; https://github.com/emacs-citar/citar
 
-;; TODO Open note matching file link
-;; TODO Export and replace links
+;; List of commands:
+;; citar-open
+;; citar-org-roam-ref-add: Add an additional citation key to roam refs of the
+;; node at point. citar-org-roam-ref-add is to org-roam-ref-add as citar-open
+;; is to org-roam-node-find.
+;; org-cite-insert / citar-insert-citation
+;; citar-insert-reference (for a references section; unused currently)
+;; org-roam-ref-add (for non-Zotero URLs and wayback URLs)
+;; org-roam-ref-find (for finding a node by URL)
+
+;; TODO Integrate dendroam hierarchy and title (incld. renaming function) with
+;; title given to citar reference notes. Use aliases to bridge the gap if
+;; necessary. Maybe the main title can be the last component of the hierarchy,
+;; while the alias can be citar-org-roam-title-template... Brainstorm and play
+;; around with it.
+;; TODO Auto-preview notes:
+;; https://org-roam.discourse.group/t/flipping-through-nodes-like-in-a-kraften-box/2433/2
+;; TODO Configure an org-roam-capture-template to create multiple citation
+;; notes per file. citar-org-roam supports multiple notes per file and multiple
+;; refs per note.
 ;; TODO Search citar PDF text like Zotero (?):
 ;; https://github.com/emacs-citar/citar/wiki/Example-functions#search-contents-of-pdfs
 ;; TODO Alternative Zotero integration ideas
 ;; https://github.com/emacs-citar/citar/issues/685
 
-;; NOTE You're better off using org-cite-insert, since there's no way you'll
-;; remember the citation key, and it takes longer to type out.
+;; NOTE citar-open shows biliography tags/keywords. org-roam-node-find does
+;; not, and it's not clear how to do so.
+
+;; NOTE citar-open can find files outside of citar-org-roam-subdir. This means
+;; you can create dendroam nodes that are citar reference notes.
+
+;; Note You're better off using org-cite-insert, since there's no way you'll
+;; remember the citation key, and it takes longer to type out. Alernatively,
+;; re-enable org-roam-completion-everywhere
 ;; With corfu and org-cite: type "[cite:@X]", where X are the first letters of
 ;; length corfu-auto-prefix.
 ;; (add-hook 'org-mode-hook #'citar-capf-setup)
@@ -1074,6 +1111,7 @@ This is a convenience function that skips the org-roam-node-find."
       ;; main and suffix are used by citar-open and friends to display
       ;; existing notes
       '((main . "${title:*}")
+        ; Zotero tags are better biblatex keywords wtihin citar-bibliography
         (suffix . " ${tags keywords:20}")
         ;; Used by citar-insert-reference
         (preview . "${author editor} (${year issued date}) ${title}, ${journal journaltitle publisher container-title collection-title}.\n")
@@ -1087,14 +1125,18 @@ This is a convenience function that skips the org-roam-node-find."
                                       (cons "html" #'citar-file-open-external)
                                       (cons t (cond (IS-WSL #'open-in-windows)
                                                     (t #'find-file))))
-      ;; TODO Make this work again. See citar-create-note, which calls the
-      ;; :create function wtihin citar-notes-sources (citar-org-roam--create-capture-note)
-      ;; Function for creating new note (see also citar-templates)
-      citar-note-format-function #'citar-org-format-note-no-bib
       ;; Padding between resource indicators (icons)
       citar-symbol-separator "  "
       ;; Whether to use multiple selection
       citar-select-multiple nil)
+
+(defun open-in-zotero (file)
+  "Open file resources in Zotero PDF viewer."
+  (string-match ".*/storage/\\(.*\\)/.*\\.pdf" file)
+  (browse-url
+   ;; NOTE You can also use select instead of open-pdf to see the
+   ;; attachment item in the item pane
+   (replace-match "zotero://open-pdf/library/items/\\1" nil nil file)))
 
 ;; Use icons to indicate resources associated with a bib entry
 (when (display-graphic-p)
@@ -1110,9 +1152,46 @@ This is a convenience function that skips the org-roam-node-find."
          (alist-get '(org-mode) citar-major-mode-functions nil nil #'equal))
         #'aj/citar-org-key-at-point))
 
+(defun aj/citar-org-key-at-point ()
+  "Return key at point for org-cite citation-reference or citekey."
+  (or (citar-org-key-at-point)
+      (when (org-in-regexp org-element-citation-key-re)
+        (cons (substring (match-string 0) 1)
+              (cons (match-beginning 0)
+                    (match-end 0))))))
+
+
 ;; Convert Windows to WSL paths when opening PDF files
 (after! citar-file
   (add-to-list 'citar-file-parser-functions 'citar-file--parser-default-wsl))
+
+;; NOTE This will not allow you to open files in the shared Zotero Air Program
+;; library (CDPR Master Zotero Collection), but citar highlights any citation
+;; keys you insert that have bad filepaths
+(defun citar-file--parser-default-wsl (file-field)
+  "Split FILE-FIELD by `;'."
+  (mapcar
+   #'wslify-bib-path
+   (seq-remove
+    #'string-empty-p
+    (mapcar
+     #'string-trim
+     (citar-file--split-escaped-string file-field ?\;)))))
+
+(defun wslify-bib-path (file)
+  "For WSL, convert paths assumed to be Windows files to WSL paths. Otherwise,
+return the path"
+  (if (eq system-type 'gnu/linux)
+      (substring
+       (shell-command-to-string
+        (format
+         "wslpath '%s'"
+         (replace-regexp-in-string
+          "\\\\\\\\"
+          "/"
+          (replace-regexp-in-string "\\\\:" ":" file))))
+       0 -1)
+    file))
 
 ;; NOTE Unlike import-zotero-annotations-from-note, which have Zotero open-pdf
 ;; links, this will insert an absolute filepath. The absolute filepath is useful
@@ -1129,34 +1208,40 @@ This is a convenience function that skips the org-roam-node-find."
 ;;          (title (cdr (assoc "title" (citar-get-entry key)))))
 ;;     (org-insert-link nil file title)))
 
-(defun citar-org-format-note-no-bib (key entry)
-  "`citar-org-format-note-default' without
-#+print_bibliography"
-  (let* ((template (citar--get-template 'note))
-         (note-meta (when template
-                      (citar-format--entry template entry)))
-         (filepath (expand-file-name
-                    (concat key ".org")
-                    (car citar-notes-paths)))
-         (buffer (find-file filepath)))
-    (with-current-buffer buffer
-      ;; This just overrides other template insertion.
-      (erase-buffer)
-      (citar-org-roam-make-preamble key)
-      (insert "#+title: ")
-      (when template (insert note-meta))
-      (insert "\n\n")
-      (when (fboundp 'evil-insert)
-        (evil-insert 1)))))
+(after! citar
+  (setf (plist-get (alist-get 'citar-org-roam citar-notes-sources) :create) 'citar-org-roam--create-capture-note2))
 
-(defun aj/citar-org-key-at-point ()
-  "Return key at point for org-cite citation-reference or citekey."
-  (or (citar-org-key-at-point)
-      (when (org-in-regexp org-element-citation-key-re)
-        (cons (substring (match-string 0) 1)
-              (cons (match-beginning 0)
-                    (match-end 0))))))
+(setq citar-org-roam-note-title-template "${title}")
 
+(defun citar-org-roam--create-capture-note2 (citekey entry)
+  "Open or create org-roam node for CITEKEY and ENTRY."
+  ;; adapted from https://jethrokuan.github.io/org-roam-guide/#orgc48eb0d
+  (let ((title (citar-format--entry
+                citar-org-roam-note-title-template entry))
+        (key citar-org-roam-capture-template-key))
+    (apply 'org-roam-capture-
+           :info (list :citekey citekey)
+           :node (org-roam-node-create :title title)
+           :props '(:finalize find-file)
+           (if key
+               (list :keys key)
+             ;; Fallback template if citar-org-roam-capture-template-key is nil
+             (list
+              :templates
+              '(("r" "reference" plain "%?" :if-new
+                 (file+head
+                  "%(concat
+     (when citar-org-roam-subdir (concat citar-org-roam-subdir \"/\")) \"${citekey}.org\")"
+                  "#+title: ${title}")
+                 :immediate-finish t
+                 :unnarrowed t)))))
+    (org-roam-ref-add (concat "@" citekey))
+    ;; HACK Minor changes to the original function below
+    (when (fboundp 'evil-insert)
+      (evil-append-line 1)
+      (insert "\n\n"))))
+
+;; TODO Fix this function
 ;; citar-open first prompts for a key, then for a resource (file, URL, or note).
 ;; Here we skip the key-prompt by using the key stored in ROAM_REFS of the
 ;; current note
@@ -1189,39 +1274,6 @@ of current note"
                                                :always-prompt citar-open-prompt))))
       (citar--open-resource (cdr selected) (car selected))
     (error "No associated resources: %s" keys)))
-
-(defun open-in-zotero (file)
-  "Open file resources in Zotero PDF viewer."
-  (string-match ".*/storage/\\(.*\\)/.*\\.pdf" file)
-  (browse-url
-   ;; NOTE You can also use select instead of open-pdf to see the
-   ;; attachment item in the item pane
-   (replace-match "zotero://open-pdf/library/items/\\1" nil nil file)))
-
-(defun citar-file--parser-default-wsl (file-field)
-  "Split FILE-FIELD by `;'."
-  (mapcar
-   #'wslify-bib-path
-   (seq-remove
-    #'string-empty-p
-    (mapcar
-     #'string-trim
-     (citar-file--split-escaped-string file-field ?\;)))))
-
-(defun wslify-bib-path (file)
-  "For WSL, convert paths assumed to be Windows files to WSL paths. Otherwise,
-return the path"
-  (if (eq system-type 'gnu/linux)
-      (substring
-       (shell-command-to-string
-        (format
-         "wslpath '%s'"
-         (replace-regexp-in-string
-          "\\\\\\\\"
-          "/"
-          (replace-regexp-in-string "\\\\:" ":" file))))
-       0 -1)
-    file))
 
 
 ;;; zotero --------------------------------------------------------------
@@ -1482,3 +1534,41 @@ comments underneath, and display the buffer"
 ;;           (vterm-yank)
 ;;           (advice-remove 'tempel--disable 'my/tempel--disable)))))
 ;;     (call-interactively 'tempel-insert))
+
+;;; evil everywhere --------------------------------------------------------------------------
+
+;; NOTE This is where code is rescued from the opinionated but only sometimes
+;; sensible +everywhere flag.
+
+;; TODO Liberate code from all the modules you use. You don't know what you're
+;; missing yet.
+
+;; Minibuffer
+(map! :map (evil-ex-completion-map evil-ex-search-keymap)
+      "C-a" #'evil-beginning-of-line
+      "C-b" #'evil-backward-char
+      "C-f" #'evil-forward-char
+      :gi "C-j" #'next-complete-history-element
+      :gi "C-k" #'previous-complete-history-element)
+
+(define-key! :keymaps +default-minibuffer-maps
+  [escape] #'abort-recursive-edit
+  "C-a"    #'move-beginning-of-line
+  "C-r"    #'evil-paste-from-register
+  "C-u"    #'evil-delete-back-to-indentation
+  "C-v"    #'yank
+  "C-w"    #'doom/delete-backward-word
+  "C-z"    (cmd! (ignore-errors (call-interactively #'undo))))
+
+(define-key! :keymaps +default-minibuffer-maps
+  "C-j"    #'next-line
+  "C-k"    #'previous-line
+  "C-S-j"  #'scroll-up-command
+  "C-S-k"  #'scroll-down-command)
+;; For folks with `evil-collection-setup-minibuffer' enabled
+(define-key! :states 'insert :keymaps +default-minibuffer-maps
+  "C-j"    #'next-line
+  "C-k"    #'previous-line)
+(define-key! read-expression-map
+  "C-j" #'next-line-or-history-element
+  "C-k" #'previous-line-or-history-element)
