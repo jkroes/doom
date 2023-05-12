@@ -717,6 +717,16 @@ headings."
           (lambda ()
             (add-hook 'after-save-hook #'org-roam-link-replace-all nil t)))
 
+(use-package! consult-org-roam
+  :after org-roam
+  :config
+  ;; Faster live preview
+  (setq consult-org-roam-grep-func #'consult-ripgrep)
+  ;; Advise org-roam-node-read to use consult--read. This package uses
+  ;; live previews by default (consult-org-roam--node-preview), but you
+  ;; can suppress them via consult-customize.
+  (consult-org-roam-mode))
+
 ;;; dendroam --------------------------------------------------------------------
 
 ;; NOTE Nodes can be created by running org-roam-node-find;
@@ -750,8 +760,6 @@ headings."
 ;; necessary. Maybe the main title can be the last component of the hierarchy,
 ;; while the alias can be citar-org-roam-title-template... Brainstorm and play
 ;; around with it.
-;; TODO Auto-preview notes:
-;; https://org-roam.discourse.group/t/flipping-through-nodes-like-in-a-kraften-box/2433/2
 ;; TODO Configure an org-roam-capture-template to create multiple citation
 ;; notes per file. citar-org-roam supports multiple notes per file and multiple
 ;; refs per note.

@@ -127,7 +127,7 @@ except for periods and dashes."
 
 ;; NODE TREE-STYLE NAVIGATION --------------------------------------------------------------------
 
-;; TODO Refactor this function to be more like org-roam-node-find
+;; NOTE Compare code to org-roam-node-find
 (defun dendroam-find-parent ()
   "Find and visit parent node, creating one if nonexistent.
 This is a convenience function that skips the org-roam-node-find."
@@ -151,7 +151,6 @@ This is a convenience function that skips the org-roam-node-find."
   (interactive)
   (dendroam--find-siblings (or (and (eq major-mode 'org-mode) (org-roam-node-at-point)) "")))
 
-;; TODO Exclude current node from completion
 (cl-defmethod dendroam--find-siblings ((node org-roam-node))
   (org-roam-node-find nil
                       (org-roam-node-dendroam-hierarchy-no-title node)
@@ -270,44 +269,7 @@ This is a convenience function that skips the org-roam-node-find."
    (directory-file-name (file-name-directory (org-roam-node-file node)))
    (concat-path org-roam-directory citar-org-roam-subdir)))
 
-;;; MINIBUFFER COMPLETION ----------------------------------------------------
-
-;; HACK When calling org-roam-node-find or any other function that calls
-;; org-roam-node-read, `DEL' deletes a character, or if the preceding character
-;; is a period and not the first component deletes to the nearest period. In
-;; other words, it does like `vertico-directory-delete-char' but with `.'
-;; instead of `/'.
-;; NOTE You can always just use vertico-directory-delete-word if you always
-;; want to delete back to `.'
-;; (defun dendroam-up (&optional n)
-;;   "Delete N directories before point."
-;;   (interactive "p")
-;;   (when (and (> (point) (minibuffer-prompt-end))
-;;              (eq (char-before) ?.)
-;;              (eq 'org-roam-node (vertico--metadata-get 'category)))
-;;     (let ((path (buffer-substring (minibuffer-prompt-end) (point))) found)
-;;       (dotimes (_ (or n 1) found)
-;;         (save-excursion
-;;           (let ((end (point)))
-;;             (goto-char (1- end))
-;;             (when (search-backward "." (minibuffer-prompt-end) t)
-;;               (delete-region (1+ (point)) end)
-;;               (setq found t))))))))
-;;
-;; (defun delete-dendroam (&optional n)
-;;   "Delete N directories or chars before point."
-;;   (interactive "p")
-;;   (unless (dendroam-up n)
-;;     (backward-delete-char n)))
-;;
-;; (defadvice! my/delete--dendroam (fn &rest args)
-;;   :around #'org-roam-node-read
-;;   (cl-letf (((symbol-function  'vertico-directory-delete-char) #'delete-dendroam))
-;;     (apply fn args)))
-
-
 ;;; NODE DISPLAY --------------------------------------------------------------------
-
 
 ;; https://github.com/org-roam/org-roam/issues/2066
 ;; BUG org-roam candidates are too big. Completing them mvoes the cursor down
@@ -355,6 +317,44 @@ If some elements are missing, they will be stripped out."
       (t (concat (propertize hierarchy 'face '(shadow italic))
                  separator (propertize (string-join olp separator) 'face '(shadow italic))
                  separator title)))))
+
+
+;;; MINIBUFFER COMPLETION ----------------------------------------------------
+
+;; HACK When calling org-roam-node-find or any other function that calls
+;; org-roam-node-read, `DEL' deletes a character, or if the preceding character
+;; is a period and not the first component deletes to the nearest period. In
+;; other words, it does like `vertico-directory-delete-char' but with `.'
+;; instead of `/'.
+;; NOTE You can always just use vertico-directory-delete-word if you always
+;; want to delete back to `.'
+;; (defun dendroam-up (&optional n)
+;;   "Delete N directories before point."
+;;   (interactive "p")
+;;   (when (and (> (point) (minibuffer-prompt-end))
+;;              (eq (char-before) ?.)
+;;              (eq 'org-roam-node (vertico--metadata-get 'category)))
+;;     (let ((path (buffer-substring (minibuffer-prompt-end) (point))) found)
+;;       (dotimes (_ (or n 1) found)
+;;         (save-excursion
+;;           (let ((end (point)))
+;;             (goto-char (1- end))
+;;             (when (search-backward "." (minibuffer-prompt-end) t)
+;;               (delete-region (1+ (point)) end)
+;;               (setq found t))))))))
+;;
+;; (defun delete-dendroam (&optional n)
+;;   "Delete N directories or chars before point."
+;;   (interactive "p")
+;;   (unless (dendroam-up n)
+;;     (backward-delete-char n)))
+;;
+;; (defadvice! my/delete--dendroam (fn &rest args)
+;;   :around #'org-roam-node-read
+;;   (cl-letf (((symbol-function  'vertico-directory-delete-char) #'delete-dendroam))
+;;     (apply fn args)))
+
+
 
 ;;; MISCELLANEOUS ------------------------------------------------------------------------------
 
