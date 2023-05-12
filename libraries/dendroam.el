@@ -66,9 +66,9 @@ except for periods and dashes."
   "Node title is the final period-separated component of the dendroam hierarchy."
   (car (last (split-string (org-roam-node-dendroam-hierarchy node) "\\."))))
 
-(cl-defmethod org-roam-node-dendroam-hierarchy ((node org-roam-node))
-  "Node hierarchy is the filename without directory or extension."
-  (file-name-base (org-roam-node-file node)))
+;; (cl-defmethod org-roam-node-dendroam-hierarchy ((node org-roam-node))
+;;   "Node hierarchy is the filename without directory or extension."
+;;   (file-name-base (org-roam-node-file node)))
 
 (defun dendroam-find-master-scratch ()
   (interactive)
@@ -116,12 +116,9 @@ except for periods and dashes."
     (org-roam-capture-
      :node (org-roam-node-create
             :title (completing-read "Title: " nil)
-            :file (concat-path org-roam-directory
-                               (concat
-                                (org-roam-node-dendroam-hierarchy node)
-                                "."
-                                suffix
-                                ".org")))
+            :file (concat-path
+                   org-roam-directory
+                   (concat (org-roam-node-dendroam-hierarchy node) "." suffix ".org")))
      :templates template
      :props '(:finalize find-file))))
 
