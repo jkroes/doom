@@ -235,6 +235,8 @@ This is a convenience function that skips the org-roam-node-find."
   (dendroam--rename-note (org-roam-node-at-point)))
 
 (cl-defmethod dendroam--rename-note ((node org-roam-node))
+  ;; Title and filename/hierarchy are all different for citar, meeting, and
+  ;; scratch notes, so we don't want to rename their title when we rename the file
   (unless (or (dendroam--meeting-note-p node)
               (dendroam--scratch-note-p node)
               (dendroam--citar-note-p node))
@@ -307,7 +309,6 @@ This is a convenience function that skips the org-roam-node-find."
 
 
 ;;; NODE DISPLAY --------------------------------------------------------------------
-
 
 ;; https://github.com/org-roam/org-roam/issues/2066
 ;; BUG org-roam candidates are too big. Completing them mvoes the cursor down

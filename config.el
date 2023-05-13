@@ -746,7 +746,7 @@ headings."
 ;; org-roam-ref-add (for non-Zotero URLs and wayback URLs)
 ;; org-roam-ref-find (for finding a node by URL)
 
-;; TODO Integrate dendroam hierarchy and title (incld. renaming function) with
+;; TODO Integrate dendroam hierarchy and title with
 ;; title given to citar reference notes. Use aliases to bridge the gap if
 ;; necessary. Maybe the main title can be the last component of the hierarchy,
 ;; while the alias can be citar-org-roam-title-template... Brainstorm and play
