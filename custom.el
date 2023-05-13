@@ -11,3 +11,4 @@
  ;; If there is more than one, they won't work right.
  )
 (put 'erase-buffer 'disabled nil)
+(put 'scroll-left 'disabled nil)

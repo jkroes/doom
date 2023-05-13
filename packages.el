@@ -95,3 +95,6 @@
 
 (package! tempel)
 (package! tempel-collection)
+
+(package! consult-org-roam
+  :recipe (:host github :repo "jgru/consult-org-roam"))

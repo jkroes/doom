@@ -75,9 +75,6 @@
 ;; again.
 
 (setq confirm-kill-emacs nil
-      ;; It's really annoying when auto-wrap auto-scrolls the window to the
-      ;; left because the cursor is off the RHS until you type a space.
-      auto-hscroll-mode nil ; 'current-line
       ;; Evil: Easier "j" and "k", harder "gg" navigation
       display-line-numbers-type 'relative
       ;; See core-keybinds.el for additional wk settings
@@ -107,6 +104,7 @@
       ;;alt+space and save settings.
       ;;doom-leader-alt-key "C-SPC"
       ;;doom-localleader-alt-key "C-SPC m"
+      suggest-key-bindings nil ; Disable messages about available keybindings when using M-x
       )
 
 ;;; macos ------------------------------------------------------------
@@ -120,14 +118,6 @@
 ;; System Settings>Keyboard>Keyboard Shortcuts>Keyboard>Move focus to next
 ;; window
 (map! "C-SPC" #'other-frame) ; NOTE This unbinds +popup/toggle
-
-;;; comments / auto-fill
-
-;; Only auto-fill comments
-(setq comment-auto-fill-only-comments t)
-(setq-default fill-column 79)
-;; https://www.gnu.org/software/emacs/manual/html_node/efaq/Turning-on-auto_002dfill-by-default.html
-(add-hook 'prog-mode-hook 'turn-on-auto-fill)
 
 ;;; helper functions -------------------------------------------------
 
@@ -679,6 +669,26 @@ headings."
             (org-element-property :begin context)
             (org-element-property :end context))))))))
 
+
+;; TODO Bind to something. This is a dumb replacement for counsel-org-entity,
+;; which has actions to insert the different forms an org entity takes (name,
+;; latex, html, and utf-8). This function only inserts the latex version, which
+;; displays as utf-8 when `org-pretty-entities'
+(defun insert-org-entity ()
+  (interactive)
+  (let* ((str (completing-read
+               "Entity: "
+               (cl-loop for element in (append org-entities org-entities-user)
+                        unless (stringp element)
+                        collect (cons
+                                 (format "%s | %s | %s"
+                                         (cl-first element)    ; name
+                                         (cl-second element)   ; latex
+                                         (cl-seventh element)) ; utf-8
+                                 element))))
+         (latex (nth 1 (split-string str "|" t " "))))
+    (insert latex)))
+
 ;;; org-roam --------------------------------------------------
 
 (setq org-roam-directory org-directory)
@@ -718,6 +728,16 @@ headings."
           (lambda ()
             (add-hook 'after-save-hook #'org-roam-link-replace-all nil t)))
 
+(use-package! consult-org-roam
+  :after org-roam
+  :config
+  ;; Faster live preview
+  (setq consult-org-roam-grep-func #'consult-ripgrep)
+  ;; Advise org-roam-node-read to use consult--read. This package uses
+  ;; live previews by default (consult-org-roam--node-preview), but you
+  ;; can suppress them via consult-customize.
+  (consult-org-roam-mode))
+
 ;;; dendroam --------------------------------------------------------------------
 
 ;; NOTE Nodes can be created by running org-roam-node-find;
@@ -751,8 +771,6 @@ headings."
 ;; necessary. Maybe the main title can be the last component of the hierarchy,
 ;; while the alias can be citar-org-roam-title-template... Brainstorm and play
 ;; around with it.
-;; TODO Auto-preview notes:
-;; https://org-roam.discourse.group/t/flipping-through-nodes-like-in-a-kraften-box/2433/2
 ;; TODO Configure an org-roam-capture-template to create multiple citation
 ;; notes per file. citar-org-roam supports multiple notes per file and multiple
 ;; refs per note.
@@ -832,7 +850,6 @@ headings."
               (cons (match-beginning 0)
                     (match-end 0))))))
 
-
 ;; Convert Windows to WSL paths when opening PDF files
 (after! citar-file
   (add-to-list 'citar-file-parser-functions 'citar-file--parser-default-wsl))
@@ -886,8 +903,7 @@ return the path"
 (setq citar-org-roam-note-title-template "${title}")
 
 (defun citar-org-roam--create-capture-note2 (citekey entry)
-  "Open or create org-roam node for CITEKEY and ENTRY."
-  ;; adapted from https://jethrokuan.github.io/org-roam-guide/#orgc48eb0d
+  "Adapted from citar-org-roam--create-capture-note"
   (let ((title (citar-format--entry
                 citar-org-roam-note-title-template entry))
         (key citar-org-roam-capture-template-key))
@@ -917,35 +933,35 @@ return the path"
 ;; citar-open first prompts for a key, then for a resource (file, URL, or note).
 ;; Here we skip the key-prompt by using the key stored in ROAM_REFS of the
 ;; current note
-(defun org-roam-open-refs ()
-  "Open resources associated with citation key, or open URL, from ROAM_REFS
-of current note"
-  (interactive)
-  (save-excursion
-    (goto-char (org-roam-node-point (org-roam-node-at-point 'assert)))
-    (when-let* ((p (org-entry-get (point) "ROAM_REFS"))
-                (refs (when p (split-string-and-unquote p)))
-                (user-error "No ROAM_REFS found"))
-      ;; Open ref citation keys
-      (when-let ((oc-cites
-                  (seq-map
-                   (lambda (ref) (substring ref 1))
-                   (seq-filter (apply-partially #'string-prefix-p "@") refs))))
-        (citar-open-from-note oc-cites))
-      ;; Open ref URLs
-      (dolist (ref refs)
-        (unless (string-prefix-p "@" ref)
-          (browse-url ref))))))
+;; (defun org-roam-open-refs ()
+;;   "Open resources associated with citation key, or open URL, from ROAM_REFS
+;; of current note"
+;;   (interactive)
+;;   (save-excursion
+;;     (goto-char (org-roam-node-point (org-roam-node-at-point 'assert)))
+;;     (when-let* ((p (org-entry-get (point) "ROAM_REFS"))
+;;                 (refs (when p (split-string-and-unquote p)))
+;;                 (user-error "No ROAM_REFS found"))
+;;       ;; Open ref citation keys
+;;       (when-let ((oc-cites
+;;                   (seq-map
+;;                    (lambda (ref) (substring ref 1))
+;;                    (seq-filter (apply-partially #'string-prefix-p "@") refs))))
+;;         (citar-open-from-note oc-cites))
+;;       ;; Open ref URLs
+;;       (dolist (ref refs)
+;;         (unless (string-prefix-p "@" ref)
+;;           (browse-url ref))))))
 
-(defun citar-open-from-note (keys)
-  "Like citar-open but excludes notes from candidates."
-  (interactive (list (citar-select-refs)))
-  (if-let ((selected (let* ((actions (bound-and-true-p embark-default-action-overrides))
-                            (embark-default-action-overrides `((t . ,#'citar--open-resource) . ,actions)))
-                       (citar--select-resource keys :files t :links t
-                                               :always-prompt citar-open-prompt))))
-      (citar--open-resource (cdr selected) (car selected))
-    (error "No associated resources: %s" keys)))
+;; (defun citar-open-from-note (keys)
+;;   "Like citar-open but excludes notes from candidates."
+;;   (interactive (list (citar-select-refs)))
+;;   (if-let ((selected (let* ((actions (bound-and-true-p embark-default-action-overrides))
+;;                             (embark-default-action-overrides `((t . ,#'citar--open-resource) . ,actions)))
+;;                        (citar--select-resource keys :files t :links t
+;;                                                :always-prompt citar-open-prompt))))
+;;       (citar--open-resource (cdr selected) (car selected))
+;;     (error "No associated resources: %s" keys)))
 
 
 ;;; zotero --------------------------------------------------------------
@@ -1137,28 +1153,22 @@ comments underneath, and display the buffer"
 ;; advice, it should be removed.
 (advice-remove 'newline-and-indent #'+default--newline-indent-and-continue-comments-a)
 
-;;; Keybindings ----------------------------------------------------------
+;;; scrolling / auto-fill
 
-(map! :m "zh"     #'evil-scroll-left
-      :m "zl"     #'evil-scroll-right)
-
-(map! :map org-mode-map
-      :leader
-      (:prefix ("n")
-               "d" nil
-               (:prefix ("d" . "dendroam")
-                        "d" #'dendroam-find ; go down
-                        "u" #'dendroam-go-up-hierarchy ; go up
-                        "R" #'dendroam-refactor-hierarchy
-                        "r" #'dendroam-rename-note)
-               (:prefix "r"
-                        ;; These methods fall back to org-roam-node-find
-                        ;; without initial input in non-(dend)roam files
-                        :desc "Find node (current)" "F" #'dendroam-find)))
-                        ;;:desc "Find sibling nodes" "F" #'dendroam-find-siblings)))
-
-;; For WSL
-(map! :i "C-v" #'evil-paste-after)
+(setq auto-fill-inhibit-regexp nil)
+(add-hook 'prog-mode-hook 'turn-on-auto-fill) ; https://www.gnu.org/software/emacs/manual/html_node/efaq/Turning-on-auto_002dfill-by-default.html
+(setq comment-auto-fill-only-comments t) ; Only auto-fill comments
+(setq auto-fill-inhibit-regexp "^[^;]+;.*") ; Don't auto-fill single-semicolon comments following emacs-lisp code
+(setq-default fill-column 79)
+;; Scroll screen to right (`scroll-left') automatically when cursor moves off
+;; screen. See `hscroll-step' and `hscroll-margin' for details.
+(setq auto-hscroll-mode t) ; 'current-line
+;; When auto-filling, automatically undo the effects of auto-hscroll-mode.
+;; See yas--auto-fill -> yas--original-auto-fill-function -> do-auto-fill /
+;; normal-auto-fill-function.
+(advice-add #'do-auto-fill
+            :around (lambda (func &rest _)
+                      (when (funcall func) (scroll-right))))
 
 ;;; vterm ---------------------------------------------------------------
 
@@ -1207,6 +1217,15 @@ comments underneath, and display the buffer"
 ;;           (advice-remove 'tempel--disable 'my/tempel--disable)))))
 ;;     (call-interactively 'tempel-insert))
 
+;;; windows -------------------------------------------------------------------------------------
+
+;; NOTE When the top line of a window's buffer is blank, the background extends
+;; to the entire line. Unclear whether this is a bug.
+;; https://emacs.stackexchange.com/questions/45895/changing-faces-one-at-a-time-outside-customize
+(custom-set-faces
+  '(aw-leading-char-face
+    ((t (:foreground "white" :background "red" :height 500)))))
+
 ;;; evil everywhere --------------------------------------------------------------------------
 
 ;; NOTE This is where code is rescued from the opinionated but only sometimes
@@ -1244,3 +1263,19 @@ comments underneath, and display the buffer"
 (define-key! read-expression-map
   "C-j" #'next-line-or-history-element
   "C-k" #'previous-line-or-history-element)
+
+;;; other keybindings ----------------------------------------------------------
+
+;; Free up "q" in lots of modes
+(general-unbind evil-normal-state-map "q")
+;;
+;; NOTE If we bind `other-window' directly, it will remap to `ace-window' when
+;; the window-select module is active. If we want to circumvent remapping, wrap
+;; the remapped command in a function call.
+(map! "M-o" (lambda () (interactive) (call-interactively #'other-window)))
+
+;; Easier hscroll mappings
+(map! "M-h" (lambda () (interactive) (evil-scroll-column-left 20))
+      "M-l" (lambda () (interactive) (evil-scroll-column-right 20)))
+
+
