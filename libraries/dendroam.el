@@ -1,5 +1,11 @@
 ;;; libraries/dendroam.el -*- lexical-binding: t; -*-
 
+;; TODO org-roam-node-dendroam-display-hierarchy has been abapted to work with
+;; dendroam headings within a dendroam file; however, the dendroam capture and
+;; navigation commands do not yet work properly with non-file nodes. Either
+;; adapt them to work with heading nodes, or else make them operate on the
+;; file-level node instead of using org-roam-node-at-point
+
 ;; This code is based on
 ;; https://github.com/vicrdguez/dendroam/blob/main/dendroam.el
 
@@ -10,17 +16,64 @@
 (require 'org-roam)
 (require 'citar)
 
-;; NODE CAPTURE --------------------------------------------------------------------
+;; https://github.com/org-roam/org-roam/issues/2066
+;; BUG org-roam candidates are too big. Completing them mvoes the cursor down
+;; into the candidates displayed by vertico. Doom Emacs fix does not work,
+;; so this advice could be used to disable it:
+;; (advice-remove '+org--roam-fix-completion-width-for-vertico-a #'org-roam-node-read--to-candidate)
+;; NOTE Zero-length tags can still be searched; they are just invisible
+;; (setq org-roam-node-display-template
+;;       (format "${dendroam-hierarchy:*} %s"
+;;               (propertize "${doom-tags2:5}" 'face 'org-tag)))
+;;
+;; The only current fix is to omit length specs below.
+(setq org-roam-node-display-template "${dendroam-display-hierarchy}")
 
 (setq org-roam-capture-templates
       '(("d" "dendroam" plain "%?"
          :target (file+head
-                  "${dendroam-slug}.org" "#+title: ${dendroam-title}")
+                  "${dendroam-slug}.org" "#+title: %(car (last (dendroam-split \"${dendroam-slug}\")))")
          :immediate-finish t)))
+(defvar dendroam-separator ".")
+(defvar dendroam-display-separator (propertize "/" 'face 'shadow))
+
+;;; NODE DISPLAY --------------------------------------------------------------------
+
+(cl-defmethod org-roam-node-dendroam-display-hierarchy ((node org-roam-node))
+  (replace-regexp-in-string (regexp-quote dendroam-separator)
+                            dendroam-display-separator
+                            (org-roam-node-dendroam-hierarchy node)))
+
+(cl-defmethod org-roam-node-dendroam-hierarchy ((node org-roam-node))
+  (let* ((level (org-roam-node-level node))
+        (file (dendroam-split (file-name-base (org-roam-node-file node))))
+        (olp (org-roam-node-olp node))
+        ;;(alias (car (org-roam-node-aliases node)))
+        (aliases (org-roam-node-aliases node))
+        ;; TODO Code assumes there is only one alias
+        (alias (if aliases (dendroam-split (car aliases))))
+        (title (dendroam-split (org-roam-node-title node))))
+    (if alias
+        (dendroam-join alias)
+      (cl-case level
+        (0 (dendroam-join file)) ; (file)title is already part of filename
+        (1 (dendroam-join (-concat file title)))
+        (t (dendroam-join (-concat file olp title)))))))
+
+(defun dendroam-split (str)
+  (split-string str (regexp-quote dendroam-separator)))
+
+(defun dendroam-join (strings)
+  (string-join strings dendroam-separator))
+
+(defun dendroam-join2 (strings)
+  (string-join strings dendroam-display-separator))
+
+;; NODE CAPTURE --------------------------------------------------------------------
 
 (cl-defmethod org-roam-node-dendroam-slug ((node org-roam-node))
   "Return the input with non-alphanumeric characters replaced with underscores,
-except for periods and dashes."
+except for periods, spaces, and dashes."
   (let* ((title (org-roam-node-title node))
          (slug-trim-chars '(;; Combining Diacritical Marks https://www.unicode.org/charts/PDF/U0300.pdf
                             768 ; U+0300 COMBINING GRAVE ACCENT
@@ -53,22 +106,14 @@ except for periods and dashes."
                                                    (seq-remove #'nonspacing-mark-p
                                                                (string-glyph-decompose s)))))
                (cl-replace (title pair) (replace-regexp-in-string (car pair) (cdr pair) title)))
-      (let* ((pairs `(("[^[:alnum:][:digit:].-]" . "_")
-                      (" " . "_")     ; replace spaces
+      (let* ((pairs `((,dendroam-display-separator . ,dendroam-separator)
+                      ("[^[:alnum:][:digit:][:space:].-]" . "_")
                       ("__*" . "_")   ; remove sequential underscore
                       ("^_*" . "")    ; remove starting underscore
                       ("_*$" . "")    ; remove ending underscore
                       ))
              (slug (-reduce-from #'cl-replace (strip-nonspacing-marks title) pairs)))
         (downcase slug)))))
-
-(cl-defmethod org-roam-node-dendroam-title ((node org-roam-node))
-  "Node title is the final period-separated component of the dendroam hierarchy."
-  (car (last (split-string (org-roam-node-dendroam-hierarchy node) "\\."))))
-
-;; (cl-defmethod org-roam-node-dendroam-hierarchy ((node org-roam-node))
-;;   "Node hierarchy is the filename without directory or extension."
-;;   (file-name-base (org-roam-node-file node)))
 
 (defun dendroam-find-master-scratch ()
   (interactive)
@@ -103,7 +148,7 @@ except for periods and dashes."
 ;; notes.
 (defun dendroam--find (suffix template)
   (let* ((parent (org-roam-node-at-point))
-         (input (if parent (org-roam-node-dendroam-full-hierarchy parent)))
+         (input (if parent (org-roam-node-dendroam-hierarchy parent)))
          ;; Find a node located outside of `citar-org-roam-subdir'. If the
          ;; current file is a node, use it's hierarchy as initial input
          (node (org-roam-node-read
@@ -129,19 +174,21 @@ except for periods and dashes."
   "Find and visit parent node, creating one if nonexistent.
 This is a convenience function that skips the org-roam-node-find."
   (interactive)
-  (let* ((node (org-roam-node-at-point))
-         (file (org-roam-node-file node))
-         (dir (f-dirname file))
-         (ext (f-ext file))
-         (parent-file (concat-path dir (concat (org-roam-node-dendroam-hierarchy-no-title node) "." ext)))
-         (parent-hierarchy (org-roam-node-dendroam-hierarchy-no-title node)))
-    (unless (length= parent-hierarchy 0)
-      (if (file-exists-p parent-file)
-          (find-file parent-file)
-        (org-roam-capture-
-         :node (org-roam-node-create :title parent-hierarchy)
-         :props '(:finalize find-file))
-        ))))
+  (if (= (org-roam-node-level (org-roam-node-at-point)) 0)
+    (let* ((node (org-roam-node-at-point))
+           (file (org-roam-node-file node))
+           (dir (f-dirname file))
+           (ext (f-ext file))
+           (parent-file (concat-path dir (concat (org-roam-node-dendroam-hierarchy-no-title node) "." ext)))
+           (parent-hierarchy (org-roam-node-dendroam-hierarchy-no-title node)))
+      (unless (length= parent-hierarchy 0)
+        (if (file-exists-p parent-file)
+            (find-file parent-file)
+          (org-roam-capture-
+           :node (org-roam-node-create :title parent-hierarchy)
+           :props '(:finalize find-file))
+          ))))
+  (message "This command only works with file-level nodes"))
 
 (defun dendroam-find-siblings ()
   "Find sibling nodes at the same hierarchical level as input, excluding the current node."
@@ -149,20 +196,23 @@ This is a convenience function that skips the org-roam-node-find."
   (dendroam--find-siblings (or (and (eq major-mode 'org-mode) (org-roam-node-at-point)) "")))
 
 (cl-defmethod dendroam--find-siblings ((node org-roam-node))
-  (org-roam-node-find nil
-                      (org-roam-node-dendroam-hierarchy-no-title node)
-                      ;; TODO Why does comparing nodes fail when comparing
-                      ;; files works?
-                      ;;(lambda (f) (not (equal node f)))))
-                      (lambda (f) (not (string= (org-roam-node-file node)
-                                                (org-roam-node-file f))))))
+  (let ((node (org-roam-node-read nil
+                                  (lambda (f) (and (string-match-p
+                                                    (concat (org-roam-node-dendroam-hierarchy-no-title (org-roam-node-at-point)) "/[^/]*$")
+                                                    (org-roam-node-dendroam-display-hierarchy f))
+                                                   ;; Exclude the current node
+                                                   (not (string= (org-roam-node-file node)
+                                                                 (org-roam-node-file f)))))
+                                  nil t)))
+    (when (org-roam-node-file node)
+      (org-roam-node-visit node))))
 
 (cl-defmethod org-roam-node-dendroam-hierarchy-no-title ((node org-roam-node))
   "Node hierarchy, minus the last period-separated component."
   (dendroam-up-hierarchy (org-roam-node-dendroam-hierarchy node)))
 
 (defun dendroam-up-hierarchy (hierarchy)
-  (string-join (butlast (split-string hierarchy "\\.")) "."))
+  (dendroam-join2 (butlast (dendroam-split hierarchy))))
 
 (cl-defmethod dendroam--find-siblings ((str string))
   (org-roam-node-find nil str))
@@ -173,10 +223,16 @@ This is a convenience function that skips the org-roam-node-find."
   (dendroam--find-children (or (and (eq major-mode 'org-mode) (org-roam-node-at-point)) "")))
 
 (cl-defmethod dendroam--find-children ((node org-roam-node))
-  (org-roam-node-find nil
-                      (org-roam-node-dendroam-hierarchy node)
-                      (lambda (f) (not (string= (org-roam-node-file node)
-                                                (org-roam-node-file f))))))
+  (let ((node (org-roam-node-read nil
+                                  (lambda (f) (and (string-match-p
+                                                    (org-roam-node-dendroam-display-hierarchy (org-roam-node-at-point))
+                                                    (org-roam-node-dendroam-display-hierarchy f))
+                                                   ;; Exclude the current node
+                                                   (not (string= (org-roam-node-file node)
+                                                                 (org-roam-node-file f)))))
+                                  nil t)))
+    (when (org-roam-node-file node)
+      (org-roam-node-visit node))))
 
 (cl-defmethod dendroam--find-children ((str string))
   (org-roam-node-find nil str))
@@ -265,56 +321,6 @@ This is a convenience function that skips the org-roam-node-find."
   (string=
    (directory-file-name (file-name-directory (org-roam-node-file node)))
    (concat-path org-roam-directory citar-org-roam-subdir)))
-
-;;; NODE DISPLAY --------------------------------------------------------------------
-
-;; https://github.com/org-roam/org-roam/issues/2066
-;; BUG org-roam candidates are too big. Completing them mvoes the cursor down
-;; into the candidates displayed by vertico. Doom Emacs fix does not work,
-;; so this advice could be used to disable it:
-;; (advice-remove '+org--roam-fix-completion-width-for-vertico-a #'org-roam-node-read--to-candidate)
-;; The only current fix is to omit length specs below.
-(setq org-roam-node-display-template "${display-text}")
-;; NOTE Zero-length tags can still be searched; they are just invisible
-;; (setq org-roam-node-display-template
-;;       (format "${display-text:*} %s"
-;;               (propertize "${doom-tags2:5}" 'face 'org-tag)))
-
-;; NOTE zero-length components can still be searched
-(setq org-roam-node-display-template
-      (format "${display-text:*} %s"
-              (propertize "${doom-tags2:5}" 'face 'org-tag)))
-
-(cl-defmethod org-roam-node-display-text ((node org-roam-node))
-  (if (string= (concat-path org-roam-directory citar-org-roam-subdir)
-               (directory-file-name (file-name-directory (org-roam-node-file node))))
-      ;; citar reference notes
-      (org-roam-node-title node)
-    ;; other org-roam notes
-    (org-roam-node-dendroam-full-hierarchy node)))
-
-(cl-defmethod org-roam-node-dendroam-full-hierarchy ((node org-roam-node))
-  "Return hierarchy for NODE, constructed of its file title, OLP and direct title.
-If some elements are missing, they will be stripped out."
-  (let* ((title     (org-roam-node-title node))
-         (hierarchy (org-roam-node-dendroam-hierarchy node))
-         ;; (separator (propertize org-eldoc-breadcrumb-separator 'face 'shadow))
-         ;;(hier-list (string-join (split-string hierarchy "\\.") separator))
-         (separator (propertize org-eldoc-breadcrumb-separator 'face 'shadow))
-         (olp       (org-roam-node-olp   node))
-         (level     (org-roam-node-level node))
-         (filetitle (org-roam-node-doom-filetitle node)))
-    (cl-case level
-      ;; node is a top-level file
-      (0 hierarchy)
-      ;; node is a level 1 heading
-      (1 (concat (propertize hierarchy 'face '(shadow italic))
-                 separator title))
-      ;; node is a heading with an arbitrary outline path
-      (t (concat (propertize hierarchy 'face '(shadow italic))
-                 separator (propertize (string-join olp separator) 'face '(shadow italic))
-                 separator title)))))
-
 
 ;;; MINIBUFFER COMPLETION ----------------------------------------------------
 
