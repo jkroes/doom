@@ -39,6 +39,9 @@
 
 ;;; NODE DISPLAY --------------------------------------------------------------------
 
+;; NOTE citar notes can be displayed as if they were a dendroam note via
+;; `org-roam-alias-add'. See e.g., work.cdpr.voc.rulemaings.nonfumigants.
+
 (cl-defmethod org-roam-node-dendroam-display-hierarchy ((node org-roam-node))
   (replace-regexp-in-string (regexp-quote dendroam-separator)
                             dendroam-display-separator
@@ -48,7 +51,6 @@
   (let* ((level (org-roam-node-level node))
         (file (dendroam-split (file-name-base (org-roam-node-file node))))
         (olp (org-roam-node-olp node))
-        ;;(alias (car (org-roam-node-aliases node)))
         (aliases (org-roam-node-aliases node))
         ;; TODO Code assumes there is only one alias
         (alias (if aliases (dendroam-split (car aliases))))
@@ -116,6 +118,7 @@ except for periods, spaces, and dashes."
         (downcase slug)))))
 
 (defun dendroam-find-master-scratch ()
+  "Create an entry in scratch.org"
   (interactive)
   (org-roam-capture-
    :node (org-roam-node-create :title (completing-read "Title: " nil))
@@ -127,6 +130,8 @@ except for periods, spaces, and dashes."
    :props '(:finalize find-file)))
 
 (defun dendroam-find-scratch ()
+  "Create an entry in a local scratch file derived from the
+selected node. Initial input defaults to the current node."
   (interactive)
   (dendroam--find
    "scratch"
@@ -135,6 +140,8 @@ except for periods, spaces, and dashes."
       :immediate-finish t))))
 
 (defun dendroam-find-meeting ()
+  "Create a meeting file derived from the selected node. Initial
+input defaults to the current node."
   (interactive)
   (dendroam--find
    (format-time-string "%Y%m%d")
@@ -143,20 +150,18 @@ except for periods, spaces, and dashes."
       :immediate-finish t))))
 
 ;; NOTE For best results, input should be formatted like the candidates
-;; displayed according to org-roam-node-display-template. Since we are
-;; excluding citar nodes, we can use the function for formatting non-citar
-;; notes.
+;; displayed according to org-roam-node-display-template.
 (defun dendroam--find (suffix template)
   (let* ((parent (org-roam-node-at-point))
-         (input (if parent (org-roam-node-dendroam-hierarchy parent)))
+         (input (if parent (org-roam-node-dendroam-display-hierarchy parent)))
          ;; Find a node located outside of `citar-org-roam-subdir'. If the
          ;; current file is a node, use it's hierarchy as initial input
          (node (org-roam-node-read
                 input
-                (lambda (f)
-                  (not (string=
-                        (directory-file-name (file-name-directory (org-roam-node-file f)))
-                        (concat-path org-roam-directory citar-org-roam-subdir))))
+                (lambda (node)
+                  (not (or (dendroam--meeting-note-p node)
+                           (dendroam--scratch-note-p node)
+                           (dendroam--citar-note-p node))))
                 nil t)))
     (org-roam-capture-
      :node (org-roam-node-create
@@ -167,28 +172,43 @@ except for periods, spaces, and dashes."
      :templates template
      :props '(:finalize find-file))))
 
+(cl-defmethod dendroam--scratch-note-p ((node org-roam-node))
+  "Return t if org-roam note is a dendroam datetime note"
+  (string= "scratch" (org-roam-node-title node)))
+
+(cl-defmethod dendroam--meeting-note-p ((node org-roam-node))
+  "Return t if org-roam note is a dendroam meeting note"
+  (require 'dash)
+  (let* ((title (car (last (dendroam-split (org-roam-node-dendroam-hierarchy node)))))
+         (dmy (butlast (nthcdr 3 (parse-time-string title)) 3)))
+    (not (-any 'null dmy))))
+
+(cl-defmethod dendroam--citar-note-p ((node org-roam-node))
+  (string=
+   (directory-file-name (file-name-directory (org-roam-node-file node)))
+   (concat-path org-roam-directory citar-org-roam-subdir)))
+
+
 ;; NODE TREE-STYLE NAVIGATION --------------------------------------------------------------------
 
 ;; NOTE Compare code to org-roam-node-find
 (defun dendroam-find-parent ()
   "Find and visit parent node, creating one if nonexistent.
-This is a convenience function that skips the org-roam-node-find."
+This is a convenience function that skips a prompt."
   (interactive)
-  (if (= (org-roam-node-level (org-roam-node-at-point)) 0)
     (let* ((node (org-roam-node-at-point))
            (file (org-roam-node-file node))
            (dir (f-dirname file))
            (ext (f-ext file))
            (parent-file (concat-path dir (concat (org-roam-node-dendroam-hierarchy-no-title node) "." ext)))
            (parent-hierarchy (org-roam-node-dendroam-hierarchy-no-title node)))
+      ;; Do nothing if we're at a file at the top of a hierarchy
       (unless (length= parent-hierarchy 0)
         (if (file-exists-p parent-file)
             (find-file parent-file)
           (org-roam-capture-
            :node (org-roam-node-create :title parent-hierarchy)
-           :props '(:finalize find-file))
-          ))))
-  (message "This command only works with file-level nodes"))
+           :props '(:finalize find-file))))))
 
 (defun dendroam-find-siblings ()
   "Find sibling nodes at the same hierarchical level as input, excluding the current node."
@@ -239,22 +259,20 @@ This is a convenience function that skips the org-roam-node-find."
 
 ;;; NODE REFACTOR --------------------------------------------------------------------
 
+;; TODO Also refactor citar notes' aliases that are part of the hierarchy
 (defun dendroam-refactor-hierarchy ()
   "Rename current note and all of its children"
   (interactive)
   (dendroam--refactor-hierarchy (org-roam-node-at-point)))
 
-;; TODO Refactor this and dendrom--rename-note so that this calls the latter
-;; for each file it needs to change?
 (cl-defmethod dendroam--refactor-hierarchy ((node org-roam-node))
   (let* ((hierarchy (org-roam-node-dendroam-hierarchy node))
          (new-hierarchy (read-string "Refactor: " hierarchy))
          (files (dendroam-sibling-files hierarchy))
-         ;; Can't use org-roam-node-dendroam-title b/c it returns the old title,
-         ;; presumably until the org-roam db syncs
-         (new-title (car (last (split-string new-hierarchy "\\.")))))
+         (new-title (car (last (split-string new-hierarchy (regexp-quote dendroam-separator))))))
     (dolist (file files)
-      (let ((new-file (replace-regexp-in-string hierarchy new-hierarchy file)))
+      (let ((new-file (replace-regexp-in-string hierarchy new-hierarchy file))
+            (buf (get-file-buffer file)))
         (save-some-buffers)
         (rename-file file new-file)
         (if (equal buffer-file-name file)
@@ -267,7 +285,7 @@ This is a convenience function that skips the org-roam-node-find."
           ;; TODO This should update open buffers for all modified files, not
           ;; just the current buffer. See azr/org-roam-modify-title. In the
           ;; meantime, here is my hack.
-          (kill-buffer (get-file-buffer file)))))))
+          (when buf (kill-buffer buf)))))))
 
 ;; TODO Keep testing this. I would prefer to do simple file matching in case
 ;; the database is out of sync. I pulled this from the original dendroam github
@@ -282,45 +300,27 @@ This is a convenience function that skips the org-roam-node-find."
 ;; TODO Add a warning when the node to rename is a parent node, in case we want
 ;; to use refactor instead.
 (defun dendroam-rename-note ()
-  "Rename current note only (i.e., preserve hierarchy)."
+  "Rename current note only (i.e., preserve hierarchy) and change title to match."
   (interactive)
   (dendroam--rename-note (org-roam-node-at-point)))
 
 (cl-defmethod dendroam--rename-note ((node org-roam-node))
+  ;; These types of notes' titles and filenames are not linked, so you can
+  ;; simply rename those files using built-in commands.
   (unless (or (dendroam--meeting-note-p node)
               (dendroam--scratch-note-p node)
               (dendroam--citar-note-p node))
     (let* ((hierarchy (org-roam-node-dendroam-hierarchy node))
            (new-hierarchy (read-string "Rename: " hierarchy))
-           ;; Can't use org-roam-node-dendroam-title b/c it returns the old title,
-           ;; presumably until the org-roam db syncs
-           (new-title (car (last (split-string new-hierarchy "\\."))))
+           (new-title (car (last (split-string new-hierarchy (regexp-quote dendroam-separator)))))
            (file (buffer-file-name))
            (new-file (replace-regexp-in-string hierarchy new-hierarchy file)))
       (save-buffer)
       (rename-file file new-file)
       (kill-current-buffer)
       (find-file new-file)
-      ;; Update the title of the current node for nodes where the title
-      ;; should match the last component of the hierarchy
       (org-roam-set-keyword "title" new-title)
       (save-buffer))))
-
-(cl-defmethod dendroam--scratch-note-p ((node org-roam-node))
-  "Return t if org-roam note is a dendroam datetime note"
-  (string= "scratch" (org-roam-node-title node)))
-
-(cl-defmethod dendroam--meeting-note-p ((node org-roam-node))
-  "Return t if org-roam note is a dendroam meeting note"
-  (require 'dash)
-  (let* ((title (org-roam-node-dendroam-title node))
-         (dmy (butlast (nthcdr 3 (parse-time-string title)) 3)))
-    (not (-any 'null dmy))))
-
-(cl-defmethod dendroam--citar-note-p ((node org-roam-node))
-  (string=
-   (directory-file-name (file-name-directory (org-roam-node-file node)))
-   (concat-path org-roam-directory citar-org-roam-subdir)))
 
 ;;; MINIBUFFER COMPLETION ----------------------------------------------------
 

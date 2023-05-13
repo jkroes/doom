@@ -924,35 +924,35 @@ return the path"
 ;; citar-open first prompts for a key, then for a resource (file, URL, or note).
 ;; Here we skip the key-prompt by using the key stored in ROAM_REFS of the
 ;; current note
-(defun org-roam-open-refs ()
-  "Open resources associated with citation key, or open URL, from ROAM_REFS
-of current note"
-  (interactive)
-  (save-excursion
-    (goto-char (org-roam-node-point (org-roam-node-at-point 'assert)))
-    (when-let* ((p (org-entry-get (point) "ROAM_REFS"))
-                (refs (when p (split-string-and-unquote p)))
-                (user-error "No ROAM_REFS found"))
-      ;; Open ref citation keys
-      (when-let ((oc-cites
-                  (seq-map
-                   (lambda (ref) (substring ref 1))
-                   (seq-filter (apply-partially #'string-prefix-p "@") refs))))
-        (citar-open-from-note oc-cites))
-      ;; Open ref URLs
-      (dolist (ref refs)
-        (unless (string-prefix-p "@" ref)
-          (browse-url ref))))))
+;; (defun org-roam-open-refs ()
+;;   "Open resources associated with citation key, or open URL, from ROAM_REFS
+;; of current note"
+;;   (interactive)
+;;   (save-excursion
+;;     (goto-char (org-roam-node-point (org-roam-node-at-point 'assert)))
+;;     (when-let* ((p (org-entry-get (point) "ROAM_REFS"))
+;;                 (refs (when p (split-string-and-unquote p)))
+;;                 (user-error "No ROAM_REFS found"))
+;;       ;; Open ref citation keys
+;;       (when-let ((oc-cites
+;;                   (seq-map
+;;                    (lambda (ref) (substring ref 1))
+;;                    (seq-filter (apply-partially #'string-prefix-p "@") refs))))
+;;         (citar-open-from-note oc-cites))
+;;       ;; Open ref URLs
+;;       (dolist (ref refs)
+;;         (unless (string-prefix-p "@" ref)
+;;           (browse-url ref))))))
 
-(defun citar-open-from-note (keys)
-  "Like citar-open but excludes notes from candidates."
-  (interactive (list (citar-select-refs)))
-  (if-let ((selected (let* ((actions (bound-and-true-p embark-default-action-overrides))
-                            (embark-default-action-overrides `((t . ,#'citar--open-resource) . ,actions)))
-                       (citar--select-resource keys :files t :links t
-                                               :always-prompt citar-open-prompt))))
-      (citar--open-resource (cdr selected) (car selected))
-    (error "No associated resources: %s" keys)))
+;; (defun citar-open-from-note (keys)
+;;   "Like citar-open but excludes notes from candidates."
+;;   (interactive (list (citar-select-refs)))
+;;   (if-let ((selected (let* ((actions (bound-and-true-p embark-default-action-overrides))
+;;                             (embark-default-action-overrides `((t . ,#'citar--open-resource) . ,actions)))
+;;                        (citar--select-resource keys :files t :links t
+;;                                                :always-prompt citar-open-prompt))))
+;;       (citar--open-resource (cdr selected) (car selected))
+;;     (error "No associated resources: %s" keys)))
 
 
 ;;; zotero --------------------------------------------------------------
