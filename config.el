@@ -669,24 +669,20 @@ headings."
             (org-element-property :begin context)
             (org-element-property :end context))))))))
 
-
-;; TODO Bind to something. This is a dumb replacement for counsel-org-entity,
-;; which has actions to insert the different forms an org entity takes (name,
-;; latex, html, and utf-8). This function only inserts the latex version, which
-;; displays as utf-8 when `org-pretty-entities'
 (defun insert-org-entity ()
+  "A dumb replacement for counsel-org-entity. See `org-pretty-entities'."
   (interactive)
   (let* ((str (completing-read
                "Entity: "
                (cl-loop for element in (append org-entities org-entities-user)
-                        unless (stringp element)
+                        unless (or (stringp element)
+                                   (string-prefix-p "_" (car element))) ; some hspace elements
                         collect (cons
-                                 (format "%s | %s | %s"
+                                 (format "%s | %s"
                                          (cl-first element)    ; name
-                                         (cl-second element)   ; latex
                                          (cl-seventh element)) ; utf-8
                                  element))))
-         (latex (nth 1 (split-string str "|" t " "))))
+         (latex (concat "\\" (nth 0 (split-string str "|" t " ")))))
     (insert latex)))
 
 ;;; org-roam --------------------------------------------------
@@ -1081,22 +1077,18 @@ comments underneath, and display the buffer"
 
 ;;; org-appear -------------------------------------------
 
-(use-package! org-appear
-  :defer t
-  :init
-  (setq org-hide-emphasis-markers t
-        org-appear-autoemphasis t
-        org-pretty-entities t
-        org-appear-autoentities t
-        org-link-descriptive t
-        ;; Don't trigger link literal display; edit links with spc-m-l-l
-        org-appear-autolinks nil
-        ;; TODO Can't get this working
-        org-appear-autosubmarkers t
-        ;; Toggle org-appear off after 1-second idle over an element
-        org-appear-trigger #'always
-        org-appear-delay 1)
-  :hook (org-mode . org-appear-mode))
+(setq org-hide-emphasis-markers t
+      org-appear-autoemphasis t
+      org-pretty-entities t
+      org-appear-autoentities t
+      org-link-descriptive t
+      ;; Don't trigger link literal display; edit links with spc-m-l-l
+      org-appear-autolinks nil
+      ;; TODO Can't get this working
+      org-appear-autosubmarkers t
+      ;; Toggle org-appear off after 1-second idle over an element
+      org-appear-trigger #'always
+      org-appear-delay 1)
 
 ;;; org-superstar ----------------------------------------------------
 
@@ -1155,10 +1147,9 @@ comments underneath, and display the buffer"
 
 ;;; scrolling / auto-fill
 
-(setq auto-fill-inhibit-regexp nil)
 (add-hook 'prog-mode-hook 'turn-on-auto-fill) ; https://www.gnu.org/software/emacs/manual/html_node/efaq/Turning-on-auto_002dfill-by-default.html
 (setq comment-auto-fill-only-comments t) ; Only auto-fill comments
-(setq auto-fill-inhibit-regexp "^[^;]+;.*") ; Don't auto-fill single-semicolon comments following emacs-lisp code
+;; (setq auto-fill-inhibit-regexp "") ; TODO Set regexp for where inhibit auto-fill
 (setq-default fill-column 79)
 ;; Scroll screen to right (`scroll-left') automatically when cursor moves off
 ;; screen. See `hscroll-step' and `hscroll-margin' for details.
