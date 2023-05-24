@@ -169,7 +169,8 @@ input defaults to the current node."
                   (not (or (dendroam--meeting-note-p node)
                            (dendroam--scratch-note-p node)
                            (dendroam--citar-note-p node))))
-                nil t)))
+                #'org-roam-node-read-sort-by-display-hierarchy
+                t)))
     (org-roam-capture-
      :node (org-roam-node-create
             :title (completing-read "Title: " nil)
@@ -178,6 +179,15 @@ input defaults to the current node."
                    (concat (org-roam-node-dendroam-hierarchy node) "." suffix ".org")))
      :templates template
      :props '(:finalize find-file))))
+
+(defun org-roam-node-read-sort-by-display-hierarchy (completion-a completion-b)
+  "Sort files such that files modified more recently are shown first.
+COMPLETION-A and COMPLETION-B are items in the form of
+\(node-title org-roam-node-struct)"
+  (let ((node-a (cdr completion-a))
+        (node-b (cdr completion-b)))
+    (string> (org-roam-node-dendroam-display-hierarchy node-b)
+             (org-roam-node-dendroam-display-hierarchy node-a))))
 
 (cl-defmethod dendroam--scratch-note-p ((node org-roam-node))
   "Return t if org-roam note is a dendroam datetime note"
@@ -223,16 +233,22 @@ This is a convenience function that skips a prompt."
   (dendroam--find-siblings (or (and (eq major-mode 'org-mode) (org-roam-node-at-point)) "")))
 
 (cl-defmethod dendroam--find-siblings ((node org-roam-node))
-  (let ((node (org-roam-node-read nil
-                                  (lambda (f) (and (string-match-p
-                                                    (concat (org-roam-node-dendroam-hierarchy-no-title (org-roam-node-at-point)) "/[^/]*$")
-                                                    (org-roam-node-dendroam-display-hierarchy f))
-                                                   ;; Exclude the current node
-                                                   (not (string= (org-roam-node-file node)
-                                                                 (org-roam-node-file f)))))
-                                  nil t)))
-    (when (org-roam-node-file node)
-      (org-roam-node-visit node))))
+  (let* ((parent-title (org-roam-node-dendroam-hierarchy-no-title node))
+         (regexp (or (and (length= parent-title 0)
+                          (format "^[^%s]+$" dendroam-display-separator))
+                     (concat "^" parent-title dendroam-display-separator (format "[^%s]+$" dendroam-display-separator))))
+         (new-node (org-roam-node-read
+                   nil
+                   (lambda (f) (and (string-match-p
+                                     regexp
+                                     (org-roam-node-dendroam-display-hierarchy f))
+                                    ;; Exclude the current node
+                                    (not (string= (org-roam-node-file node)
+                                                  (org-roam-node-file f)))))
+                   #'org-roam-node-read-sort-by-display-hierarchy
+                   t)))
+    (when (org-roam-node-file new-node)
+      (org-roam-node-visit new-node))))
 
 (cl-defmethod org-roam-node-dendroam-hierarchy-no-title ((node org-roam-node))
   "Node hierarchy, minus the last period-separated component."
@@ -250,16 +266,18 @@ This is a convenience function that skips a prompt."
   (dendroam--find-children (or (and (eq major-mode 'org-mode) (org-roam-node-at-point)) "")))
 
 (cl-defmethod dendroam--find-children ((node org-roam-node))
-  (let ((node (org-roam-node-read nil
-                                  (lambda (f) (and (string-match-p
-                                                    (org-roam-node-dendroam-display-hierarchy (org-roam-node-at-point))
-                                                    (org-roam-node-dendroam-display-hierarchy f))
-                                                   ;; Exclude the current node
-                                                   (not (string= (org-roam-node-file node)
-                                                                 (org-roam-node-file f)))))
-                                  nil t)))
-    (when (org-roam-node-file node)
-      (org-roam-node-visit node))))
+  (let ((new-node (org-roam-node-read
+                   nil
+                   (lambda (f) (and (string-match-p
+                                     (concat "^" (org-roam-node-dendroam-display-hierarchy node) dendroam-display-separator)
+                                     (org-roam-node-dendroam-display-hierarchy f))
+                                    ;; Exclude the current node
+                                    (not (string= (org-roam-node-file node)
+                                                  (org-roam-node-file f)))))
+                   #'org-roam-node-read-sort-by-display-hierarchy
+                   t)))
+    (when (org-roam-node-file new-node)
+      (org-roam-node-visit new-node))))
 
 (cl-defmethod dendroam--find-children ((str string))
   (org-roam-node-find nil str))

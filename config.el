@@ -107,6 +107,9 @@
       suggest-key-bindings nil ; Disable messages about available keybindings when using M-x
       )
 
+;; Disable smartparens
+;;(remove-hook 'doom-first-buffer-hook #'smartparens-global-mode)
+
 ;;; macos ------------------------------------------------------------
 
 ;; For the Kinesis Advantage 2 keyboard
@@ -135,7 +138,7 @@ module."
    (nconc
     (mapcar #'intern
             (split-string
-             (completing-read "Copy module: "
+             (completing-read "Copy module:"
                               (doom--help-modules-list)
                               nil t nil nil
                               (doom--help-current-module-str))
@@ -432,7 +435,9 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
                ;; TODO org-yank shouldn't split text if not called at beginning of a heading
                "y" #'org-yank))
 
-;; NOTE If you want normal org cycle behavior (subtree -> contents -> collapse), uncomment this
+;; NOTE If you want normal org cycle behavior when using evil-org (subtree ->
+;; contents -> collapse), uncomment this. Note that this only applies when the
+;; evil module's +everywhere flag is enabled.
 ;; (remove-hook 'org-tab-first-hook '+org-cycle-only-current-subtree-h)
 
 ;; NOTE For this to work, the docs for `org-after-todo-statistics-hook' state that
@@ -536,6 +541,8 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
         (org-N-empty-lines-before-current (if blank? 1 0))))))
   (run-hooks 'org-insert-heading-hook))
 
+;; NOTE This function can be used to toggle display of images with attachment
+;; links, even though org-toggle-inline-images fails!
 ;; TODO Once marginalia and embark are configured, check to see that this
 ;; function shows annotations and works with embark-act for attachment headings
 (defadvice! +org/dwim-at-point-a (&optional arg)
@@ -685,10 +692,57 @@ headings."
          (latex (concat "\\" (nth 0 (split-string str "|" t " ")))))
     (insert latex)))
 
+(defun org-insert-quote ()
+  "Wrap the active region or last yanked text in an org-mode quote block."
+  (interactive)
+  (if (use-region-p)
+      (org-insert-structure-template "quote")
+    (yank)
+    (activate-mark)
+    (org-insert-quote)))
+
+;; Based on consult-org-heading
+(defun consult-org-heading (&optional match scope)
+  "Jump to an Org heading.
+
+MATCH and SCOPE are as in `org-map-entries' and determine which
+entries are offered.  By default, all entries of the current
+buffer are offered."
+  (interactive (unless (derived-mode-p 'org-mode)
+                 (user-error "Must be called from an Org buffer")))
+  (let ((prefix (not (memq scope '(nil tree region region-start-level file)))))
+    (consult--read
+     (consult--slow-operation "Collecting headings..."
+       (or (consult-org--headings prefix match scope)
+           (user-error "No headings")))
+     :prompt "Go to heading: "
+     :category 'consult-org-heading
+     :sort nil
+     :require-match t
+     :history '(:input consult-org--history)
+     :narrow (consult-org--narrow)
+     :state (consult--jump-state)
+     :group
+     (when prefix
+       (lambda (cand transform)
+         (let ((name (buffer-name
+                      (marker-buffer
+                       (get-text-property 0 'consult--candidate cand)))))
+           (if transform (substring cand (1+ (length name))) name))))
+     :lookup #'consult--lookup-candidate)))
+
 ;;; org-roam --------------------------------------------------
 
 (setq org-roam-directory org-directory)
 
+;; TODO org-roam links only complete the title, which is a problem for dendroam
+;; TODO org-roam completion only seems to work with trailing brackets, per
+;; doom's global smartparens mode
+;; TODO org-roam seems capable of completing node headings with trailing 
+;; brackets, but pcomplete-completions-at-point (the capf provided by org-mode)
+;; is incapable of doing so. To complete with org-mode, you need e.g. "[[*XXX",
+;; where XXX is the name of a heading in the buffer (see
+;; https://orgmode.org/manual/Completion.html).
 (after! org-roam
   ;; Only complete roam node titles within link brackets; otherwise, completion
   ;; interferes with normal typing
@@ -796,7 +850,7 @@ headings."
       citar-templates
       ;; main and suffix are used by citar-open and friends to display
       ;; existing notes
-      '((main . "${title:*}")
+      '((main . "${date:10} ${title:*}")
         ; Zotero tags are better biblatex keywords wtihin citar-bibliography
         (suffix . " ${tags keywords:20}")
         ;; Used by citar-insert-reference
@@ -893,18 +947,26 @@ return the path"
 ;;          (title (cdr (assoc "title" (citar-get-entry key)))))
 ;;     (org-insert-link nil file title)))
 
+;; TODO Does modifying the :create key of citar-org-roam-notes-config do the
+;; same thing more transparently?
 (after! citar
   (setf (plist-get (alist-get 'citar-org-roam citar-notes-sources) :create) 'citar-org-roam--create-capture-note2))
 
 (setq citar-org-roam-note-title-template "${title}")
 
+;; TODO Pass title through dendroam-slug (see
+;; org-roam-capture-templates) to convert dendroam-display-separator to
+;; something else. Preferably replace "/" with " or " in the title. The citekey
+;; already seems to exclude "/". E.g. See Agricultural/Structural Pesticides
+;; Zotero entry.
 (defun citar-org-roam--create-capture-note2 (citekey entry)
   "Adapted from citar-org-roam--create-capture-note"
   (let ((title (citar-format--entry
                 citar-org-roam-note-title-template entry))
         (key citar-org-roam-capture-template-key))
     (apply 'org-roam-capture-
-           :info (list :citekey citekey)
+           ;; HACK Modify this to allow new variables (e.g., date) in template strings
+           :info (list :citekey citekey :date (alist-get "date" entry nil nil #'string=))
            :node (org-roam-node-create :title title)
            :props '(:finalize find-file)
            (if key
@@ -913,17 +975,17 @@ return the path"
              (list
               :templates
               '(("r" "reference" plain "%?" :if-new
+                 ;; HACK Changed template to integrate with dendroam
                  (file+head
-                  "%(concat
-     (when citar-org-roam-subdir (concat citar-org-roam-subdir \"/\")) \"${citekey}.org\")"
-                  "#+title: ${title}")
+                  "%(concat (when citar-org-roam-subdir (concat citar-org-roam-subdir \"/\")) \"${citekey}.org\")"
+                  "#+title: ${title}\n#+date: ${date}")
                  :immediate-finish t
                  :unnarrowed t)))))
     (org-roam-ref-add (concat "@" citekey))
     ;; HACK Minor changes to the original function below
     (when (fboundp 'evil-insert)
       (evil-append-line 1)
-      (insert "\n\n"))))
+      (insert "\n"))))
 
 ;; TODO Fix this function
 ;; citar-open first prompts for a key, then for a resource (file, URL, or note).
@@ -948,7 +1010,6 @@ return the path"
 ;;       (dolist (ref refs)
 ;;         (unless (string-prefix-p "@" ref)
 ;;           (browse-url ref))))))
-
 ;; (defun citar-open-from-note (keys)
 ;;   "Like citar-open but excludes notes from candidates."
 ;;   (interactive (list (citar-select-refs)))
@@ -1083,7 +1144,7 @@ comments underneath, and display the buffer"
       org-appear-autoentities t
       org-link-descriptive t
       ;; Don't trigger link literal display; edit links with spc-m-l-l
-      org-appear-autolinks nil
+      org-appear-autolinks t
       ;; TODO Can't get this working
       org-appear-autosubmarkers t
       ;; Toggle org-appear off after 1-second idle over an element
@@ -1137,6 +1198,10 @@ comments underneath, and display the buffer"
 
 (setq evil-split-window-below t
       evil-vsplit-window-right t)
+
+;; Deconstruct annotations imported via import-zotero-annotations-from-note
+;; using an evil macro invoked by "@z"
+(evil-set-register ?z [?A ?\d ?\d escape ?0 ?d ?f ?\[ ?.])
 
 ;;; default
 
@@ -1217,49 +1282,143 @@ comments underneath, and display the buffer"
   '(aw-leading-char-face
     ((t (:foreground "white" :background "red" :height 500)))))
 
-;;; evil everywhere --------------------------------------------------------------------------
+;;; keybindings
+
+(defun unbind-command (keymap command)
+    ;; (-map #'key-description (where-is-internal func doom-leader-map))
+    (let ((all-bindings (where-is-internal command keymap)))
+      (-map (lambda (binding) (unbind-key binding keymap))
+            all-bindings)))
+
+(defun unbind-commands (keymap cmds)
+  (let ((cmds (ensure-list cmds)))
+    (dolist (command cmds)
+      (unbind-command keymap command))))
 
 ;; NOTE This is where code is rescued from the opinionated but only sometimes
-;; sensible +everywhere flag.
-
+;; sensible +everywhere flag. Is is wrapped in a conditional to ony load if
+;; the flag is disabled to make this explicit, so the bindings should be
+;; available regardless of the flag.
 ;; TODO Liberate code from all the modules you use. You don't know what you're
 ;; missing yet.
 
-;; Minibuffer
-(map! :map (evil-ex-completion-map evil-ex-search-keymap)
-      "C-a" #'evil-beginning-of-line
-      "C-b" #'evil-backward-char
-      "C-f" #'evil-forward-char
-      :gi "C-j" #'next-complete-history-element
-      :gi "C-k" #'previous-complete-history-element)
+(when (not (modulep! :editor evil +everywhere))
+  (map! :map (evil-ex-completion-map evil-ex-search-keymap)
+        "C-a" #'evil-beginning-of-line
+        "C-b" #'evil-backward-char
+        "C-f" #'evil-forward-char
+        :gi "C-j" #'next-complete-history-element
+        :gi "C-k" #'previous-complete-history-element)
 
-(define-key! :keymaps +default-minibuffer-maps
-  [escape] #'abort-recursive-edit
-  "C-a"    #'move-beginning-of-line
-  "C-r"    #'evil-paste-from-register
-  "C-u"    #'evil-delete-back-to-indentation
-  "C-v"    #'yank
-  "C-w"    #'doom/delete-backward-word
-  "C-z"    (cmd! (ignore-errors (call-interactively #'undo))))
+  (define-key! :keymaps +default-minibuffer-maps
+    [escape] #'abort-recursive-edit
+    "C-a"    #'move-beginning-of-line
+    "C-r"    #'evil-paste-from-register
+    "C-u"    #'evil-delete-back-to-indentation
+    "C-v"    #'yank
+    "C-w"    #'doom/delete-backward-word
+    "C-z"    (cmd! (ignore-errors (call-interactively #'undo))))
 
-(define-key! :keymaps +default-minibuffer-maps
-  "C-j"    #'next-line
-  "C-k"    #'previous-line
-  "C-S-j"  #'scroll-up-command
-  "C-S-k"  #'scroll-down-command)
-;; For folks with `evil-collection-setup-minibuffer' enabled
-(define-key! :states 'insert :keymaps +default-minibuffer-maps
-  "C-j"    #'next-line
-  "C-k"    #'previous-line)
-(define-key! read-expression-map
-  "C-j" #'next-line-or-history-element
-  "C-k" #'previous-line-or-history-element)
+  (define-key! :keymaps +default-minibuffer-maps
+    "C-j"    #'next-line
+    "C-k"    #'previous-line
+    "C-S-j"  #'scroll-up-command
+    "C-S-k"  #'scroll-down-command)
+  ;; For folks with `evil-collection-setup-minibuffer' enabled
+  (define-key! :states 'insert :keymaps +default-minibuffer-maps
+    "C-j"    #'next-line
+    "C-k"    #'previous-line)
+  (define-key! read-expression-map
+    "C-j" #'next-line-or-history-element
+    "C-k" #'previous-line-or-history-element)
 
-;;; other keybindings ----------------------------------------------------------
+  (use-package! evil-org
+    ;;:when (modulep! :editor evil +everywhere)
+    :hook (org-mode . evil-org-mode)
+    :hook (org-capture-mode . evil-insert-state)
+    :hook (doom-docs-org-mode . evil-org-mode)
+    :init
+    (defvar evil-org-retain-visual-state-on-shift t)
+    (defvar evil-org-special-o/O '(table-row))
+    (defvar evil-org-use-additional-insert t)
+    :config
+    (add-hook 'evil-org-mode-hook #'evil-normalize-keymaps)
+    (evil-org-set-key-theme)
+    ;; (add-hook! 'org-tab-first-hook :append
+    ;;            ;; Only fold the current tree, rather than recursively
+    ;;            #'+org-cycle-only-current-subtree-h
+    ;;            ;; Clear babel results if point is inside a src block
+    ;;            #'+org-clear-babel-results-h)
+    (let-alist evil-org-movement-bindings
+      (let ((Cright  (concat "C-" .right))
+            (Cleft   (concat "C-" .left))
+            (Cup     (concat "C-" .up))
+            (Cdown   (concat "C-" .down))
+            (CSright (concat "C-S-" .right))
+            (CSleft  (concat "C-S-" .left))
+            (CSup    (concat "C-S-" .up))
+            (CSdown  (concat "C-S-" .down)))
+        (map! :map evil-org-mode-map
+              :ni [C-return]   #'+org/insert-item-below
+              :ni [C-S-return] #'+org/insert-item-above
+              ;; navigate table cells (from insert-mode)
+              :i Cright (cmds! (org-at-table-p) #'org-table-next-field
+                               #'org-end-of-line)
+              :i Cleft  (cmds! (org-at-table-p) #'org-table-previous-field
+                               #'org-beginning-of-line)
+              :i Cup    (cmds! (org-at-table-p) #'+org/table-previous-row
+                               #'org-up-element)
+              :i Cdown  (cmds! (org-at-table-p) #'org-table-next-row
+                               #'org-down-element)
+              :ni CSright   #'org-shiftright
+              :ni CSleft    #'org-shiftleft
+              :ni CSup      #'org-shiftup
+              :ni CSdown    #'org-shiftdown
+              ;; more intuitive RET keybinds
+              :n [return]   #'+org/dwim-at-point
+              :n "RET"      #'+org/dwim-at-point
+              :i [return]   #'+org/return
+              :i "RET"      #'+org/return
+              :i [S-return] #'+org/shift-return
+              :i "S-RET"    #'+org/shift-return
+              ;; more vim-esque org motion keys (not covered by evil-org-mode)
+              :m "]h"  #'org-forward-heading-same-level
+              :m "[h"  #'org-backward-heading-same-level
+              :m "]l"  #'org-next-link
+              :m "[l"  #'org-previous-link
+              :m "]c"  #'org-babel-next-src-block
+              :m "[c"  #'org-babel-previous-src-block
+              :n "gQ"  #'org-fill-paragraph
+              ;; sensible vim-esque folding keybinds
+              :n "za"  #'+org/toggle-fold
+              :n "zA"  #'org-shifttab
+              :n "zc"  #'+org/close-fold
+              :n "zC"  #'outline-hide-subtree
+              :n "zm"  #'+org/hide-next-fold-level
+              :n "zM"  #'+org/close-all-folds
+              :n "zn"  #'org-tree-to-indirect-buffer
+              :n "zo"  #'+org/open-fold
+              :n "zO"  #'outline-show-subtree
+              :n "zr"  #'+org/show-next-fold-level
+              :n "zR"  #'+org/open-all-folds
+              :n "zi"  #'org-toggle-inline-images
+
+              :map org-read-date-minibuffer-local-map
+              Cleft    (cmd! (org-eval-in-calendar '(calendar-backward-day 1)))
+              Cright   (cmd! (org-eval-in-calendar '(calendar-forward-day 1)))
+              Cup      (cmd! (org-eval-in-calendar '(calendar-backward-week 1)))
+              Cdown    (cmd! (org-eval-in-calendar '(calendar-forward-week 1)))
+              CSleft   (cmd! (org-eval-in-calendar '(calendar-backward-month 1)))
+              CSright  (cmd! (org-eval-in-calendar '(calendar-forward-month 1)))
+              CSup     (cmd! (org-eval-in-calendar '(calendar-backward-year 1)))
+              CSdown   (cmd! (org-eval-in-calendar '(calendar-forward-year 1))))))))
+
+
+
 
 ;; Free up "q" in lots of modes
 (general-unbind evil-normal-state-map "q")
-;;
+
 ;; NOTE If we bind `other-window' directly, it will remap to `ace-window' when
 ;; the window-select module is active. If we want to circumvent remapping, wrap
 ;; the remapped command in a function call.
@@ -1269,4 +1428,56 @@ comments underneath, and display the buffer"
 (map! "M-h" (lambda () (interactive) (evil-scroll-column-left 20))
       "M-l" (lambda () (interactive) (evil-scroll-column-right 20)))
 
+(unbind-commands doom-leader-notes-map
+                 '(org-agenda
+                   +org/toggle-last-clock
+                   org-clock-cancel
+                   deft
+                   org-capture
+                   +default/find-in-notes
+                   +default/browse-notes
+                   org-store-link
+                   org-tags-view
+                   org-capture-goto-target
+                   org-clock-goto
+                   org-todo-list
+                   org-search-view
+                   +org/export-to-clipboard
+                   +org/export-to-clipboard-as-rich-text))
 
+;; Merge note and roam bindings. Add dendroam and citar commands.
+(map! :leader
+      (:prefix "n"
+       "r" nil ; "roam" (non-map) prefix
+       :desc "Find node"               "f" #'org-roam-node-find
+       ;; :desc "Capture node"         "F" #'org-roam-capture
+       :desc "Find ref"                "F" #'org-roam-ref-find
+       :desc "Insert link to node"     "i" #'org-roam-node-insert
+       :desc "Toggle backlinks buffer" "l" #'org-roam-buffer-toggle
+       :desc "Find meeting node"       "m" #'dendroam-find-meeting
+       :desc "Switch to scratch"       "x" #'dendroam-find-master-scratch
+       :desc "Rename node"             "r" #'dendroam-rename-note
+       :desc "Refactor hierarchy"      "R" #'dendroam-refactor-hierarchy
+       :desc "Find scratch node"       "X" #'dendroam-find-scratch))
+
+(map! :map org-mode-map
+      :m "<up>" #'dendroam-find-parent
+      :m "<down>" #'dendroam-find-children
+      :m "<left>" #'dendroam-find-siblings
+      :m "<right>" #'dendroam-find-siblings)
+
+;; TODO These commands require evil-move-beyond-eol to work properly across
+;; multiple lines. What are the cons of enabling this setting? Also see
+;; recommendations for evil and lisp editing in
+;; https://www.reddit.com/r/emacs/comments/rbf31m/does_anybody_else_find_evil_very_painful_for/
+;; and discussion of cursor movement in
+;; https://www.dr-qubit.org/Evil_cursor_model.html and additional commands in
+;; https://www.gnu.org/software/emacs/manual/html_node/elisp/List-Motion.html
+(setq evil-move-beyond-eol t)
+(map! :map emacs-lisp-mode-map
+      :m "<up>" #'up-list
+      :m "<down>" #'down-list
+      :m "<left>" #'backward-list
+      :m "<right>" #'forward-list)
+
+(map! :map org-mode-map :localleader "q" #'org-insert-quote)
