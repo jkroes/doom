@@ -130,7 +130,7 @@
 
 ;;; doom modules -----------------------------------------------------
 
-(autoload 'doom--help-modules-list (concat-path doom-emacs-dir "core/autoload/help.el"))
+(autoload 'doom--help-modules-list (concat-path doom-emacs-dir "lisp/lib/help.el"))
 (defun doom/copy-module-to-private (category module)
   "Copy the module corresponding to the strings category and module as a private
 module."
@@ -1273,6 +1273,36 @@ comments underneath, and display the buffer"
 ;;           (advice-remove 'tempel--disable 'my/tempel--disable)))))
 ;;     (call-interactively 'tempel-insert))
 
+;;; vertico -------------------------------------------------------------------
+
+;; TODO Bind vertico-repeat-select to spc-"
+;; Bind ffap-menu
+;; Pressing "o SPC" within consult-buffer will limit candidates to org buffers.
+;; See +vertico--consult-org-source
+;; Switch to directory (consult-dir) and recursively find file within dir
+;; (consult-dir-jump-file). In particular, use when within the minibuffer.
+;; consult-dir will replace the prompt of any filepath-completing function
+;; with the selected dir!
+
+;; Enable which-key paging for help-map
+(general-unbind help-map "C-h")
+
+;; TODO The +icons flag to the vertico module loads package
+;; all-the-icons-completion, which is used by adding
+;; all-the-icons-completion-marginalia-setup to marginalia-mode-hook. It
+;; creates a pseudo-issue:
+;; Run spc-f-f within ~/org, then embark-act. Notice the extra space between
+;; the last candidate and the bottom of the frame. This is because vertico and
+;; embark use the same number of candidates but different line sizes due to
+;; icons. Furthermore, if you decrease all-the-icons-scale-factor and/or
+;; all-the-icons-default-adjust, then scroll down the list of org notes, you'll
+;; notice that the icons for longer filenames are smaller.
+;;
+;; Once you have fixed this issue, re-enable the +icons flag.
+;;
+;; Alternatively, enable vertico-resize:
+;; (after! vertico (setq vertico-resize t))
+
 ;;; windows -------------------------------------------------------------------------------------
 
 ;; NOTE When the top line of a window's buffer is blank, the background extends
@@ -1411,7 +1441,19 @@ comments underneath, and display the buffer"
               CSleft   (cmd! (org-eval-in-calendar '(calendar-backward-month 1)))
               CSright  (cmd! (org-eval-in-calendar '(calendar-forward-month 1)))
               CSup     (cmd! (org-eval-in-calendar '(calendar-backward-year 1)))
-              CSdown   (cmd! (org-eval-in-calendar '(calendar-forward-year 1))))))))
+              CSdown   (cmd! (org-eval-in-calendar '(calendar-forward-year 1)))))))
+
+  (map! :map vertico-map
+        "M-RET" #'vertico-exit-input
+        "C-SPC" #'+vertico/embark-preview
+        "C-j"   #'vertico-next
+        "C-M-j" #'vertico-next-group
+        "C-k"   #'vertico-previous
+        "C-M-k" #'vertico-previous-group
+        "C-h" (cmds! (eq 'file (vertico--metadata-get 'category)) #'vertico-directory-up)
+        "C-l" (cmds! (eq 'file (vertico--metadata-get 'category)) #'+vertico/enter-or-preview))
+
+  )
 
 
 
@@ -1466,6 +1508,7 @@ comments underneath, and display the buffer"
       :m "<left>" #'dendroam-find-siblings
       :m "<right>" #'dendroam-find-siblings)
 
+
 ;; TODO These commands require evil-move-beyond-eol to work properly across
 ;; multiple lines. What are the cons of enabling this setting? Also see
 ;; recommendations for evil and lisp editing in
@@ -1481,3 +1524,17 @@ comments underneath, and display the buffer"
       :m "<right>" #'forward-list)
 
 (map! :map org-mode-map :localleader "q" #'org-insert-quote)
+
+;; https://www.masteringemacs.org/article/emacs-builtin-elisp-cheat-sheet
+;; TODO Replace the bindings below with this. I dono't think evil-collection is
+;;loaded without the +everywhere flag for evil, so do this yourself. Or
+;;re-enable +everywhere and disable any tweaks/keybindings you dislike. Also
+;; modify the white/blacklisted evil-collection modes. See the evil module.
+;;(push 'shortdoc evil-collection-mode-list)
+;;
+;; (map! :map shortdoc-mode-map
+;;       :m "j" #'forward-button
+;;       :m "<tab>" #'forward-button
+;;       :m "k" #'backward-button
+;;       :m "<backtab>" #'backward-button)
+
