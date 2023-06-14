@@ -74,6 +74,10 @@
 ;; have renamed its branch from master to main. Delete the repo at issue and try
 ;; again.
 
+(defun concat-path (&rest parts)
+  "Concatenate unlimited path components"
+  (cl-reduce (lambda (a b) (expand-file-name b a)) parts))
+
 (setq confirm-kill-emacs nil
       ;; Evil: Easier "j" and "k", harder "gg" navigation
       display-line-numbers-type 'relative
@@ -105,7 +109,10 @@
       ;;doom-leader-alt-key "C-SPC"
       ;;doom-localleader-alt-key "C-SPC m"
       suggest-key-bindings nil ; Disable messages about available keybindings when using M-x
-      )
+      bookmark-default-file (concat-path doom-private-dir
+                                         (concat "bookmarks_"
+                                                 (cond (IS-MAC "macos")
+                                                       (IS-WSL "wsl")))))
 
 ;; Disable smartparens
 ;;(remove-hook 'doom-first-buffer-hook #'smartparens-global-mode)
@@ -120,13 +127,19 @@
 ;; in Emacs, which might override MacOS bindings for system shortcuts. See
 ;; System Settings>Keyboard>Keyboard Shortcuts>Keyboard>Move focus to next
 ;; window
+;; NOTE Also used in combination with FancyZones and autohotkey on Windows
 (map! "C-SPC" #'other-frame) ; NOTE This unbinds +popup/toggle
 
 ;;; helper functions -------------------------------------------------
 
-(defun concat-path (&rest parts)
-  "Concatenate unlimited path components"
-  (cl-reduce (lambda (a b) (expand-file-name b a)) parts))
+(defun open-in-windows (path &rest _)
+  (let ((browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe")
+        (browse-url-generic-args '("/c" "start" "")))
+    (browse-url-generic
+     (substring
+      (shell-command-to-string
+       (format "wslpath -w '%s'" path))
+      0 -1))))
 
 ;;; doom modules -----------------------------------------------------
 
@@ -361,7 +374,7 @@ incrementally."
   ;; attached file. You can also store a link via embark-act, embark-copy-as-kill
   ;; (@w), then yank.
   (setq org-attach-store-link-p 'file
-        org-attach-use-inheritance nil
+        org-attach-use-inheritance t
         ;; When disabled, (C-)M-RET inserts a (sub)heading above
         ;; when called at beginning of line; else directly below
         org-insert-heading-respect-content nil))
@@ -406,19 +419,24 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
 
 (after! org
   (when IS-WSL
-    ;; Open non-text files in Windows instead of WSL
-    (setf (alist-get "\\.pdf\\'" org-file-apps nil nil #'string=) #'open-in-windows)
-    ;; dired is unbelievably slow on Windows shared network drives
-    (setf (alist-get 'directory org-file-apps) #'open-in-windows)
-    (add-to-list 'org-file-apps '("\\.png?\\'" . open-in-windows) t)
-    (add-to-list 'org-file-apps '("\\.xlsx?\\'" . open-in-windows) t)
-    (add-to-list 'org-file-apps '("\\.docx?\\'" . open-in-windows) t)
-    (add-to-list 'org-file-apps '("\\.pptx?\\'" . open-in-windows) t)
-    (setq browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe"
+    (setq org-file-apps
+          ;; Open non-text files in Windows instead of WSL
+          '(("\\.pptx?\\'" . open-in-windows)
+            ("\\.pdf?\\'" . open-in-windows)
+            ("\\.docx?\\'" . open-in-windows)
+            ("\\.txt?\\'" . open-in-windows)
+            ("\\.xlsx?\\'" . open-in-windows)
+            ("\\.png?\\'" . open-in-windows)
+            ("\\.html?\\'" . open-in-windows)
+            (remote . emacs)
+            (auto-mode . emacs)
+            ;; dired is unbelievably slow on Windows shared network drives
+            ((directory . open-in-windows)))
+          browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe"
           browse-url-generic-args '("/c" "start" "")
-          browse-url-browser-function 'browse-url-generic)
-    ;; Windows-based attachment directory for WSL Emacs
-    (setq org-attach-id-dir "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation (1)/org-attach")))
+          browse-url-browser-function 'browse-url-generic
+          ;; Windows-based attachment directory for WSL Emacs
+          org-attach-id-dir "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation (1)/org-attach")))
 
 ;; The org-transclude manual recommends removing this advice
 (after! org
@@ -563,7 +581,9 @@ headings."
          (org-cite-follow context arg))
 
         (`headline
-         (cond ((member "ATTACH" (org-get-tags nil t))
+         (cond ((or (member "ATTACH" (org-get-tags nil t))
+                    ;; org-attach-set-directory doesn't use an ATTACH tag
+                    (alist-get "DIR" (org-entry-properties) nil nil #'string=))
                 ;; HACK To enable marginalia annotations (and embark-act, which
                 ;; relies on the metadata marginalia sets), we either need to
                 ;; bind this-command to org-attach-open or call it with
@@ -658,7 +678,10 @@ headings."
                (+org--toggle-inline-images-in-subtree
                 (org-element-property :begin lineage)
                 (org-element-property :end lineage))
-             (org-open-at-point arg))))
+             ;; HACK I substituted my own function for org-open-at-point and
+             ;; got rid of the `arg' argument. I should probably add that
+             ;; argument to my function...
+             (my/org-open-at-point))))
 
         (`paragraph
          (+org--toggle-inline-images-in-subtree))
@@ -675,6 +698,28 @@ headings."
            (+org--toggle-inline-images-in-subtree
             (org-element-property :begin context)
             (org-element-property :end context))))))))
+
+(defun my/org-open-at-point ()
+  "Use find-file with file link as initial input instead of opening file link
+to a directory in dired. This is hacky but way faster than using dired on
+shared drives."
+  (interactive)
+  (let* ((context
+	  ;; Only consider supported types, even if they are not the
+	  ;; closest one.
+	  (org-element-lineage
+	   (org-element-context)
+	   '(citation citation-reference clock comment comment-block
+             footnote-definition footnote-reference headline
+             inline-src-block inlinetask keyword link node-property
+             planning src-block timestamp)
+	   t)))
+    (if (and (eq (car context) 'link)
+             (string= (plist-get (car (cdr context)) :type) "file")
+             (f-dir-p (plist-get (car (cdr context)) :path)))
+        (let ((default-directory (plist-get (car (cdr context)) :path)))
+          (call-interactively #'find-file))
+        (call-interactively #'org-open-at-point))))
 
 (defun insert-org-entity ()
   "A dumb replacement for counsel-org-entity. See `org-pretty-entities'."
@@ -731,6 +776,13 @@ buffer are offered."
            (if transform (substring cand (1+ (length name))) name))))
      :lookup #'consult--lookup-candidate)))
 
+;; org-cycle everywhere in normal state (i.e., completion and indentation will
+;; only work in insert state).
+(defun my/org-cycle ()
+  (interactive)
+  (let ((org-cycle-emulate-tab))
+    (call-interactively #'org-cycle)))
+
 ;;; org-roam --------------------------------------------------
 
 (setq org-roam-directory org-directory)
@@ -786,7 +838,9 @@ buffer are offered."
   ;; Advise org-roam-node-read to use consult--read. This package uses
   ;; live previews by default (consult-org-roam--node-preview), but you
   ;; can suppress them via consult-customize.
-  (consult-org-roam-mode))
+  (consult-org-roam-mode)
+  (consult-customize org-roam-node-find :preview-key "C-SPC"))
+
 
 ;;; dendroam --------------------------------------------------------------------
 
@@ -1144,7 +1198,7 @@ comments underneath, and display the buffer"
       org-appear-autoentities t
       org-link-descriptive t
       ;; Don't trigger link literal display; edit links with spc-m-l-l
-      org-appear-autolinks t
+      org-appear-autolinks nil
       ;; TODO Can't get this working
       org-appear-autosubmarkers t
       ;; Toggle org-appear off after 1-second idle over an element
@@ -1303,6 +1357,46 @@ comments underneath, and display the buffer"
 ;; Alternatively, enable vertico-resize:
 ;; (after! vertico (setq vertico-resize t))
 
+(after! embark (when IS-WSL (map! :map embark-file-map
+                                  ;; Replaces consult-file-externally when using embark-action to open files
+                                  ;; outside of Emacs
+                                  "x" #'open-in-windows
+                                  ;; Adds file to bookmarks
+                                  "b" #'my/bookmark-set)))
+
+;; TODO Modify this so that it works without visiting file via find-file
+(defun my/bookmark-set (file)
+  "For use with embark-file-map. Bookmark the selected file and
+prompt for a name, using filename as default input"
+  (let ((curbuf (current-buffer)))
+    ;; NOTE bookmark-set uses the current buffer. find-file opens directories
+    ;; in dired. dired with e.g. /mnt/c/ throws permission errors that prevent
+    ;; a bookmark's creation, but that's fine.
+    (find-file file)
+    (bookmark-set (read-from-minibuffer
+                   "Bookmark name: "
+                   (file-name-nondirectory
+                    (if (f-dir-p file)
+                        (directory-file-name file)
+                      file))))
+    (kill-buffer (current-buffer))
+    (switch-to-buffer curbuf)))
+
+(map! :map doom-leader-file-map :desc "Bookmark" "b" #'file-bookmark)
+
+(defun file-bookmark ()
+  (interactive)
+  (my/bookmark-set
+   (car (find-file-read-args
+         "Find file: "
+         (confirm-nonexistent-file-or-buffer)))))
+
+;; NOTE I implement bookmarks mainly so I can insert them into file completion
+;; functions such as find-file via consult-dir (or directly calling
+;; consult-dir). Calling bookmark-jump on a directory launches dired. Dired is
+;; an issue for WSL traversing Windows shared drives. It is best to avoid
+;; Dired wherever possible.
+
 ;;; windows -------------------------------------------------------------------------------------
 
 ;; NOTE When the top line of a window's buffer is blank, the background extends
@@ -1389,6 +1483,8 @@ comments underneath, and display the buffer"
             (CSup    (concat "C-S-" .up))
             (CSdown  (concat "C-S-" .down)))
         (map! :map evil-org-mode-map
+              :nv "TAB" #'my/org-cycle
+              :nv "<tab>" #'my/org-cycle
               :ni [C-return]   #'+org/insert-item-below
               :ni [C-S-return] #'+org/insert-item-above
               ;; navigate table cells (from insert-mode)
@@ -1455,9 +1551,6 @@ comments underneath, and display the buffer"
 
   )
 
-
-
-
 ;; Free up "q" in lots of modes
 (general-unbind evil-normal-state-map "q")
 
@@ -1497,6 +1590,7 @@ comments underneath, and display the buffer"
        :desc "Insert link to node"     "i" #'org-roam-node-insert
        :desc "Toggle backlinks buffer" "l" #'org-roam-buffer-toggle
        :desc "Find meeting node"       "m" #'dendroam-find-meeting
+       :desc "Find project node"       "p" #'dendroam-find-project
        :desc "Switch to scratch"       "x" #'dendroam-find-master-scratch
        :desc "Rename node"             "r" #'dendroam-rename-note
        :desc "Refactor hierarchy"      "R" #'dendroam-refactor-hierarchy
@@ -1537,4 +1631,5 @@ comments underneath, and display the buffer"
 ;;       :m "<tab>" #'forward-button
 ;;       :m "k" #'backward-button
 ;;       :m "<backtab>" #'backward-button)
+
 

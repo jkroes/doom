@@ -156,6 +156,19 @@ input defaults to the current node."
       :target (file+head "${dendroam-hierarchy}.%<%Y%m%d>.org" "#+title: ${title}")
       :immediate-finish t))))
 
+;; TODO This is only one type of project. Generalize function to account for
+;; multiple project locations
+;; TODO Select date using completing-read and today's date as the default.
+(defun dendroam-find-project ()
+  (interactive)
+  (org-roam-capture-
+   :node (org-roam-node-create :title (completing-read "Project title: " nil))
+   :templates '(("p" "project" plain "%?"
+                 :target (file+head "work.cdpr.projects.${title}.org" "#+title: ${title}\n#+date: %<%Y-%m-%d>")
+                 :jump-to-captured t
+                 :immediate-finish t))
+   :props '(:finalize find-file)))
+
 ;; NOTE For best results, input should be formatted like the candidates
 ;; displayed according to org-roam-node-display-template.
 (defun dendroam--find (suffix template)
@@ -205,6 +218,10 @@ COMPLETION-A and COMPLETION-B are items in the form of
    (directory-file-name (file-name-directory (org-roam-node-file node)))
    (concat-path org-roam-directory citar-org-roam-subdir)))
 
+(cl-defmethod dendroam--project-note-p ((node org-roam-node))
+  (string=
+   (dendroam-join (butlast (dendroam-split (org-roam-node-dendroam-hierarchy node))))
+   "work.cdpr.projects"))
 
 ;; NODE TREE-STYLE NAVIGATION --------------------------------------------------------------------
 
