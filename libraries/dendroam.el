@@ -55,13 +55,11 @@
          (alias (if aliases (dendroam-split (car aliases))))
          (title (dendroam-split (org-roam-node-title node)))
          (olp (org-roam-node-olp node))
+         ;; This is the way it is for non-aliased citar notes, which have a
+         ;; title that differs from the filename, which is the citation key.
          (file (append
                 (butlast (dendroam-split (file-name-base (org-roam-node-file node))))
-                ;; This retrieves either alias or title, despite its name. For
-                ;; `org-roam-node-find' and related functions, one candidate is
-                ;; created for each of the node's title and aliases.
-                (list (org-roam-node-title node))))
-         )
+                (list (org-roam-node-file-title node)))))
     (if (and alias (dendroam--citar-note-p node))
         (dendroam-join alias) ; Displays only alias, not the title
       (cl-case level

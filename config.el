@@ -369,6 +369,7 @@ incrementally."
       ;; Unclear if this will fix things...
       org-element-use-cache nil)
 
+
 (after! org
   ;; When running org-attach, store a file link with absolute path to the
   ;; attached file. You can also store a link via embark-act, embark-copy-as-kill
@@ -378,6 +379,12 @@ incrementally."
         ;; When disabled, (C-)M-RET inserts a (sub)heading above
         ;; when called at beginning of line; else directly below
         org-insert-heading-respect-content nil))
+
+;; Keep drawers open, even when globally cycling. This allows us to see any
+;; top-level DIR property
+(after! org
+  (setq org-cycle-hide-drawer-startup nil)
+  (fset 'org-fold-hide-drawer-all #'ignore))
 
 ;; Edit org src block in the same window as org file
 (after! org
@@ -419,6 +426,7 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
 
 (after! org
   (when IS-WSL
+    ;; NOTE This affects org-attach-open
     (setq org-file-apps
           ;; Open non-text files in Windows instead of WSL
           '(("\\.pptx?\\'" . open-in-windows)
@@ -426,12 +434,13 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
             ("\\.docx?\\'" . open-in-windows)
             ("\\.txt?\\'" . open-in-windows)
             ("\\.xlsx?\\'" . open-in-windows)
+            ("\\.csv?\\'" . open-in-windows)
             ("\\.png?\\'" . open-in-windows)
             ("\\.html?\\'" . open-in-windows)
             (remote . emacs)
             (auto-mode . emacs)
             ;; dired is unbelievably slow on Windows shared network drives
-            ((directory . open-in-windows)))
+            (directory . open-in-windows))
           browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe"
           browse-url-generic-args '("/c" "start" "")
           browse-url-browser-function 'browse-url-generic
@@ -1597,10 +1606,10 @@ prompt for a name, using filename as default input"
        :desc "Find scratch node"       "X" #'dendroam-find-scratch))
 
 (map! :map org-mode-map
-      :m "<up>" #'dendroam-find-parent
-      :m "<down>" #'dendroam-find-children
-      :m "<left>" #'dendroam-find-siblings
-      :m "<right>" #'dendroam-find-siblings)
+      :m "S-<up>" #'dendroam-find-parent
+      :m "S-<down>" #'dendroam-find-children
+      :m "S-<left>" #'dendroam-find-siblings
+      :m "S-<right>" #'dendroam-find-siblings)
 
 
 ;; TODO These commands require evil-move-beyond-eol to work properly across
