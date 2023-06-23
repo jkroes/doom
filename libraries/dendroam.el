@@ -73,6 +73,9 @@
 (defun dendroam-join (strings)
   (string-join strings dendroam-separator))
 
+(defun dendroam-split2 (str)
+  (split-string str (regexp-quote dendroam-display-separator)))
+
 (defun dendroam-join2 (strings)
   (string-join strings dendroam-display-separator))
 
@@ -223,7 +226,6 @@ COMPLETION-A and COMPLETION-B are items in the form of
 
 ;; NODE TREE-STYLE NAVIGATION --------------------------------------------------------------------
 
-;; NOTE Compare code to org-roam-node-find
 (defun dendroam-find-parent ()
   "Find and visit parent node, creating one if nonexistent.
 This is a convenience function that skips a prompt."
@@ -264,6 +266,26 @@ This is a convenience function that skips a prompt."
                    t)))
     (when (org-roam-node-file new-node)
       (org-roam-node-visit new-node))))
+
+(defun dendroam-find-related ()
+  "Find related notes (parents, siblings, and children)"
+  (interactive)
+  (dendroam--find-related (or (and (eq major-mode 'org-mode) (org-roam-node-at-point)) "")))
+
+(cl-defmethod dendroam--find-related ((node org-roam-node))
+  (let* ((parent-title (org-roam-node-dendroam-hierarchy-no-title node))
+         (regexp (or (and (length= parent-title 0)
+                          (format "^[^%s]+$" dendroam-display-separator))
+                     (concat "^" parent-title)))
+         (new-node (org-roam-node-read
+                   parent-title
+                   nil
+                   #'org-roam-node-read-sort-by-display-hierarchy)))
+    (if (org-roam-node-file new-node)
+        (org-roam-node-visit new-node)
+      (org-roam-capture-
+       :node (org-roam-node-create :title (dendroam-join (dendroam-split2 (org-roam-node-title new-node))))
+       :props '(:finalize find-file)))))
 
 (cl-defmethod org-roam-node-dendroam-hierarchy-no-title ((node org-roam-node))
   "Node hierarchy, minus the last period-separated component."
@@ -308,7 +330,10 @@ This is a convenience function that skips a prompt."
 (cl-defmethod dendroam--refactor-hierarchy ((node org-roam-node))
   (let* ((hierarchy (org-roam-node-dendroam-hierarchy node))
          (new-hierarchy (read-string "Refactor: " hierarchy))
-         (files (dendroam-sibling-files hierarchy))
+         ;; NOTE The slug and rename methods downcase filenames/titles. And
+         ;; regexp functions ignore case by default (see case-fold-search).
+         (case-fold-search)
+         (files (directory-files-recursively org-roam-directory (concat "^" hierarchy)))
          (new-title (car (last (split-string new-hierarchy (regexp-quote dendroam-separator))))))
     (dolist (file files)
       (let ((new-file (replace-regexp-in-string hierarchy new-hierarchy file))
@@ -327,16 +352,6 @@ This is a convenience function that skips a prompt."
           ;; meantime, here is my hack.
           (when buf (kill-buffer buf)))))))
 
-;; TODO Keep testing this. I would prefer to do simple file matching in case
-;; the database is out of sync. I pulled this from the original dendroam github
-;; repository
-(defun dendroam-sibling-files (hierarchy)
-  "Gets all the nodes that share the same HIERARCHY"
-  (mapcar #'car (org-roam-db-query [:select [file]
-                                    :from nodes
-                                    :where (like file $r1)]
-                                   (concat "%" hierarchy "%"))))
-
 ;; TODO Add a warning when the node to rename is a parent node, in case we want
 ;; to use refactor instead.
 (defun dendroam-rename-note ()
@@ -351,7 +366,7 @@ This is a convenience function that skips a prompt."
               (dendroam--scratch-note-p node)
               (dendroam--citar-note-p node))
     (let* ((hierarchy (org-roam-node-dendroam-hierarchy node))
-           (new-hierarchy (read-string "Rename: " hierarchy))
+           (new-hierarchy (downcase (read-string "Rename: " hierarchy)))
            (new-title (car (last (split-string new-hierarchy (regexp-quote dendroam-separator)))))
            (file (buffer-file-name))
            (new-file (replace-regexp-in-string hierarchy new-hierarchy file)))

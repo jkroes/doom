@@ -375,7 +375,7 @@ incrementally."
   ;; attached file. You can also store a link via embark-act, embark-copy-as-kill
   ;; (@w), then yank.
   (setq org-attach-store-link-p 'file
-        org-attach-use-inheritance t
+        org-attach-use-inheritance nil
         ;; When disabled, (C-)M-RET inserts a (sub)heading above
         ;; when called at beginning of line; else directly below
         org-insert-heading-respect-content nil))
@@ -785,12 +785,29 @@ buffer are offered."
            (if transform (substring cand (1+ (length name))) name))))
      :lookup #'consult--lookup-candidate)))
 
-;; org-cycle everywhere in normal state (i.e., completion and indentation will
-;; only work in insert state).
 (defun my/org-cycle ()
+  "org-cycle everywhere within normal state. Completion and indentation will only work in insert state when this is bound to tab."
   (interactive)
   (let ((org-cycle-emulate-tab))
     (call-interactively #'org-cycle)))
+
+(defun delete-empty-org-attach-id-dirs ()
+  "Delete empty directories within org-attach-id-dir."
+  (interactive)
+  (require 'dash)
+  ;; Delete org-attach-id-dir sub-sub folders
+  (-each
+      (-filter
+       (lambda (file) (directory-empty-p file))
+       (directory-files-recursively org-attach-id-dir "" t))
+    #'delete-directory)
+  ;; Delete org-attach-id-dir sub-folders. Some will be newly empty after the
+  ;; last deletion.
+  (-each
+      (-filter
+       (lambda (file) (directory-empty-p file))
+       (directory-files org-attach-id-dir t))
+    #'delete-directory))
 
 ;;; org-roam --------------------------------------------------
 
@@ -1593,6 +1610,7 @@ prompt for a name, using filename as default input"
 (map! :leader
       (:prefix "n"
        "r" nil ; "roam" (non-map) prefix
+       :desc "Delete empty org-attach dir" "d" #'delete-empty-org-attach-id-dirs
        :desc "Find node"               "f" #'org-roam-node-find
        ;; :desc "Capture node"         "F" #'org-roam-capture
        :desc "Find ref"                "F" #'org-roam-ref-find
@@ -1603,14 +1621,13 @@ prompt for a name, using filename as default input"
        :desc "Switch to scratch"       "x" #'dendroam-find-master-scratch
        :desc "Rename node"             "r" #'dendroam-rename-note
        :desc "Refactor hierarchy"      "R" #'dendroam-refactor-hierarchy
-       :desc "Find scratch node"       "X" #'dendroam-find-scratch))
-
-(map! :map org-mode-map
-      :m "S-<up>" #'dendroam-find-parent
-      :m "S-<down>" #'dendroam-find-children
-      :m "S-<left>" #'dendroam-find-siblings
-      :m "S-<right>" #'dendroam-find-siblings)
-
+       :desc "Find scratch node"       "X" #'dendroam-find-scratch
+       :desc "Find related nodes"      "n" #'dendroam-find-related
+       ;; :desc "Find parent" "<up>" #'dendroam-find-parent
+       ;; :desc "Find children" "<down>" #'dendroam-find-children
+       ;; :desc "Find siblings" "<left>" #'dendroam-find-siblings
+       ;; :desc "Find siblings" "<right>" #'dendroam-find-siblings
+       ))
 
 ;; TODO These commands require evil-move-beyond-eol to work properly across
 ;; multiple lines. What are the cons of enabling this setting? Also see
