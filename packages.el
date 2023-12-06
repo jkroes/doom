@@ -48,3 +48,61 @@
 ;; (unpin! pinned-package another-pinned-package)
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;; (unpin! t)
+
+;;; My code and notes ---------------------------------------------------------
+
+;; TODO Unless otherwise stated, update package versions as the
+;; corresponding package! statement in Doom Emacs changes.
+
+(package! vundo)
+
+;; Install these packages even if not using evil +everywhere
+(package! evil-collection :pin "8be4b75c86bc637dbcd14be7522d6da06df1747e")
+(package! evil-org
+  :recipe (:host github :repo "hlissner/evil-org-mode")
+  :pin "a9706da260c45b98601bcd72b1d2c0a24a017700")
+
+
+(package! consult-org-roam
+  :recipe (:host github :repo "jgru/consult-org-roam"))
+
+;; Alternative to company completion module
+(package! corfu
+  :recipe (:host github :repo "minad/corfu"
+           :files ("*.el" "extensions/*.el"))
+  ;; BUG https://github.com/minad/corfu/issues/290
+  ;;:pin "b5458a132c678b5fe97b4a7819b9bb1dba31aee2"
+  )
+;; See the corfu repo for more "complementary" packages, as well!
+(package! cape)
+(package! kind-icon)
+
+
+;; From old config
+;; (package! outline-minor-faces)
+;; (package! backline)
+;; (package! page-break-lines)
+;; Auto revert seems like a bad idea and a potential source of bugs.
+;; (package! autorevert :disable t)
+;; (package! org-super-agenda)
+;; (package! vulpea)
+;; (package! fira-code-mode)
+
+
+;; (package! org-transclusion)
+;; (package! zotxt-emacs
+;;           :recipe (:host github :repo "egh/zotxt-emacs"))
+
+
+;; BUG https://github.com/doomemacs/doomemacs/issues/7039
+;; Don't download any snippets until the bug is fixed
+;;(package! doom-snippets :ignore t)
+
+
+;; BUG https://github.com/doomemacs/doomemacs/issues/7078
+;; (package! transient :pin "c2bdf7e12c530eb85476d3aef317eb2941ab9440")
+;; (package! with-editor :pin "391e76a256aeec6b9e4cbd733088f30c677d965b")
+
+
+;;(package! tempel)
+;;(package! tempel-collection)

@@ -190,15 +190,6 @@ FILTER: if non-nil, should be a predicate function taking
         ;; with spaces in them, which makes org-noter fail
         (org-set-property "NOTER_DOCUMENT" (wslify-bib-path (cdr (assoc "file" entry))))))))
 
-;;;###autoload
-  (defun aj/citar-org-key-at-point ()
-    "Return key at point for org-cite citation-reference or citekey."
-    (or (citar-org-key-at-point)
-        (when (org-in-regexp org-element-citation-key-re)
-          (cons (substring (match-string 0) 1)
-                (cons (match-beginning 0)
-                      (match-end 0))))))
-
 
 ;; This works with point anywhere in a roam note
 ;;;###autoload

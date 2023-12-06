@@ -16,6 +16,25 @@
 (require 'org-roam)
 (require 'citar)
 
+;; NOTE This hides and prevents searching on tags in e.g. org-roam-node-find
+;; but does not exclude nodes with those tags. To excludes nodes by tag, see
+;; `org-roam-db-node-include-function'
+(after! org-roam
+  (cl-defmethod org-roam-node-doom-tags2 ((node org-roam-node))
+    "Return tags formatted in the same way how they appear in org files."
+    (cl-remove-if (doom-rpartial
+                   #'member (delq
+                             nil (append
+                                  (list (bound-and-true-p org-archive-tag)
+                                        (bound-and-true-p org-attach-auto-tag))
+                                  ;; Omit vulpea tag
+                                  ;; TODO Update this when you create a variable
+                                  ;; to customize the vulpea tag
+                                  (list "project")
+                                  (bound-and-true-p org-num-skip-tags))))
+                  (org-roam-node-tags node))))
+
+
 ;; https://github.com/org-roam/org-roam/issues/2066
 ;; BUG org-roam candidates are too big. Completing them mvoes the cursor down
 ;; into the candidates displayed by vertico. Doom Emacs fix does not work,
@@ -175,8 +194,8 @@ input defaults to the current node."
 (defun dendroam--find (suffix template)
   (let* ((parent (org-roam-node-at-point))
          (input (if parent (org-roam-node-dendroam-display-hierarchy parent)))
-         ;; Find a node located outside of `citar-org-roam-subdir'. If the
-         ;; current file is a node, use it's hierarchy as initial input
+         ;; Find a node located outside of `citar-org-roam-subdir'. If the current file is a node, use it's hierarchy as
+         ;; initial input
          (node (org-roam-node-read
                 input
                 (lambda (node)
