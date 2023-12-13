@@ -159,7 +159,6 @@
 
 (setq org-hide-block-startup t
       ;; org-blank-before-new-entry '((heading) (plain-list-item))
-      ;; org-cycle-separator-lines 2
       org-indirect-buffer-display 'current-window
       org-eldoc-breadcrumb-separator " → "
       org-fontify-done-headline t

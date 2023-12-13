@@ -41,24 +41,10 @@
   ;;       ;;          " | sudo -S mount -t drvfs A: /mnt/a"))
   ;;       (cond ((eq system-type 'gnu/linux) 'open-in-windows)
   ;;             ((eq system-type 'darwin) 'citar-file-open-external))
-  (setq
-   ;; Used by e.g. citar-open-notes to display bib entry candidates
-        ;; citar-default-action 'embark-act
-        ;; Used by citar-open-notes
-        citar-open-note-function 'citar--open-noter)
 
+  ;; Used by citar-open-notes
+  (setq citar-open-note-function 'citar--open-noter)
 
-  ;; NOTE Makes embark-act>citar-run-default-action (where default action is
-  ;; citar-open) work the same as +org/dwim-at-point (RET) or embark-dwim
-  ;; (where default-action is citar-open, at least) with point on a citation.
-  ;; BUG citar-run-default-action expects its argument to be a list, but when
-  ;; called from embark-act receives a string.
-  ;; HACK Borrow code from embark-dwim to check if keys-entries is a string and
-  ;; if so convert it to a list
-  (defun citar-run-default-action (keys-entries)
-    "Run the default action `citar-default-action' on KEYS-ENTRIES."
-    (funcall citar-default-action
-             (if (listp keys-entries) keys-entries (list keys-entries))))
 
   ;; HACK From within an org-roam note (see ESM 203), citar-open-notes will
   ;; use the filetag as the initial input when completing bib entry candidates
@@ -264,3 +250,59 @@ FILTER: if non-nil, should be a predicate function taking
              (expand-file-name file dir)) wsl-files))
         dirs)))))
 
+
+
+;; NOTE Unlike import-zotero-annotations-from-note, which have Zotero open-pdf
+;; links, this will insert an absolute filepath. The absolute filepath is useful
+;; if we need to export the org-mode file to another format. We can copy that
+;; file to a common directory then search-replace the links in the exported
+;; file, to preserve access for those who can't access Emacs or my Zotero
+;; library (i.e., everyone who is not me)
+;; (defun citar-insert-file-link ()
+;;   "Insert an org-mode link to a selected file attachment with the parent item title as the description"
+;;   (interactive)
+;;   (require 'citar)
+;;   (let* ((key (citar-select-ref))
+;;          (file (cdr (citar--select-resource key :files t)))
+;;          (title (cdr (assoc "title" (citar-get-entry key)))))
+;;     (org-insert-link nil file title)))
+
+;;; NOTE This is possibly a more recent version of the functions above.
+
+;; TODO Fix this function
+;; citar-open first prompts for a key, then for a resource (file, URL, or note).
+;; Here we skip the key-prompt by using the key stored in ROAM_REFS of the
+;; current note
+(defun org-roam-open-refs ()
+  "Open resources associated with citation key, or open URL, from ROAM_REFS
+of current note"
+  (interactive)
+  (save-excursion
+    (goto-char (org-roam-node-point (org-roam-node-at-point 'assert)))
+    (when-let* ((p (org-entry-get (point) "ROAM_REFS"))
+                (refs (when p (split-string-and-unquote p)))
+                (user-error "No ROAM_REFS found"))
+      ;; Open ref citation keys
+      (when-let ((oc-cites
+                  (seq-map
+                   (lambda (ref) (substring ref 1))
+                   (seq-filter (apply-partially #'string-prefix-p "@") refs))))
+        (citar-open-from-note oc-cites))
+      ;; Open ref URLs
+      (dolist (ref refs)
+        (unless (string-prefix-p "@" ref)
+          (browse-url ref))))))
+
+(defun citar-open-from-note (keys)
+  "Like citar-open but excludes notes from candidates."
+  (interactive (list (citar-select-refs)))
+  (if-let ((selected (let* ((actions (bound-and-true-p embark-default-action-overrides))
+                            (embark-default-action-overrides `((t . ,#'citar--open-resource) . ,actions)))
+                       (citar--select-resource keys :files t :links t
+                                               :always-prompt citar-open-prompt))))
+      (citar--open-resource (cdr selected) (car selected))
+    (error "No associated resources: %s" keys)))
+
+;; NOTE This doesn't seem to work when using citar-org-roam. See the :create
+;; key of citar-org-roam-notes-config.
+(setq citar-note-format-function #'citar-org-format-note-no-bib)

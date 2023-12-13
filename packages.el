@@ -73,10 +73,11 @@
   ;; BUG https://github.com/minad/corfu/issues/290
   ;;:pin "b5458a132c678b5fe97b4a7819b9bb1dba31aee2"
   )
-;; See the corfu repo for more "complementary" packages, as well!
+;; TODO See the corfu repo for more "complementary" packages
 (package! cape)
 (package! kind-icon)
 
+(package! modus-themes)
 
 ;; From old config
 ;; (package! outline-minor-faces)

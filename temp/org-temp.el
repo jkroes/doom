@@ -191,61 +191,6 @@ https://emacs.stackexchange.com/questions/31908/remove-mark-from-ring-in-org-mod
     (message "No previous org-mark.")))
 
 
-;; TODO Don't treat visibility cycling (?) as undo step
-;; TODO M-RET makes it impossible to tab to show drawers with tab
-;; (can still use org-show-subtree). Need to undo outline-flag-region
-;; by org-cycle-hide-drawers within relevant portion of org-insert-heading
-;; TODO Can't tab to show drawer if heading has no children
-;; https://stackoverflow.com/questions/17478260/completely-hide-the-properties-drawer-in-org-mode
-;; Override org-cycle-hide-drawers to completely hide property drawers on S-TAB.
-;; And override org-cycle-internal-local so that TAB has a fourth state that
-;; shows property drawer for the current heading
-;; NOTE Re-hides drawers for children and subtree states and for global all
-;; state
-;;(after! org
-  ;;   (defun org-cycle-hide-drawers (state)
-  ;;     "Re-hide all drawers (not just their contents) after a visibility state
-  ;; change."
-  ;;     (when (and (derived-mode-p 'org-mode)
-  ;;                (not (memq state '(overview folded contents))))
-  ;;       (save-excursion
-  ;;         (let* ((globalp (memq state '(all)))
-  ;;                (beg (if globalp
-  ;;                         ;;(point-min)
-  ;;                         ;; Don't hide org-roam property before first heading.
-  ;;                         ;; I'm not opposed to it, but this function only hides
-  ;;                         ;; it in certain states, and tab reveal wouldn't be
-
-  ;;                         (save-excursion
-  ;;                           (goto-char (point-min))
-  ;;                           (outline-next-heading)
-  ;;                           (point))
-  ;;                       (point)))
-  ;;                (end (if globalp
-  ;;                         (point-max)
-  ;;                       (if (eq state 'children)
-  ;;                           (org-entry-end-position)
-  ;;                         (org-end-of-subtree t)))))
-  ;;           (goto-char beg)
-  ;;           (while (re-search-forward org-drawer-regexp end t)
-  ;;             (save-excursion
-  ;;               (beginning-of-line 1)
-  ;;               (when (looking-at org-drawer-regexp)
-  ;;                 (let* ((start (1- (match-beginning 0)))
-  ;;                        (limit
-  ;;                         (save-excursion
-  ;;                           (outline-next-heading)
-  ;;                           (point)))
-  ;;                        (msg (format
-  ;;                              (concat
-  ;;                               "org-cycle-hide-drawers:  "
-  ;;                               "`:END:`"
-  ;;                               " line missing at position %s")
-  ;;                              (1+ start))))
-  ;;                   (if (re-search-forward "^[ \t]*:END:" limit t)
-  ;;                       (outline-flag-region start (point-at-eol) t)
-  ;;                     (user-error msg))))))))))
-
   ;; NOTE This is incompatible with +org-cycle-only-current-subtree-h
   ;; (defun org-cycle-internal-local ()
   ;;   "Do the local cycling action."
