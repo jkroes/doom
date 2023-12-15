@@ -6,16 +6,6 @@
 (require 'org-roam)
 (require 'citar)
 
-;; https://github.com/org-roam/org-roam/issues/2066
-;; BUG org-roam candidates are too big. Completing them mvoes the cursor down
-;; into the candidates displayed by vertico. Doom Emacs fix does not work,
-;; so this advice could be used to disable it:
-;; (advice-remove '+org--roam-fix-completion-width-for-vertico-a #'org-roam-node-read--to-candidate)
-;; NOTE Zero-length tags can still be searched; they are just invisible
-;; (setq org-roam-node-display-template
-;;       (format "${dendroam-display-hierarchy:*} %s"
-;;               (propertize "${dendroam-tags:5}" 'face 'org-tag)))
-;; The only current fix is to omit length specs.
 (setq org-roam-node-display-template "${dendroam-display-hierarchy}")
 
 (setq org-roam-capture-templates

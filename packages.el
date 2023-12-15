@@ -79,6 +79,9 @@
 
 (package! modus-themes)
 
+;; Windows-only issue: https://github.com/org-roam/org-roam/issues/2384
+(package! org :pin "ca873f7fe47546bca19")
+
 ;; From old config
 ;; (package! outline-minor-faces)
 ;; (package! backline)

@@ -1,5 +1,15 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO Functions used as advice can be debugged if you use advice-add and
+;; not bullshit `defadvice!'
+;; TODO Document somewhere how attempting to edebug an advised function fails
+;; silently. If edebug doesn't trigger, check via C-h f whether the function is
+;; advised. There are other resons why debugging might fail.
+;; TODO Create an archive file instead of a graveyard section below
+;; TODO Unbind all references to  "C-<return>" and [C-return], "<tab>" and [tab],
+;; etc., in all packages and modules that you use. It makes debugging
+;; keybindings extremely difficult and there is no good reason to bind to them
+;; over RET, TAB, etc.
 ;; TODO corfu bindings. Use define-key! ?
 ;; TODO vertico preview settings
 ;; TODO Learna about orderless. In particular, see orderless-affix-dispatch-list.
@@ -101,12 +111,12 @@
       (font-spec :family "JuliaMono"
                  :size (if (length= (display-monitor-attributes-list) 2) 18 16)))
 
-;; NOTE Roboto is nearly identical to SF Pro but slightly slimmer. These fonts
-;; are what Obsidian.md uses on MacOS.
 ;; NOTE To enable mixed monospace/fixed and proportional/variable fonts in
 ;; org-mode, uncomment the code below:
+;; NOTE Roboto is nearly identical to SF Pro but slightly slimmer. These fonts
+;; are what Obsidian.md uses on MacOS.
 (setq doom-variable-pitch-font
-      (font-spec :family "Helvetica" ; Fonts: "Helvetica" "ETBembo" "Roboto" "SF Pro"
+      (font-spec :family "Roboto"
                  :size (if (length= (display-monitor-attributes-list) 2) 20 18)))
 
 ;; NOTE While using modus themes, disable the `+pretty' flag for the
@@ -190,7 +200,6 @@
 (setq ns-command-modifier 'control
       mac-command-modifier 'control)
 
-;; NOTE Can be used on Windows in combination with FancyZones and autohotkey
 ;; On MacOS the binding here should match the shortcut in  System Settings >
 ;; Keyboard > Keyboard Shortcuts > Keyboard > Move focus to next window
 (map! "C-SPC" #'other-frame)
@@ -234,6 +243,19 @@ correctly display variable-pitch fonts. Instead use
 (define-key! [remap describe-face] #'describe-face-under-hl-line)
 
 ;;; evil ----------------------------------------------------------------------
+
+;; NOTE This works on Windows' Terminal app
+(unless (display-graphic-p)
+  (add-hook 'evil-insert-state-entry-hook (lambda () (send-string-to-terminal "\033[5 q")))
+  (add-hook 'evil-insert-state-exit-hook  (lambda () (send-string-to-terminal "\033[2 q"))))
+
+;; I don't use `evil-repeat', but `vertico-repeat' is incredibly useful for
+;; continuing vertico-based searches. See `vertico-repeat-filter' and
+;; `vertico-repeat-transformers' for configuration.
+(when (featurep! :completion vertico)
+  (map!
+   :n "." #'vertico-repeat
+   :n ">" #'vertico-repeat-select))
 
 ;; Easier evil "j" and "k", harder "gg" navigation
 ;; (setq display-line-numbers-type 'relative)
@@ -425,8 +447,7 @@ confirmation."
 ;; when the cursor is on a nonblank comment line. So let's reuse the bindings
 ;; for `+default/newline-below'. NOTE `comment-indent-new-line' is the current
 ;; value of `comment-line-break-function'.
-(map! :gin "M-RET"         comment-line-break-function
-      :gin [M-return]      comment-line-break-function)
+(map! "M-RET" comment-line-break-function)
 
 ;;; scrolling -----------------------------------------------------------------
 
@@ -492,12 +513,12 @@ confirmation."
 ;; Alternatively, enable vertico-resize:
 ;; (after! vertico (setq vertico-resize t))
 
-(after! embark (when IS-WSL (map! :map embark-file-map
-                                  ;; Replaces consult-file-externally when using embark-action to open files
-                                  ;; outside of Emacs
-                                  "x" #'open-in-windows
-                                  ;; Adds file to bookmarks
-                                  "b" #'my/bookmark-set)))
+(after! embark
+    (map! :map embark-file-map
+          ;; Replaces consult-file-externally
+          (:when IS-WSL "x" #'open-in-windows)
+          ;; Adds file to bookmarks
+          "b" #'my/bookmark-set))
 
 ;; TODO Modify this so that it works without visiting file via find-file
 (defun my/bookmark-set (file)
@@ -642,8 +663,16 @@ incrementally."
 
 ;;; emacs lisp ----------------------------------------------------------------
 
-(map! :gin "C-RET"    #'eval-defun
-      :gin [C-return] #'eval-defun)
+;; TODO How can I unbind "C-<return>" and dispatch to "C-RET" without an error
+;; about the former being undefined? unbind-command fails here. This means that
+;; I need to being to "C-<return>" in the meantime.
+;; modules/config/default/config.el binds this command to [C-return], which is
+;; equivalent to "C-<return>" and hides any bindings to "C-RET"
+(unbind-command global-map #'+default/newline-below)
+(unbind-command evil-insert-state-map #'+default/newline-below)
+(unbind-command evil-normal-state-map #'+default/newline-below)
+(map! :map emacs-lisp-mode-map :gin "C-RET" #'eval-defun)
+(map! :map emacs-lisp-mode-map :gin "C-<return>" #'eval-defun)
 
 ;;; org -----------------------------------------------------------------------
 
@@ -672,17 +701,30 @@ incrementally."
     (org-todo (if (= n-not-done 0) "DONE" "TODO"))))
 
 
-;; Insert one blank line when inserting a heading, and fold that line when cycling
-(setq org-blank-before-new-entry '((heading . 1) (plain-list-item)))
-(setq org-cycle-separator-lines 2)
+;; Insert a blank line when inserting a (non-sub)heading (see advice below), and
+;; fold that line when cycling
+(setq org-blank-before-new-entry '((heading . t) (plain-list-item))
+      org-cycle-separator-lines 2)
 
-;; Doom's `+org/insert-item-below' does not respect
-;; `org-blank-before-new-entry'. I could not figure out a less intrusive way to
-;; override the binding to this function in `+org-init-keybinds-h', including
-;; by remapping.
-(defadvice! +org/insert-item-below-a (count)
-  :override '+org/insert-item-below
-  (call-interactively #'org-insert-heading-respect-content))
+
+(defadvice! +org/insert-item-below-a (fn &rest args)
+  "Still insert a list item when on a list, but use the
+built-in org functions for inserting a heading, because
+`+org/insert-item-below' does not respect `org-blank-before-new-entry'."
+  :around '+org/insert-item-below
+  (if (org-at-heading-p)
+      (call-interactively #'org-insert-heading-respect-content)
+    (apply fn args)))
+
+
+
+(defadvice! org-insert-subheading-a (fn &rest args)
+  "Ignore `org-blank-before-new-entry when inserting a subheading
+as the first child of a heading'"
+  :around #'org-insert-subheading
+  (let (org-blank-before-new-entry)
+    (apply fn args)))
+
 
 ;; When disabled, (C-)M-RET inserts a (sub)heading above
 ;; when called at beginning of line; else directly below
@@ -820,8 +862,10 @@ incrementally."
     (insert latex)))
 
 
-;; TODO Bind this to something or consider replacing org-open-at-point on WSL
-;; only. Note that this function is used by `+org/dwim-at-point-a' for links
+;; TODO Replace this function with advice and remove the reference to it in
+;; `org-dwim-at-point-a'
+;;
+;; Note that this function is used by `+org/dwim-at-point-a' for links
 ;; when hitting RET
 (defun my/org-open-at-point ()
   "Use find-file with file link as initial input instead of opening file link
@@ -999,11 +1043,17 @@ headings."
 (after! org (setq org-hide-block-startup t))
 
 
+;; TODO This interferes with lots of stuff, but especially completing "roam"
+;; links. Fix it, then uncomment the evil-org bindings for it lower down.
 (defun my/org-cycle ()
-  "org-cycle everywhere within normal state. Completion and indentation will
-only work in insert state when this is bound to tab."
+  "org-cycle everywhere within normal state. This includes cycling
+list items. Completion and indentation will only work in insert
+state when this is bound to tab."
   (interactive)
-  (let ((org-cycle-emulate-tab))
+  ;; NOTE This cycles sublists and has an effect on other types of org items
+  ;; (let ((org-cycle-emulate-tab)) (call-interactively #'org-cycle))
+  (save-excursion
+    (org-back-to-heading-or-point-min)
     (call-interactively #'org-cycle)))
 
 
@@ -1213,6 +1263,16 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
 
 ;;;; org-roam --------------------------------------------------
 
+;; NOTE This must be a relative path. org-roam initializes this with
+;; `org-attach-id-dir' but doesn't check whether it's a relative path!
+;; See `org-roam-file-p'.
+(after! org-roam
+  (setq org-roam-file-exclude-regexp (if (not IS-WSL)
+                                         (list (file-name-base org-attach-id-dir))
+                                       (list)))
+  ;; TODO Remove this once you finish processing these files.
+  (push "reorg/" org-roam-file-exclude-regexp))
+
 ;; All of my org files are org-roam files
 (setq org-roam-directory org-directory)
 
@@ -1232,9 +1292,17 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
 (add-hook 'org-mode-hook
           (lambda () (add-hook 'after-save-hook #'org-roam-link-replace-all nil t)))
 
+
 (use-package! consult-org-roam
   :after org-roam
   :config
+  ;; Annotate tags rather than including them in
+  ;; org-roam-node-display-template. In the latter case, they are part of the
+  ;; vertico candidate string, and vertico-insert (tab) inserts the tags as
+  ;; well as the org-roam node string. Plus there's this unresolved bug:
+  ;; https://github.com/org-roam/org-roam/issues/2066. On the flip side, you
+  ;; can't search annotations.
+  (setq org-roam-node-annotation-function #'my/org-roam-node-read--annotation)
   ;; Faster live preview
   (setq consult-org-roam-grep-func #'consult-ripgrep)
   ;; Advise org-roam-node-read to use consult--read. This package uses
@@ -1242,6 +1310,12 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
   ;; can suppress them via consult-customize.
   (consult-org-roam-mode)
   (consult-customize org-roam-node-find :preview-key "C-SPC"))
+
+
+(defun my/org-roam-node-read--annotation (node)
+  "Replaces org-roam's dummy annotation function for org-roam-node-read"
+  (concat (make-string 5 ?\s)
+          (mapconcat #'identity (org-roam-node-dendroam-tags node) " ")))
 
 
 ;;;; biblio / citar  ----------------------------------------------------------
@@ -1361,12 +1435,16 @@ return the path"
 (defadvice! citar-org-roam--create-capture-note-a (citekey entry)
   "Slightly modified function for citar-reference-note creation"
   :after #'citar-org-roam--create-capture-note
-    (when (fboundp 'evil-insert)
-      (evil-append-line 1)
-      (insert "\n")))
+  (when (fboundp 'evil-insert)
+    (evil-append-line 1)
+    (insert "\n")))
 
 
 ;;;; dendroam --------------------------------------------------------------------
+
+;; TODO Create a command that completes only the unique components at each
+;; level of the heirarchy. This makes finding things easier if you don't know
+;; what you're looking for.
 
 ;; NOTE Nodes can be created by running org-roam-node-find;
 ;; org-roam-node-insert; or by typing a roam link like
@@ -1377,6 +1455,8 @@ return the path"
 
 (add-to-list 'load-path (expand-file-name "libraries" doom-private-dir))
 (require 'dendroam)
+
+(map! :leader :desc "Find node" "RET" #'dendroam-find) ; Replaces bookmark-jump
 
 ;; TODO org-roam links only complete the title, which is a problem for dendroam
 ;; since it allows for the same title with different hierarchies. See
@@ -1591,7 +1671,7 @@ filename with the root private module dir as initial input"
 
   (let* ((char1 (aref keys 0)))
     (my/ediff-copy-diff ediff-current-difference
-                     (ediff-char-to-buftype char1))))
+                        (ediff-char-to-buftype char1))))
 (defun my/ediff-copy-diff (n from-buf-type)
   (let* ((reg-to-copy (ediff-get-region-contents n from-buf-type ediff-control-buffer)))
     (kill-new reg-to-copy)))
@@ -1647,11 +1727,11 @@ filename with the root private module dir as initial input"
     :config
     (add-hook 'evil-org-mode-hook #'evil-normalize-keymaps)
     (evil-org-set-key-theme)
-    ;; (add-hook! 'org-tab-first-hook :append
-    ;;            ;; Only fold the current tree, rather than recursively
-    ;;            #'+org-cycle-only-current-subtree-h
-    ;;            ;; Clear babel results if point is inside a src block
-    ;;            #'+org-clear-babel-results-h)
+    (add-hook! 'org-tab-first-hook :append
+               ;; Only fold the current tree, rather than recursively
+               #'+org-cycle-only-current-subtree-h
+               ;; Clear babel results if point is inside a src block
+               #'+org-clear-babel-results-h)
     (let-alist evil-org-movement-bindings
       (let ((Cright  (concat "C-" .right))
             (Cleft   (concat "C-" .left))
@@ -1662,8 +1742,8 @@ filename with the root private module dir as initial input"
             (CSup    (concat "C-S-" .up))
             (CSdown  (concat "C-S-" .down)))
         (map! :map evil-org-mode-map
-              :nv "TAB" #'my/org-cycle
-              :nv "<tab>" #'my/org-cycle
+              ;;:nv "TAB" #'my/org-cycle
+              ;;:nv "<tab>" #'my/org-cycle
               :ni [C-return]   #'+org/insert-item-below
               :ni [C-S-return] #'+org/insert-item-above
               ;; navigate table cells (from insert-mode)
