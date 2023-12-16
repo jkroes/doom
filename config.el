@@ -1,5 +1,6 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; todo bind ace-window
 ;; TODO Functions used as advice can be debugged if you use advice-add and
 ;; not bullshit `defadvice!'
 ;; TODO Document somewhere how attempting to edebug an advised function fails
@@ -1261,6 +1262,27 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
           ("DONE" . ?☑)))
   (org-superstar-restart))
 
+;;;; pretty org checkboxes
+
+;; https://jft.home.blog/2019/07/17/use-unicode-symbol-to-display-org-mode-c
+
+(defun prettify-org-checkboxes ()
+  (push '("[ ]" . "󰝦") prettify-symbols-alist)
+  (push '("[X]" . "" ) prettify-symbols-alist)
+  (push '("[-]" . "󱎖" ) prettify-symbols-alist)
+  (prettify-symbols-mode))
+(add-hook 'org-mode-hook #'prettify-org-checkboxes)
+
+(defface org-checkbox-done-text
+  '((t (:foreground "#71696A" :strike-through t)))
+  "Face for the text part of a checked org-mode checkbox.")
+
+(font-lock-add-keywords
+ 'org-mode
+ `(("^[ \t]*\\(?:[-+*]\\|[0-9]+[).]\\)[ \t]+\\(\\(?:\\[@\\(?:start:\\)?[0-9]+\\][ \t]*\\)?\\[\\(?:X\\|\\([0-9]+\\)/\\2\\)\\][^\n]*\n\\)"
+    1 'org-checkbox-done-text prepend))
+ 'append)
+
 ;;;; org-roam --------------------------------------------------
 
 ;; NOTE This must be a relative path. org-roam initializes this with
@@ -1421,7 +1443,7 @@ return the path"
     file))
 
 
-;;; citar-org-roam ------------------------------------------------------------
+;;;; citar-org-roam ------------------------------------------------------------
 
 (use-package! citar-org-roam
   :config
@@ -1987,3 +2009,4 @@ filename with the root private module dir as initial input"
 ;;             (line-beginning-position 2))
 ;;     (cons (line-beginning-position)
 ;;           (line-beginning-position 2))))
+

@@ -3,8 +3,8 @@
 ;;; nevertheless, you probably don't want to edit it.
 ;;; -*- End Of Bookmark File Format Version Stamp -*-
 (("org-capture-last-stored"
- (filename . "~/org/apps.raindropio.org")
+ (filename . "~/org/work.cdpr.projects.voc.annual report.2022.org")
  (front-context-string)
- (rear-context-string . "tle: raindropio\n")
- (position . 88))
+ (rear-context-string . ":\n#+title: 2022\n")
+ (position . 82))
 )
