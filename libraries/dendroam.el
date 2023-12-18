@@ -14,18 +14,20 @@
                   "${dendroam-slug}.org" "#+title: %(car (last (dendroam-split \"${dendroam-slug}\")))")
          :immediate-finish t)))
 
-
 (defvar dendroam-separator ".")
 
 (defvar dendroam-display-separator (propertize ">" 'face 'shadow))
 
+(defvar dendroam-hidden-tags nil)
+
 ;;; NODE DISPLAY --------------------------------------------------------------------
 
-;; NOTE Functions defined via cl-defgeneric, as in vertico.el, can be extended
-;; through cl-defmethod:
+;; Functions defined via cl-defgeneric, as in vertico.el, can be extended
+;; through cl-defmethod, similar to how advice works. See:
 ;; - https://github.com/minad/vertico/wiki
 ;; - https://www.gnu.org/software/emacs/manual/html_node/elisp/Generic-Functions.html
 ;; - https://www.gnu.org/software/emacs/manual/html_node/eieio/index.html
+;;
 ;; This macro is also used below to dispatch on org-roam-node structs:
 ;; - https://nullprogram.com/blog/2018/02/14/ and
 ;; - https://www.orgroam.com/manual.html#Accessing-and-Modifying-Nodes
@@ -33,10 +35,8 @@
 (defvar my-last-minibuffer-command nil
   "The last command that invoked the minibuffer.")
 
-
 (cl-defmethod vertico--setup :before ()
   (setq my-last-minibuffer-command (symbol-name this-command)))
-
 
 ;; NOTE For an alternative implementation: replace ".*" with "^" to match from
 ;; the start of the candidate
@@ -46,90 +46,15 @@
 latter ends with `dendroam-display-separator'. Input can include
 regexp characters. This method is dispatched when the current
 command is part of the dendroam library."
-    (let ((parent (dendroam-up-hierarchy2 (car vertico--input))))
+    (let ((parent (dendroam-display-up-hierarchy (car vertico--input))))
       (when (not (string-empty-p parent))
         (setq cand (replace-regexp-in-string
                     (concat ".*" parent ">") "" cand))))
   (cl-call-next-method cand prefix suffix index _start))
 
-
-(cl-defmethod org-roam-node-dendroam-tags ((node org-roam-node))
-  "When this function is used in `org-roam-node-display-template',
-node: tags will be displayed and searchable unless they are
-explicitly excluded here. To exclude nodes by tag, see
-`org-roam-db-node-include-function'"
-  (cl-remove-if
-   (doom-rpartial
-    #'member
-    (delq nil (append
-               (list (bound-and-true-p org-archive-tag)
-                     (bound-and-true-p org-attach-auto-tag))
-               ;; Omit vulpea tag. TODO Update this when you create a variable
-               ;; to customize the vulpea tag
-               (list "project")
-               (bound-and-true-p org-num-skip-tags))))
-   (org-roam-node-tags node)))
-
-
-;; NOTE citar notes can be displayed as if they were a dendroam note for
-;; `org-roam-node-find' and `dendroam-find' via `org-roam-alias-add'. See e.g.,
-;; work.cdpr.voc.rulemakings.nonfumigants.
-;; TODO org-roam-node-dendroam-display-hierarchy has been abapted to work with
-;; dendroam headings within a dendroam file; however, the dendroam capture and
-;; navigation commands do not yet work properly with non-file nodes. Either
-;; adapt them to work with heading nodes, or else make them operate on the
-;; file-level node instead of using org-roam-node-at-point
-(cl-defmethod org-roam-node-dendroam-hierarchy ((node org-roam-node))
-  (let* ((level (org-roam-node-level node))
-         ;; Code assumes there is only one alias for citar notes
-         (alias (dendroam-split (car-safe (org-roam-node-aliases node))))
-         ;; title is either a file title or a heading
-         (title (dendroam-split (org-roam-node-title node)))
-         (olp (org-roam-node-olp node))
-         ;; If the file title differs from the final component of the
-         ;; heirarchy, prefer the file title. E.g. citar reference notes are
-         ;; named for the citation key but use the item title as the filetitle.
-         (file (append
-                (butlast (dendroam-split (file-name-base (org-roam-node-file node))))
-                (list (org-roam-node-file-title node)))))
-    (if (and alias (dendroam--citar-note-p node))
-        (dendroam-join alias) ; Displays only alias, not the title
-      (cl-case level
-        (0 (dendroam-join file))
-        (1 (dendroam-join (-concat file title)))
-        (t (dendroam-join (-concat file olp title)))))))
-
-
-(cl-defmethod org-roam-node-dendroam-display-hierarchy ((node org-roam-node))
-  (replace-regexp-in-string (regexp-quote dendroam-separator)
-                            dendroam-display-separator
-                            (org-roam-node-dendroam-hierarchy node)))
-
-
-(defun dendroam-split (str)
-  (when (stringp str)
-    (split-string str (regexp-quote dendroam-separator))))
-
-
-(defun dendroam-display-split (str)
-  (when (stringp str)
-    (split-string str (regexp-quote dendroam-display-separator))))
-
-
-(defun dendroam-join (strings)
-  (string-join strings dendroam-separator))
-
-
-(defun dendroam-display-join (strings)
-  (string-join strings dendroam-display-separator))
-
-
-;;; NODE CAPTURE --------------------------------------------------------------------
-
-
 (cl-defmethod org-roam-node-dendroam-slug ((node org-roam-node))
   "Return the input with non-alphanumeric characters replaced with underscores,
-except for periods, spaces, and dashes."
+except for periods, spaces, and dashes. Based on `org-roam-node-slug'."
   (let* ((title (org-roam-node-title node))
          (slug-trim-chars '(;; Combining Diacritical Marks https://www.unicode.org/charts/PDF/U0300.pdf
                             768 ; U+0300 COMBINING GRAVE ACCENT
@@ -153,17 +78,17 @@ except for periods, spaces, and dashes."
                             814 ; U+032E COMBINING BREVE BELOW
                             816 ; U+0330 COMBINING TILDE BELOW
                             817 ; U+0331 COMBINING MACRON BELOW
-                            ))
-         (leading-dash (string-match-p "^-" title))
-         (trailing-dash (string-match-p "-$" title)))
+                            )))
     (cl-flet* ((nonspacing-mark-p (char) (memq char slug-trim-chars))
                (strip-nonspacing-marks (s) (string-glyph-compose
                                             (apply #'string
                                                    (seq-remove #'nonspacing-mark-p
                                                                (string-glyph-decompose s)))))
                (cl-replace (title pair) (replace-regexp-in-string (car pair) (cdr pair) title)))
-      ;; The first pair is useful when you complete a new node from an existing
-      ;; node
+      ;; HACK The first pair is useful when you complete a new node from an existing
+      ;; node, which displays nodes with `dendroam-display-separator'. The
+      ;; second pair has been altered to allow spaces, periods, and hyphens in
+      ;; the slug.
       (let* ((pairs `((,dendroam-display-separator . ,dendroam-separator)
                       ("[^[:alnum:][:digit:][:space:].-]" . "_")
                       ("__*" . "_")   ; remove sequential underscore
@@ -173,6 +98,60 @@ except for periods, spaces, and dashes."
              (slug (-reduce-from #'cl-replace (strip-nonspacing-marks title) pairs)))
         (downcase slug)))))
 
+(cl-defmethod org-roam-node-dendroam-tags ((node org-roam-node))
+  "When this function is used in `org-roam-node-display-template',
+node: tags will be displayed and searchable unless they are
+explicitly excluded here. To exclude nodes by tag, see
+`org-roam-db-node-include-function'"
+  (cl-remove-if (doom-rpartial #'member (delq nil (ensure-list dendroam-hidden-tags)))
+                (org-roam-node-tags node)))
+
+;; NOTE citar notes can be displayed as if they were a dendroam note for
+;; `org-roam-node-find' and `dendroam-find' via `org-roam-alias-add'. See e.g.,
+;; work.cdpr.voc.rulemakings.nonfumigants.
+;;
+;; TODO The dendroam capture and navigation commands only work with file nodes,
+;; even though this and other functions support heading nodes.
+(cl-defmethod org-roam-node-dendroam-hierarchy ((node org-roam-node))
+  (let* ((level (org-roam-node-level node))
+         ;; Assumes there is only one alias for citar notes
+         (alias (dendroam-split (car-safe (org-roam-node-aliases node))))
+         ;; title is either a file title or a heading
+         (title (dendroam-split (org-roam-node-title node)))
+         ;; outline path to a heading node
+         (olp (org-roam-node-olp node))
+         ;; If the file title differs from the final component of the
+         ;; heirarchy, prefer the file title.
+         (file (append
+                (butlast (dendroam-split (file-name-base (org-roam-node-file node))))
+                (list (org-roam-node-file-title node)))))
+    (if (and alias (dendroam--citar-note-p node))
+        (dendroam-join alias) ; Displays only alias, not the title
+      (cl-case level
+        (0 (dendroam-join file))
+        (1 (dendroam-join (-concat file title)))
+        (t (dendroam-join (-concat file olp title)))))))
+
+(cl-defmethod org-roam-node-dendroam-display-hierarchy ((node org-roam-node))
+  (replace-regexp-in-string (regexp-quote dendroam-separator)
+                            dendroam-display-separator
+                            (org-roam-node-dendroam-hierarchy node)))
+
+(defun dendroam-split (str)
+  (when (stringp str)
+    (split-string str (regexp-quote dendroam-separator))))
+
+(defun dendroam-display-split (str)
+  (when (stringp str)
+    (split-string str (regexp-quote dendroam-display-separator))))
+
+(defun dendroam-join (strings)
+  (string-join strings dendroam-separator))
+
+(defun dendroam-display-join (strings)
+  (string-join strings dendroam-display-separator))
+
+;;; NODE CAPTURE --------------------------------------------------------------------
 
 (defun dendroam-find ()
   "Find dendroam nodes. These are org-roam nodes, excluding citar
@@ -183,13 +162,12 @@ reference notes that do not define a heirarchy via an alias."
              (not (and (dendroam--citar-note-p node)
                        (not (car-safe (org-roam-node-aliases node))))))))
 
-
 (defun dendroam-find-master-scratch ()
   "Create an entry in scratch.org"
   (interactive)
   (org-roam-capture-
    :node (org-roam-node-create :title (completing-read "Title: " nil))
-   :templates '(("s" "scratch" entry "* %<%Y%m%d%H%M%S>.${title} %?"
+   :templates '(("s" "scratch" entry "* %<%Y-%m-%d.%H:%M:%S>.${title} %?"
                  :target (file+head "scratch.org" "#+title: scratch")
                  ;; Defined by `org-capture'. Alternatively, pass
                  ;; :props '(:finalize find-file)
@@ -197,12 +175,9 @@ reference notes that do not define a heirarchy via an alias."
                  ;; `org-roam-capture--finalize-find-file'.
                  :jump-to-captured t
                  :immediate-finish t
-                 ;; :prepend t
-                 ;; empty-lines-before 2
-                 ;; empty-lines-after 2
-                 ;; unnarrowed
-                 :empty-lines 2))))
-
+                 :prepend t
+                 :empty-lines-before 1
+                 :empty-lines-after 1))))
 
 (defun dendroam-find-scratch ()
   "Create an entry in a local scratch file derived from the
@@ -213,7 +188,6 @@ selected node. Initial input defaults to the current node."
    '(("s" "scratch" entry "* %<%Y%m%d%H%M%S>.${title} %?"
       :target (file+head "${dendroam-hierarchy}.scratch.org" "#+title: scratch")
       :immediate-finish t))))
-
 
 (defun dendroam-find-meeting ()
   "Create a meeting file derived from the selected node. Initial
@@ -226,7 +200,6 @@ input defaults to the current node."
       :immediate-finish t))
    (format-time-string "%Y%m%d")))
 
-
 ;; (defun dendroam-find-project ()
 ;;   (interactive)
 ;;   (org-roam-capture-
@@ -237,9 +210,6 @@ input defaults to the current node."
 ;;                  :immediate-finish t))
 ;;    :props '(:finalize find-file)))
 
-
-;; NOTE For best results, input should be formatted like the candidates
-;; displayed according to org-roam-node-display-template.
 (defun dendroam--find (suffix template &optional title)
   (if (eq major-mode 'org-mode)
       (let* ((parent (org-roam-node-at-point))
@@ -261,10 +231,9 @@ input defaults to the current node."
                        org-roam-directory
                        (concat (org-roam-node-dendroam-hierarchy node) "." suffix ".org")))
          :templates template
-         :props '(:finalize find-file))))
-  ;; TODO This doesn't report the right thing
-  (message "%s only works within org-mode." this-command))
-
+         :props '(:finalize find-file)))
+    ;; TODO This doesn't report the right thing
+    (message "%s only works within org-mode." this-command)))
 
 (defun org-roam-node-read-sort-by-display-hierarchy (completion-a completion-b)
   (let ((node-a (cdr completion-a))
@@ -272,11 +241,9 @@ input defaults to the current node."
     (string> (org-roam-node-dendroam-display-hierarchy node-b)
              (org-roam-node-dendroam-display-hierarchy node-a))))
 
-
 (cl-defmethod dendroam--scratch-note-p ((node org-roam-node))
   "Return t if org-roam note is a dendroam datetime note"
   (string= "scratch" (org-roam-node-title node)))
-
 
 (cl-defmethod dendroam--meeting-note-p ((node org-roam-node))
   "Return t if org-roam note is a dendroam meeting note"
@@ -285,21 +252,17 @@ input defaults to the current node."
          (dmy (butlast (nthcdr 3 (parse-time-string title)) 3)))
     (not (-any 'null dmy))))
 
-
 (cl-defmethod dendroam--citar-note-p ((node org-roam-node))
   (string=
    (directory-file-name (file-name-directory (org-roam-node-file node)))
    (concat-path org-roam-directory citar-org-roam-subdir)))
-
 
 ;; (cl-defmethod dendroam--project-note-p ((node org-roam-node))
 ;;   (string=
 ;;    (dendroam-join (butlast (dendroam-split (org-roam-node-dendroam-hierarchy node))))
 ;;    "work.cdpr.projects"))
 
-
 ;;; NODE TREE-STYLE NAVIGATION --------------------------------------------------------------------
-
 
 (defun dendroam-find-parent ()
   "Find and visit parent node, creating one if nonexistent.
@@ -319,12 +282,10 @@ This is a convenience function that skips a prompt."
            :node (org-roam-node-create :title parent-hierarchy)
            :props '(:finalize find-file))))))
 
-
 (defun dendroam-find-siblings ()
   "Find sibling nodes at the same hierarchical level as input, excluding the current node."
   (interactive)
   (dendroam--find-siblings (or (and (eq major-mode 'org-mode) (org-roam-node-at-point)) "")))
-
 
 (cl-defmethod dendroam--find-siblings ((node org-roam-node))
   (let* ((parent-title (org-roam-node-dendroam-hierarchy-no-title node))
@@ -344,12 +305,10 @@ This is a convenience function that skips a prompt."
     (when (org-roam-node-file new-node)
       (org-roam-node-visit new-node))))
 
-
 (defun dendroam-find-related ()
   "Find related notes (parents, siblings, and children)"
   (interactive)
   (dendroam--find-related (or (and (eq major-mode 'org-mode) (org-roam-node-at-point)) "")))
-
 
 (cl-defmethod dendroam--find-related ((node org-roam-node))
   (let* ((parent-title (org-roam-node-dendroam-hierarchy-no-title node))
@@ -366,28 +325,23 @@ This is a convenience function that skips a prompt."
        :node (org-roam-node-create :title (dendroam-join (dendroam-display-split (org-roam-node-title new-node))))
        :props '(:finalize find-file)))))
 
-
 (cl-defmethod org-roam-node-dendroam-hierarchy-no-title ((node org-roam-node))
   "Node hierarchy, minus the last period-separated component."
   (dendroam-up-hierarchy (org-roam-node-dendroam-hierarchy node)))
 
-
 (defun dendroam-up-hierarchy (hierarchy)
   (dendroam-display-join (butlast (dendroam-split hierarchy))))
 
-
-(defun dendroam-up-hierarchy2 (hierarchy)
+(defun dendroam-display-up-hierarchy (hierarchy)
   (dendroam-display-join (butlast (dendroam-display-split hierarchy))))
 
 (cl-defmethod dendroam--find-siblings ((str string))
   (org-roam-node-find nil str))
 
-
 (defun dendroam-find-children ()
   "Find children nodes one hierarchical level beneath input, excluding the current node."
   (interactive)
   (dendroam--find-children (or (and (eq major-mode 'org-mode) (org-roam-node-at-point)) "")))
-
 
 (cl-defmethod dendroam--find-children ((node org-roam-node))
   (let ((new-node (org-roam-node-read
@@ -403,20 +357,16 @@ This is a convenience function that skips a prompt."
     (when (org-roam-node-file new-node)
       (org-roam-node-visit new-node))))
 
-
 (cl-defmethod dendroam--find-children ((str string))
   (org-roam-node-find nil str))
 
-
 ;;; NODE REFACTOR --------------------------------------------------------------------
-
 
 ;; TODO Also refactor citar notes' aliases that are part of the hierarchy
 (defun dendroam-refactor-hierarchy ()
   "Rename current note and all of its children"
   (interactive)
   (dendroam--refactor-hierarchy (org-roam-node-at-point)))
-
 
 (cl-defmethod dendroam--refactor-hierarchy ((node org-roam-node))
   (let* ((hierarchy (org-roam-node-dendroam-hierarchy node))
@@ -443,14 +393,12 @@ This is a convenience function that skips a prompt."
           ;; meantime, here is my hack.
           (when buf (kill-buffer buf)))))))
 
-
 ;; TODO Add a warning when the node to rename is a parent node, in case we want
 ;; to use refactor instead.
 (defun dendroam-rename-note ()
   "Rename current note only (i.e., preserve hierarchy) and change title to match."
   (interactive)
   (dendroam--rename-note (org-roam-node-at-point)))
-
 
 (cl-defmethod dendroam--rename-note ((node org-roam-node))
   ;; These types of notes' titles and filenames are not linked, so you can
@@ -469,7 +417,6 @@ This is a convenience function that skips a prompt."
       (find-file new-file)
       (org-roam-set-keyword "title" new-title)
       (save-buffer))))
-
 
 ;;; MINIBUFFER COMPLETION ----------------------------------------------------
 
