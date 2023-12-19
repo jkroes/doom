@@ -1,5 +1,7 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO Shrunk org table columns show three dots. C-h . over the dots echoes
+;; the truncated text. This should be done after a delay anywhere withi nthe column.
 ;; TODO bind ace-window
 ;; TODO The best way to handle advice is shown by the definition of consult-org-roam-mode
 ;; TODO Functions used as advice can be debugged if you use advice-add and
@@ -356,14 +358,13 @@ confirmation."
   ;; Run evil-collection/modes/vundo/evil-collection-vundo.el
   (push 'vundo evil-collection-mode-list)
   :config
-  (setq undo-no-redo nil))
+  (setq undo-no-redo t))
 
 ;; BUG Even if `undo-no-redo' is non-nil, if you `undo' all edits in a buffer,
 ;; switch to a second window, then switch back, `undo' no longer reports "No
 ;; further undo information." It redoes the first edit in the buffer, then
 ;; undoes that redo, then reports the message. `vundo' does not have this same
-;; issue; furthermore, it is safe and most useful when `undo-no-redo' is
-;; non-nil.
+;; issue.
 ;;
 ;; Replace undo and undo-redo with vundo.
 ;; (after! evil

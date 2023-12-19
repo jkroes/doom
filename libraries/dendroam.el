@@ -214,15 +214,10 @@ input defaults to the current node."
   (if (eq major-mode 'org-mode)
       (let* ((parent (org-roam-node-at-point))
              (input (if parent (org-roam-node-dendroam-display-hierarchy parent)))
-             ;; Find a node located outside of `citar-org-roam-subdir'. If the current file is a node, use it's hierarchy as
-             ;; initial input
              (node (org-roam-node-read
                     input
-                    (lambda (node)
-                      (not (or (dendroam--meeting-note-p node)
-                               (dendroam--scratch-note-p node)
-                               (dendroam--citar-note-p node))))
-                    #'org-roam-node-read-sort-by-display-hierarchy
+                    #'dendroam--exclude-nodes
+                    #'dendroam-sort-by-display-hierarchy
                     t)))
         (org-roam-capture-
          :node (org-roam-node-create
@@ -235,7 +230,13 @@ input defaults to the current node."
     ;; TODO This doesn't report the right thing
     (message "%s only works within org-mode." this-command)))
 
-(defun org-roam-node-read-sort-by-display-hierarchy (completion-a completion-b)
+(defun dendroam--exclude-nodes (node)
+  (lambda (node)
+    (not (or (dendroam--meeting-note-p node)
+             (dendroam--scratch-note-p node)
+             (dendroam--citar-note-p node)))))
+
+(defun dendroam-sort-by-display-hierarchy (completion-a completion-b)
   (let ((node-a (cdr completion-a))
         (node-b (cdr completion-b)))
     (string> (org-roam-node-dendroam-display-hierarchy node-b)
@@ -300,7 +301,7 @@ This is a convenience function that skips a prompt."
                                     ;; Exclude the current node
                                     (not (string= (org-roam-node-file node)
                                                   (org-roam-node-file f)))))
-                   #'org-roam-node-read-sort-by-display-hierarchy
+                   #'dendroam-sort-by-display-hierarchy
                    t)))
     (when (org-roam-node-file new-node)
       (org-roam-node-visit new-node))))
@@ -318,7 +319,7 @@ This is a convenience function that skips a prompt."
          (new-node (org-roam-node-read
                    parent-title
                    nil
-                   #'org-roam-node-read-sort-by-display-hierarchy)))
+                   #'dendroam-sort-by-display-hierarchy)))
     (if (org-roam-node-file new-node)
         (org-roam-node-visit new-node)
       (org-roam-capture-
@@ -352,7 +353,7 @@ This is a convenience function that skips a prompt."
                                     ;; Exclude the current node
                                     (not (string= (org-roam-node-file node)
                                                   (org-roam-node-file f)))))
-                   #'org-roam-node-read-sort-by-display-hierarchy
+                   #'dendroam-sort-by-display-hierarchy
                    t)))
     (when (org-roam-node-file new-node)
       (org-roam-node-visit new-node))))
@@ -417,6 +418,8 @@ This is a convenience function that skips a prompt."
       (find-file new-file)
       (org-roam-set-keyword "title" new-title)
       (save-buffer))))
+
+(provide 'dendroam)
 
 ;;; MINIBUFFER COMPLETION ----------------------------------------------------
 
@@ -498,4 +501,3 @@ This is a convenience function that skips a prompt."
 ;;           (unless file-open
 ;;             (kill-buffer)))))))
 
-(provide 'dendroam)
