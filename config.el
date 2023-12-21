@@ -1,5 +1,9 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO evil bindings for ediff
+;; TODO learn about orderless-style-dispatchers
+;; TODO c-spc previews variable help pages but c-m-v does not scoll it as the
+;; other window. make help the other window.
 ;; TODO Shrunk org table columns show three dots. C-h . over the dots echoes
 ;; the truncated text. This should be done after a delay anywhere withi nthe column.
 ;; TODO bind ace-window
@@ -666,9 +670,6 @@ incrementally."
 
 ;;; emacs lisp ----------------------------------------------------------------
 
-;; TODO How can I unbind "C-<return>" and dispatch to "C-RET" without an error
-;; about the former being undefined? unbind-command fails here. This means that
-;; I need to being to "C-<return>" in the meantime.
 ;; modules/config/default/config.el binds this command to [C-return], which is
 ;; equivalent to "C-<return>" and hides any bindings to "C-RET"
 (unbind-command global-map #'+default/newline-below)
@@ -1637,54 +1638,7 @@ comments underneath, and display the buffer"
 
 ;;; ediff (doom module development) -------------------------------------------
 
-(autoload 'doom--help-modules-list (concat-path doom-emacs-dir "lisp/lib/help.el"))
-(defun doom/copy-module-to-private (category module)
-  "Copy the Doom module corresponding to the strings category and module as a
-private module."
-  (interactive
-   (nconc
-    (mapcar #'intern
-            (split-string
-             (completing-read "Copy module:"
-                              (doom--help-modules-list)
-                              nil t nil nil
-                              (doom--help-current-module-str))
-             " " t))))
-  (let* ((path (doom-module-locate-path category module))
-         (newpath (replace-regexp-in-string doom-modules-dir
-                                            (car doom-modules-dirs) path)))
-    (copy-directory path newpath nil t t)))
-
-
-;; TODO remove the let binding for doom-modules-dirs. It is temporary to allow
-;; comparison of the outdated private modules to the new non-private modules
-;;
-;; Compare private and non-private module file to see your modifications and
-;; any changes Doom has made if you've upgraded it recently. If current buffer
-;; is a private module file, compare this file; otherwise, read a filename with
-;; the private module root dir as the initial input.
-(autoload #'ediff-read-file-name "ediff")
-(autoload #'ediff-files-internal "ediff")
-(defun my/ediff-doom-private-module ()
-  "Run Ediff on a private Doom module file and its non-private counterpart. If
-the current buffer is a private module file, diff this file; otherwise, read a
-filename with the root private module dir as initial input"
-  (interactive)
-  ;;(let* ((doom-modules-dirs '("/Users/jkroes/.doom.d.bck/modules/"))
-  (let* ((file-A
-          (if (string-prefix-p (car doom-modules-dirs) default-directory)
-              (buffer-file-name)
-            (ediff-read-file-name
-             "Private module file"
-             (car doom-modules-dirs)
-             (ediff-get-default-file-name)
-             'no-dirs)))
-         (file-B (replace-regexp-in-string
-                  (car doom-modules-dirs)
-                  doom-modules-dir
-                  file-A)))
-    (ediff-files-internal file-A file-B nil nil 'ediff-files)))
-
+(setq ediff-split-window-function #'split-window-vertically)
 
 ;; Run ediff in another frame. See lisp/doom-ui.el.
 (after! ediff
@@ -1695,7 +1649,6 @@ filename with the root private module dir as initial input"
   (remove-hook 'ediff-suspend-hook #'doom-ediff-restore-wconf-h)
   (add-hook! 'ediff-quit-hook :append #'delete-frame))
 
-;; TODO evil bindings for ediff
 ;; When using my/ediff-doom-private-module, it can be useful to copy the
 ;; contents of one or both diff buffers for pasting into a third buffer
 (add-hook 'ediff-startup-hook #'my/ediff-mode-bindings)
@@ -1722,6 +1675,140 @@ filename with the root private module dir as initial input"
 (defun my/ediff-copy-diff (n from-buf-type)
   (let* ((reg-to-copy (ediff-get-region-contents n from-buf-type ediff-control-buffer)))
     (kill-new reg-to-copy)))
+
+(autoload 'doom--help-modules-list (concat-path doom-emacs-dir "lisp/lib/help.el"))
+(defun doom/copy-module-to-private (category module)
+  "Copy the Doom module corresponding to the strings category and module as a
+private module."
+  (interactive
+   (mapcar #'intern
+           (split-string
+            (completing-read "Copy module:"
+                             (doom--help-modules-list)
+                             nil t nil nil
+                             (doom--help-current-module-str))
+            " " t)))
+  (let* ((path (doom-module-locate-path category module))
+         (newpath (replace-regexp-in-string doom-modules-dir
+                                            (car doom-modules-dirs) path)))
+    (copy-directory path newpath nil t t)))
+
+(autoload #'ediff-read-file-name "ediff")
+(autoload #'ediff-files-internal "ediff")
+(defun my/ediff-doom-private-module (file-A file-B)
+  "Run Ediff on a private Doom module file and its non-private counterpart. If
+the current buffer is a private module file, diff this file; otherwise, read a
+filename with the root private module dir as initial input"
+  (interactive
+   (let* ((file-A
+           ;; Per https://howardism.org/Technical/Emacs/alt-completing-read.html,
+           ;; completing-read accepts an alist but only uses the car of each alist as
+           ;; candidates; however, we can access the cadr within the PREDICATE func
+           (completing-read "Private module file"
+                            (module-files-with-diffs
+                             (apply #'doom-module-get
+                                    (append (mapcar #'intern
+                                                    (split-string
+                                                     ;; Private modules with default of the current module
+                                                     (completing-read
+                                                      "Private module:"
+                                                      (my/doom--help-modules-list)
+                                                      (lambda (cand)
+                                                        (string-prefix-p
+                                                         (car doom-modules-dirs)
+                                                         (cadr cand)))
+                                                      t nil nil
+                                                      ;;(doom--help-current-module-str)
+                                                      )))
+                                            (list :path))))))
+           (file-B (replace-regexp-in-string
+                    (car doom-modules-dirs)
+                    doom-modules-dir
+                    file-A)))
+          (list file-A file-B)))
+   (ediff-files-internal file-A file-B nil nil 'ediff-files))
+
+(defun my/doom--help-modules-list ()
+  (cl-loop for (cat . mod) in
+           (cl-reduce #'delete '((:user) (:core)) :from-end t :initial-value
+                      (doom-module-list
+                       (directory-files (car doom-modules-dirs) t directory-files-no-dot-files-regexp)))
+           for path = (doom-module-locate-path cat mod)
+           for format = (format "%s %s" cat mod)
+           collect (list format path)))
+
+(defun module-files-with-diffs (module)
+  (-filter #'diff-file-between-modules
+           (directory-files-recursively
+            module
+            "")))
+
+(defun diff-file-between-modules (file-A)
+   (let* ((file-A (expand-file-name file-A))
+          (file-B (replace-regexp-in-string
+                  (car doom-modules-dirs)
+                  doom-modules-dir
+                  file-A)))
+     (diff2 file-A file-B)))
+
+(defun diff2 (old new &optional switches)
+  (interactive
+   (let* ((newf (if (and buffer-file-name (file-exists-p buffer-file-name))
+		    (read-file-name
+		     (concat "Diff new file (default "
+			     (file-name-nondirectory buffer-file-name) "): ")
+		     nil buffer-file-name t)
+		  (read-file-name "Diff new file: " nil nil t)))
+          (oldf (file-newest-backup newf)))
+     (setq oldf (if (and oldf (file-exists-p oldf))
+		    (read-file-name
+		     (concat "Diff original file (default "
+			     (file-name-nondirectory oldf) "): ")
+		     (file-name-directory oldf) oldf t)
+		  (read-file-name "Diff original file: "
+				  (file-name-directory newf) nil t)))
+     (list oldf newf (diff-switches))))
+  (diff-no-select2 old new switches))
+
+(autoload #'diff-check-labels "diff")
+(defun diff-no-select2 (old new &optional switches)
+  (unless (bufferp new) (setq new (expand-file-name new)))
+  (unless (bufferp old) (setq old (expand-file-name old)))
+  (or switches (setq switches diff-switches)) ; If not specified, use default.
+  (unless (listp switches) (setq switches (list switches)))
+  (diff-check-labels)
+  (let* ((old-alt (diff-file-local-copy old))
+	 (new-alt (diff-file-local-copy new))
+	 (command
+	  (mapconcat #'identity
+		     `(,diff-command
+		       ;; Use explicitly specified switches
+		       ,@switches
+                       ,@(mapcar #'shell-quote-argument
+                                 (nconc
+                                  (and (or old-alt new-alt)
+				       (eq diff-use-labels t)
+				       (list "--label"
+					     (if (stringp old) old
+					       (prin1-to-string old))
+					     "--label"
+					     (if (stringp new) new
+					       (prin1-to-string new))))
+                                  (list (or old-alt old)
+                                        (or new-alt new)))))
+		     " ")))
+    (diff-sentinel2
+     (call-process shell-file-name nil nil nil
+		   shell-command-switch command)
+     old-alt new-alt)))
+
+(defun diff-sentinel2 (code &optional old-temp-file new-temp-file)
+  (if old-temp-file (delete-file old-temp-file))
+  (if new-temp-file (delete-file new-temp-file))
+  (cond ((equal 0 code) nil)
+        ((equal 1 code) t)
+        ;; TODO Handle errors reported by the diff binary
+	((equal 2 code) nil)))
 
 ;;; Keybindings ---------------------------------------------------------------
 
@@ -1843,17 +1930,7 @@ filename with the root private module dir as initial input"
               CSleft   (cmd! (org-eval-in-calendar '(calendar-backward-month 1)))
               CSright  (cmd! (org-eval-in-calendar '(calendar-forward-month 1)))
               CSup     (cmd! (org-eval-in-calendar '(calendar-backward-year 1)))
-              CSdown   (cmd! (org-eval-in-calendar '(calendar-forward-year 1)))))))
-
-  (map! :map vertico-map
-        "M-RET" #'vertico-exit-input
-        "C-SPC" #'+vertico/embark-preview
-        "C-j"   #'vertico-next
-        "C-M-j" #'vertico-next-group
-        "C-k"   #'vertico-previous
-        "C-M-k" #'vertico-previous-group
-        "C-h" (cmds! (eq 'file (vertico--metadata-get 'category)) #'vertico-directory-up)
-        "C-l" (cmds! (eq 'file (vertico--metadata-get 'category)) #'+vertico/enter-or-preview)))
+              CSdown   (cmd! (org-eval-in-calendar '(calendar-forward-year 1))))))))
 
 
 (unbind-commands doom-leader-notes-map
