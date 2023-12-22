@@ -223,6 +223,10 @@
 ;; Enable which-key paging for help-map
 (general-unbind help-map "C-h")
 
+;;; titlecase -----------------------------------------------------------------
+
+(use-package titlecase)
+
 ;;; hl-line -------------------------------------------------------------------
 
 (defun describe-face-under-hl-line ()
@@ -737,7 +741,9 @@ as the first child of a heading'"
 ;; different behavior can be used at beg and end of line
 (advice-add 'org-meta-return :after #'evil-insert-state)
 (advice-add 'org-insert-subheading :after (lambda (&rest _) (evil-insert-state)))
-
+;; NOTE +org/insert-item-below-a calls this function instead of
+;; +org/insert-item-below-a when at a heading
+(advice-add 'org-insert-heading-respect-content :after #'evil-insert-state)
 
 (defadvice! org-insert-heading-a (&optional arg invisible-ok top)
   "Make (C-)M-RET respect property drawers when inserting
@@ -837,13 +843,8 @@ as the first child of a heading'"
   (run-hooks 'org-insert-heading-hook))
 
 (defun org-insert-quote ()
-  "Wrap the active region or last yanked text in an org-mode quote block."
   (interactive)
-  (if (use-region-p)
-      (org-insert-structure-template "quote")
-    (yank)
-    (activate-mark)
-    (org-insert-quote)))
+  (org-insert-structure-template "quote"))
 
 
 ;; TODO Bind this to something
@@ -1250,6 +1251,8 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
 ;; need to disable `org-indent-mode-turns-on-hiding-stars' to disable
 ;; `org-hide-leading-stars'.
 
+;; TODO This is not disabling `org-hide-leading-stars' on Windows. Need to
+;; refactor this or just create a private module and configure that.
 (after! org-superstar
   (setq org-superstar-remove-leading-stars nil
         org-hide-leading-stars nil
@@ -1294,6 +1297,10 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
  `(("^[ \t]*\\(?:[-+*]\\|[0-9]+[).]\\)[ \t]+\\(\\(?:\\[@\\(?:start:\\)?[0-9]+\\][ \t]*\\)?\\[\\(?:X\\|\\([0-9]+\\)/\\2\\)\\][^\n]*\n\\)"
     1 'org-checkbox-done-text prepend))
  'append)
+
+;; TODO The following text can be used and modified to search for whatever
+;; pretty bullets you want within vertico/consult/embark.
+;; -\ \[[^X\s]\]
 
 ;;;; org-roam --------------------------------------------------
 
