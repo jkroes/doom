@@ -85,6 +85,8 @@
 (package! vertico-truncate
   :recipe (:host github :repo "jdtsmith/vertico-truncate"))
 
+(package! titlecase)
+
 ;; From old config
 ;; (package! outline-minor-faces)
 ;; (package! backline)
