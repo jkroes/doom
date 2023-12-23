@@ -1,5 +1,9 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO Bind ffap-menu
+;; TODO Finish documenting edebug (see org-roam)
+;; TODO org column view
+;; TODO Make some buffers entirely temporary (e.g. helpful)
 ;; TODO evil bindings for ediff
 ;; TODO learn about orderless-style-dispatchers
 ;; TODO c-spc previews variable help pages but c-m-v does not scoll it as the
@@ -199,6 +203,10 @@
 ;; mask remaps
 (setq which-key-compute-remaps t)
 
+;; TODO Comment this out if you want to re-enable Doom's descriptions of
+;; bindings
+(setq which-key-replacement-alist nil)
+
 ;; NOTE If using the default of M-SPC instead, in Windows Terminal actions
 ;; settings unbind alt+space and save settings.
 ;; (setq doom-leader-alt-key "C-SPC")
@@ -256,14 +264,6 @@ correctly display variable-pitch fonts. Instead use
 (unless (display-graphic-p)
   (add-hook 'evil-insert-state-entry-hook (lambda () (send-string-to-terminal "\033[5 q")))
   (add-hook 'evil-insert-state-exit-hook  (lambda () (send-string-to-terminal "\033[2 q"))))
-
-;; I don't use `evil-repeat', but `vertico-repeat' is incredibly useful for
-;; continuing vertico-based searches. See `vertico-repeat-filter' and
-;; `vertico-repeat-transformers' for configuration.
-(when (featurep! :completion vertico)
-  (map!
-   :n "." #'vertico-repeat
-   :n ">" #'vertico-repeat-select))
 
 ;; Easier evil "j" and "k", harder "gg" navigation
 ;; (setq display-line-numbers-type 'relative)
@@ -491,9 +491,6 @@ confirmation."
 ;;; vertico -------------------------------------------------------------------
 
 ;; Notes
-;; TODO Bind vertico-repeat-select to spc-"
-;;
-;; TODO Bind ffap-menu
 ;;
 ;; Pressing "o SPC" within consult-buffer will limit candidates to org buffers.
 ;; See +vertico--consult-org-source
@@ -519,6 +516,15 @@ confirmation."
 ;;
 ;; Alternatively, enable vertico-resize:
 ;; (after! vertico (setq vertico-resize t))
+
+
+;; I don't use `evil-repeat', but `vertico-repeat' is incredibly useful for
+;; continuing vertico-based searches. See `vertico-repeat-filter' and
+;; `vertico-repeat-transformers' for configuration.
+(when (featurep! :completion vertico)
+  (map!
+   :n "." #'vertico-repeat
+   :n ">" #'vertico-repeat-select))
 
 (after! embark
     (map! :map embark-file-map
@@ -668,6 +674,15 @@ incrementally."
   :init (setq kind-icon-default-face 'corfu-default)
   :config (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
 
+;; TODO Marginlia annotations don't seem to shift left to account for
+;; left-truncated candidates.
+;; Left-truncate matches/candidates in e.g. consult-line (spc s b) and
+;; consult-recent-file (spc f r) and the recent file source for consult-buffer
+;; (spc b b)
+(use-package! vertico-truncate
+  :config
+  (vertico-truncate-mode))
+
 ;;; emacs lisp ----------------------------------------------------------------
 
 ;; modules/config/default/config.el binds this command to [C-return], which is
@@ -682,6 +697,13 @@ incrementally."
 
 ;; Where my org notes live
 (setq org-directory (expand-file-name "~/org"))
+
+;; Shrink tables on startup and show shrunk text in the echo area automatically
+;; when cursor is over the ellipses that represent the shrunk text
+(setq org-startup-shrink-all-tables t
+      help-at-pt-display-when-idle t
+      help-at-pt-timer-delay 0.25)
+(help-at-pt-set-timer)
 
 (when doom-variable-pitch-font
   (add-hook 'org-mode-hook 'variable-pitch-mode)

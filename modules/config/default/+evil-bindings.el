@@ -252,10 +252,8 @@
 ;;; <leader>
 
 (map! :leader
-      "<backspace>" #'ace-window
-      "DEL" #'ace-window
-      :desc "M-x"                   ";"    #'execute-extended-command
       :desc "Eval expression"       ":"    #'pp-eval-expression
+      :desc "M-x"                   ";"    #'execute-extended-command
       :desc "Pop up scratch buffer" "x"    #'doom/open-scratch-buffer
       :desc "Org Capture"           "X"    #'org-capture
       ;; C-u is used by evil
@@ -281,6 +279,8 @@
 
       :desc "Find file in project"  "SPC"  #'projectile-find-file
       :desc "Jump to bookmark"      "RET"  #'bookmark-jump
+      "<backspace>" #'ace-window
+      ;;"<deletechar>" #'ace-window
 
       ;;; <leader> TAB --- workspace
       (:when (modulep! :ui workspaces)

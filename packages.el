@@ -62,7 +62,6 @@
   :recipe (:host github :repo "hlissner/evil-org-mode")
   :pin "a9706da260c45b98601bcd72b1d2c0a24a017700")
 
-
 (package! consult-org-roam
   :recipe (:host github :repo "jgru/consult-org-roam"))
 
@@ -82,6 +81,9 @@
 ;; Windows issue:
 ;; https://github.com/org-roam/org-roam/issues/2384
 (package! org :pin "ca873f7fe47546bca19")
+
+(package! vertico-truncate
+  :recipe (:host github :repo "jdtsmith/vertico-truncate"))
 
 ;; From old config
 ;; (package! outline-minor-faces)
