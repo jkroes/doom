@@ -311,6 +311,8 @@ This is a convenience function that skips a prompt."
   (interactive)
   (dendroam--find-related (or (and (eq major-mode 'org-mode) (org-roam-node-at-point)) "")))
 
+;; TODO Add dendroam-display-separator to the end of the minibuffer input. See
+;; cl-defmethod for vertico--format-candidate above.
 (cl-defmethod dendroam--find-related ((node org-roam-node))
   (let* ((parent-title (org-roam-node-dendroam-hierarchy-no-title node))
          (regexp (or (and (length= parent-title 0)

@@ -1,37 +1,34 @@
 ;;; config/default/+bindings.el -*- lexical-binding: t; -*-
 
-(when (modulep! :editor evil +everywhere)
-  ;; NOTE SPC u replaces C-u as the universal argument.
+;; Minibuffer
+(map! :map (evil-ex-completion-map evil-ex-search-keymap)
+      "C-a" #'evil-beginning-of-line
+      "C-b" #'evil-backward-char
+      "C-f" #'evil-forward-char
+      :gi "C-j" #'next-complete-history-element
+      :gi "C-k" #'previous-complete-history-element)
 
-  ;; Minibuffer
-  (map! :map (evil-ex-completion-map evil-ex-search-keymap)
-        "C-a" #'evil-beginning-of-line
-        "C-b" #'evil-backward-char
-        "C-f" #'evil-forward-char
-        :gi "C-j" #'next-complete-history-element
-        :gi "C-k" #'previous-complete-history-element)
+(define-key! :keymaps +default-minibuffer-maps
+  [escape] #'abort-recursive-edit
+  "C-a"    #'move-beginning-of-line
+  "C-r"    #'evil-paste-from-register
+  "C-u"    #'evil-delete-back-to-indentation
+  "C-v"    #'yank
+  "C-w"    #'doom/delete-backward-word
+  "C-z"    (cmd! (ignore-errors (call-interactively #'undo))))
 
-  (define-key! :keymaps +default-minibuffer-maps
-    [escape] #'abort-recursive-edit
-    "C-a"    #'move-beginning-of-line
-    "C-r"    #'evil-paste-from-register
-    "C-u"    #'evil-delete-back-to-indentation
-    "C-v"    #'yank
-    "C-w"    #'doom/delete-backward-word
-    "C-z"    (cmd! (ignore-errors (call-interactively #'undo))))
-
-  (define-key! :keymaps +default-minibuffer-maps
-    "C-j"    #'next-line
-    "C-k"    #'previous-line
-    "C-S-j"  #'scroll-up-command
-    "C-S-k"  #'scroll-down-command)
-  ;; For folks with `evil-collection-setup-minibuffer' enabled
-  (define-key! :states 'insert :keymaps +default-minibuffer-maps
-    "C-j"    #'next-line
-    "C-k"    #'previous-line)
-  (define-key! read-expression-map
-    "C-j" #'next-line-or-history-element
-    "C-k" #'previous-line-or-history-element))
+(define-key! :keymaps +default-minibuffer-maps
+  "C-j"    #'next-line
+  "C-k"    #'previous-line
+  "C-S-j"  #'scroll-up-command
+  "C-S-k"  #'scroll-down-command)
+;; For folks with `evil-collection-setup-minibuffer' enabled
+(define-key! :states 'insert :keymaps +default-minibuffer-maps
+  "C-j"    #'next-line
+  "C-k"    #'previous-line)
+(define-key! read-expression-map
+  "C-j" #'next-line-or-history-element
+  "C-k" #'previous-line-or-history-element)
 
 
 ;;
@@ -252,10 +249,8 @@
 ;;; <leader>
 
 (map! :leader
-      "<backspace>" #'ace-window
-      "DEL" #'ace-window
-      :desc "M-x"                   ";"    #'execute-extended-command
       :desc "Eval expression"       ":"    #'pp-eval-expression
+      :desc "M-x"                   ";"    #'execute-extended-command
       :desc "Pop up scratch buffer" "x"    #'doom/open-scratch-buffer
       :desc "Org Capture"           "X"    #'org-capture
       ;; C-u is used by evil
@@ -281,6 +276,8 @@
 
       :desc "Find file in project"  "SPC"  #'projectile-find-file
       :desc "Jump to bookmark"      "RET"  #'bookmark-jump
+      "<backspace>" #'ace-window
+      ;;"<deletechar>" #'ace-window
 
       ;;; <leader> TAB --- workspace
       (:when (modulep! :ui workspaces)
@@ -512,72 +509,35 @@
       ;;; <leader> n --- notes
       (:prefix-map ("n" . "notes")
        :desc "Search notes for symbol"      "*" #'+default/search-notes-for-symbol-at-point
-       :desc "Org agenda"                   "a" #'org-agenda
+       ;;:desc "Org agenda"                   "a" #'org-agenda
        (:when (modulep! :tools biblio)
         :desc "Bibliographic notes"        "b"
         (cond ((modulep! :completion vertico)  #'citar-open-notes)
               ((modulep! :completion ivy)      #'ivy-bibtex)
-              ((modulep! :completion helm)     #'helm-bibtex)))
+              ((modulep! :completion helm)     #'helm-bibtex))
+        (:when (modulep! :completion vertico)
+               :desc "Extant biblio notes"
+               "B" #'citar-open-note))
 
-       :desc "Toggle last org-clock"        "c" #'+org/toggle-last-clock
-       :desc "Cancel current org-clock"     "C" #'org-clock-cancel
-       :desc "Open deft"                    "d" #'deft
+       ;; TODO Bind dendroam-find-[parent|children|siblings], or just use
+       ;; dendroam-find-related?
+       ;; TODO Conditional bindings for `featurep' dendroam
        (:when (modulep! :lang org +noter)
         :desc "Org noter"                  "e" #'org-noter)
 
-       :desc "Find file in notes"           "f" #'+default/find-in-notes
-       :desc "Browse notes"                 "F" #'+default/browse-notes
-       :desc "Org store link"               "l" #'org-store-link
-       :desc "Tags search"                  "m" #'org-tags-view
-       :desc "Org capture"                  "n" #'org-capture
-       :desc "Goto capture"                 "N" #'org-capture-goto-target
-       :desc "Active org-clock"             "o" #'org-clock-goto
-       :desc "Todo list"                    "t" #'org-todo-list
+       :desc "Find node"               "f" #'dendroam-find
+       :desc "Find ref"                "F" #'org-roam-ref-find
+       :desc "Insert link to node"     "i" #'org-roam-node-insert
+       :desc "Toggle backlinks buffer" "l" #'org-roam-buffer-toggle
+       :desc "Find meeting node"       "m" #'dendroam-find-meeting
+       :desc "Find related nodes"      "n" #'dendroam-find-related
+       :desc "Find project node"       "p" #'dendroam-find-project
+       :desc "Switch to scratch"       "x" #'dendroam-find-master-scratch
+       :desc "Rename node"             "r" #'dendroam-rename-note
+       :desc "Refactor hierarchy"      "R" #'dendroam-refactor-hierarchy
        :desc "Search notes"                 "s" #'+default/org-notes-search
        :desc "Search org agenda headlines"  "S" #'+default/org-notes-headlines
-       :desc "View search"                  "v" #'org-search-view
-       :desc "Org export to clipboard"        "y" #'+org/export-to-clipboard
-       :desc "Org export to clipboard as RTF" "Y" #'+org/export-to-clipboard-as-rich-text
-
-       (:when (modulep! :lang org +roam)
-        (:prefix ("r" . "roam")
-         :desc "Switch to buffer"              "b" #'org-roam-switch-to-buffer
-         :desc "Org Roam Capture"              "c" #'org-roam-capture
-         :desc "Find file"                     "f" #'org-roam-find-file
-         :desc "Show graph"                    "g" #'org-roam-graph
-         :desc "Insert"                        "i" #'org-roam-insert
-         :desc "Insert (skipping org-capture)" "I" #'org-roam-insert-immediate
-         :desc "Org Roam"                      "r" #'org-roam
-         (:prefix ("d" . "by date")
-          :desc "Arbitrary date" "d" #'org-roam-dailies-find-date
-          :desc "Today"          "t" #'org-roam-dailies-find-today
-          :desc "Tomorrow"       "m" #'org-roam-dailies-find-tomorrow
-          :desc "Yesterday"      "y" #'org-roam-dailies-find-yesterday)))
-
-       (:when (modulep! :lang org +roam2)
-        (:prefix ("r" . "roam")
-         :desc "Open random node"           "a" #'org-roam-node-random
-         :desc "Find node"                  "f" #'org-roam-node-find
-         :desc "Find ref"                   "F" #'org-roam-ref-find
-         :desc "Show graph"                 "g" #'org-roam-graph
-         :desc "Insert node"                "i" #'org-roam-node-insert
-         :desc "Capture to node"            "n" #'org-roam-capture
-         :desc "Toggle roam buffer"         "r" #'org-roam-buffer-toggle
-         :desc "Launch roam buffer"         "R" #'org-roam-buffer-display-dedicated
-         :desc "Sync database"              "s" #'org-roam-db-sync
-         (:prefix ("d" . "by date")
-          :desc "Goto previous note"        "b" #'org-roam-dailies-goto-previous-note
-          :desc "Goto date"                 "d" #'org-roam-dailies-goto-date
-          :desc "Capture date"              "D" #'org-roam-dailies-capture-date
-          :desc "Goto next note"            "f" #'org-roam-dailies-goto-next-note
-          :desc "Goto tomorrow"             "m" #'org-roam-dailies-goto-tomorrow
-          :desc "Capture tomorrow"          "M" #'org-roam-dailies-capture-tomorrow
-          :desc "Capture today"             "n" #'org-roam-dailies-capture-today
-          :desc "Goto today"                "t" #'org-roam-dailies-goto-today
-          :desc "Capture today"             "T" #'org-roam-dailies-capture-today
-          :desc "Goto yesterday"            "y" #'org-roam-dailies-goto-yesterday
-          :desc "Capture yesterday"         "Y" #'org-roam-dailies-capture-yesterday
-          :desc "Find directory"            "-" #'org-roam-dailies-find-directory)))
+       :desc "Find scratch node"       "X" #'dendroam-find-scratch
 
        (:when (modulep! :lang org +journal)
         (:prefix ("j" . "journal")

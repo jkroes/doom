@@ -2,7 +2,17 @@
 ;;; This format is meant to be slightly human-readable;
 ;;; nevertheless, you probably don't want to edit it.
 ;;; -*- End Of Bookmark File Format Version Stamp -*-
-(("hs"
+(("modes"
+ (filename . "~/.config/emacs/.local/straight/repos/evil-collection/modes/")
+ (front-context-string . "vundo/\n  drwxr-x")
+ (rear-context-string . " 96 12-02 21:08 ")
+ (position . 7687))
+("config.el"
+ (filename . "~/.config/doom/modules/editor/evil/config.el")
+ (front-context-string . "llection-mode-li")
+ (rear-context-string . ";; (setq evil-co")
+ (position . 3273))
+("hs"
  (filename . "/Applications/Hammerspoon.app/Contents/Resources/extensions/hs/")
  (front-context-string . "hsdocs/\n  -rw-r-")
  (rear-context-string . "384 2023-03-14  ")

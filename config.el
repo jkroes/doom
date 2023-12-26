@@ -1,5 +1,18 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO use-package statements in this file may cancel out deferment that
+;; doom relies on. Use after! instead of :config where possible; otherwise make
+;; sure to try and defer per Doom's defaults.
+;; TODO Document setting force-load-messages to t and doom-inhibit-log to nil
+;; in early-init.el. The latter for debugging evil-collection mode loading.
+;; TODO line numbers in e.g. messages buffer
+;; TODO Document debug-watch
+;; TODO Document the fact that you either need to doom sync or `doom/reload' to
+;; see changes to module code
+;; TODO Bind ffap-menu
+;; TODO Finish documenting edebug (see org-roam)
+;; TODO org column view
+;; TODO Make some buffers entirely temporary (e.g. helpful)
 ;; TODO evil bindings for ediff
 ;; TODO learn about orderless-style-dispatchers
 ;; TODO c-spc previews variable help pages but c-m-v does not scoll it as the
@@ -199,6 +212,10 @@
 ;; mask remaps
 (setq which-key-compute-remaps t)
 
+;; TODO Comment this out if you want to re-enable Doom's descriptions of
+;; bindings
+(setq which-key-replacement-alist nil)
+
 ;; NOTE If using the default of M-SPC instead, in Windows Terminal actions
 ;; settings unbind alt+space and save settings.
 ;; (setq doom-leader-alt-key "C-SPC")
@@ -256,38 +273,8 @@ correctly display variable-pitch fonts. Instead use
 
 ;;; evil ----------------------------------------------------------------------
 
-;; NOTE This works on Windows' Terminal app
-(unless (display-graphic-p)
-  (add-hook 'evil-insert-state-entry-hook (lambda () (send-string-to-terminal "\033[5 q")))
-  (add-hook 'evil-insert-state-exit-hook  (lambda () (send-string-to-terminal "\033[2 q"))))
-
-;; I don't use `evil-repeat', but `vertico-repeat' is incredibly useful for
-;; continuing vertico-based searches. See `vertico-repeat-filter' and
-;; `vertico-repeat-transformers' for configuration.
-(when (featurep! :completion vertico)
-  (map!
-   :n "." #'vertico-repeat
-   :n ">" #'vertico-repeat-select))
-
 ;; Easier evil "j" and "k", harder "gg" navigation
 ;; (setq display-line-numbers-type 'relative)
-
-;; Change how evil splits windows
-(setq evil-split-window-below t
-      evil-vsplit-window-right t)
-
-;; Allow the cursor to move beyond the end of the line so that you can enter
-;; insert mode at the end of the line using "i" instead of "a".
-(setq evil-move-beyond-eol t)
-
-;; Blacklist all modes for evil-collection unless explicitly specified
-(setq evil-collection-mode-list nil)
-
-;; NOTE C-u still invokes evil-delete-back-to-indentation within the
-;; minibufffer
-;; Keep access to universal-argument in normal and insert states
-(setq! evil-want-C-u-scroll nil
-       evil-want-C-u-delete nil)
 
 ;; Free up "q" in lots of modes
 (general-unbind evil-normal-state-map "q")
@@ -359,25 +346,19 @@ confirmation."
     (copy-file backup original)
     (delete-file backup)))
 
-;;; vundo -------------------------------------------------------------
-
-(use-package! vundo
-  :init
-  ;; Run evil-collection/modes/vundo/evil-collection-vundo.el
-  (push 'vundo evil-collection-mode-list)
-  :config
-  (setq undo-no-redo t))
+;;; undo ----------------------------------------------------------------------
 
 ;; BUG Even if `undo-no-redo' is non-nil, if you `undo' all edits in a buffer,
 ;; switch to a second window, then switch back, `undo' no longer reports "No
 ;; further undo information." It redoes the first edit in the buffer, then
 ;; undoes that redo, then reports the message. `vundo' does not have this same
 ;; issue.
-;;
-;; Replace undo and undo-redo with vundo.
-;; (after! evil
-;;   (define-key evil-normal-state-map "u" 'vundo)
-;;   (define-key evil-normal-state-map "\C-r" 'vundo))
+
+(setq undo-no-redo t)
+
+(after! vundo
+  (evil-collection-define-key 'normal 'vundo-mode-map
+    "d" 'vundo-diff))
 
 ;;; modeline ---------------------------------------------------
 
@@ -485,7 +466,7 @@ confirmation."
 ;; yas--auto-fill
 ;; yas--original-auto-fill-function
 ;; do-auto-fill / normal-auto-fill-function
-(advice-add #'do-auto-fill
+(advice-add 'do-auto-fill
             :around (lambda (func &rest _)
                       (when (funcall func) (scroll-right))))
 
@@ -495,9 +476,6 @@ confirmation."
 ;;; vertico -------------------------------------------------------------------
 
 ;; Notes
-;; TODO Bind vertico-repeat-select to spc-"
-;;
-;; TODO Bind ffap-menu
 ;;
 ;; Pressing "o SPC" within consult-buffer will limit candidates to org buffers.
 ;; See +vertico--consult-org-source
@@ -523,6 +501,15 @@ confirmation."
 ;;
 ;; Alternatively, enable vertico-resize:
 ;; (after! vertico (setq vertico-resize t))
+
+
+;; I don't use `evil-repeat', but `vertico-repeat' is incredibly useful for
+;; continuing vertico-based searches. See `vertico-repeat-filter' and
+;; `vertico-repeat-transformers' for configuration.
+(when (featurep! :completion vertico)
+  (map!
+   :n "." #'vertico-repeat
+   :n ">" #'vertico-repeat-select))
 
 (after! embark
     (map! :map embark-file-map
@@ -672,6 +659,15 @@ incrementally."
   :init (setq kind-icon-default-face 'corfu-default)
   :config (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
 
+;; TODO Marginlia annotations don't seem to shift left to account for
+;; left-truncated candidates.
+;; Left-truncate matches/candidates in e.g. consult-line (spc s b) and
+;; consult-recent-file (spc f r) and the recent file source for consult-buffer
+;; (spc b b)
+(use-package! vertico-truncate
+  :config
+  (vertico-truncate-mode))
+
 ;;; emacs lisp ----------------------------------------------------------------
 
 ;; modules/config/default/config.el binds this command to [C-return], which is
@@ -686,6 +682,13 @@ incrementally."
 
 ;; Where my org notes live
 (setq org-directory (expand-file-name "~/org"))
+
+;; Shrink tables on startup and show shrunk text in the echo area automatically
+;; when cursor is over the ellipses that represent the shrunk text
+(setq org-startup-shrink-all-tables t
+      help-at-pt-display-when-idle t
+      help-at-pt-timer-delay 0.25)
+(help-at-pt-set-timer)
 
 (when doom-variable-pitch-font
   (add-hook 'org-mode-hook 'variable-pitch-mode)
@@ -1681,7 +1684,6 @@ comments underneath, and display the buffer"
   (let* ((reg-to-copy (ediff-get-region-contents n from-buf-type ediff-control-buffer)))
     (kill-new reg-to-copy)))
 
-(autoload 'doom--help-modules-list (concat-path doom-emacs-dir "lisp/lib/help.el"))
 (defun doom/copy-module-to-private (category module)
   "Copy the Doom module corresponding to the strings category and module as a
 private module."
@@ -1689,9 +1691,8 @@ private module."
    (mapcar #'intern
            (split-string
             (completing-read "Copy module:"
-                             (doom--help-modules-list)
-                             nil t nil nil
-                             (doom--help-current-module-str))
+                             (doom-private-modules-list)
+                             nil t)
             " " t)))
   (let* ((path (doom-module-locate-path category module))
          (newpath (replace-regexp-in-string doom-modules-dir
@@ -1717,30 +1718,25 @@ filename with the root private module dir as initial input"
                                                      ;; Private modules with default of the current module
                                                      (completing-read
                                                       "Private module:"
-                                                      (my/doom--help-modules-list)
-                                                      (lambda (cand)
-                                                        (string-prefix-p
-                                                         (car doom-modules-dirs)
-                                                         (cadr cand)))
-                                                      t nil nil
-                                                      ;;(doom--help-current-module-str)
-                                                      )))
+                                                      (doom-private-modules-list (directory-files (car doom-modules-dirs) t))
+                                                      nil t nil nil
+                                                      (when buffer-file-name
+                                                        (when-let (mod (doom-module-from-path buffer-file-name))
+                                                          (format "%s %s" (car mod) (cdr mod)))))))
                                             (list :path))))))
-           (file-B (replace-regexp-in-string
-                    (car doom-modules-dirs)
-                    doom-modules-dir
-                    file-A)))
-          (list file-A file-B)))
-   (ediff-files-internal file-A file-B nil nil 'ediff-files))
+          (file-B (replace-regexp-in-string
+                   (car doom-modules-dirs)
+                   doom-modules-dir
+                   file-A)))
+     (list file-A file-B)))
+  (ediff-files-internal file-B file-A nil nil 'ediff-files))
 
-(defun my/doom--help-modules-list ()
+(defun doom-private-modules-list (&optional paths-or-all)
   (cl-loop for (cat . mod) in
-           (cl-reduce #'delete '((:user) (:core)) :from-end t :initial-value
-                      (doom-module-list
-                       (directory-files (car doom-modules-dirs) t directory-files-no-dot-files-regexp)))
-           for path = (doom-module-locate-path cat mod)
+           (doom-module-list paths-or-all)
            for format = (format "%s %s" cat mod)
-           collect (list format path)))
+           if mod ; Exclude (:core) and (:user)
+           collect format))
 
 (defun module-files-with-diffs (module)
   (-filter #'diff-file-between-modules
@@ -1815,168 +1811,14 @@ filename with the root private module dir as initial input"
         ;; TODO Handle errors reported by the diff binary
 	((equal 2 code) nil)))
 
+;;; helpful
+
+;; TODO Bind this for other modes with buffers that should be easily killable
+;; by pressing "q"
+(map! :map helpful-mode-map
+      "q" (lambda () (interactive) (quit-window t)))
+
 ;;; Keybindings ---------------------------------------------------------------
-
-;; TODO Move these bindings back to the relevant sections above
-
-;; NOTE This is where code is rescued from the opinionated but only sometimes
-;; sensible +everywhere flag. Is is wrapped in a conditional to ony load if
-;; the flag is disabled to make this explicit, so the bindings should be
-;; available regardless of the flag.
-
-(when (not (modulep! :editor evil +everywhere))
-  (map! :map (evil-ex-completion-map evil-ex-search-keymap)
-        "C-a" #'evil-beginning-of-line
-        "C-b" #'evil-backward-char
-        "C-f" #'evil-forward-char
-        :gi "C-j" #'next-complete-history-element
-        :gi "C-k" #'previous-complete-history-element)
-
-  (define-key! :keymaps +default-minibuffer-maps
-    [escape] #'abort-recursive-edit
-    "C-a"    #'move-beginning-of-line
-    "C-r"    #'evil-paste-from-register
-    "C-u"    #'evil-delete-back-to-indentation
-    "C-v"    #'yank
-    "C-w"    #'doom/delete-backward-word
-    "C-z"    (cmd! (ignore-errors (call-interactively #'undo))))
-
-  (define-key! :keymaps +default-minibuffer-maps
-    "C-j"    #'next-line
-    "C-k"    #'previous-line
-    "C-S-j"  #'scroll-up-command
-    "C-S-k"  #'scroll-down-command)
-  ;; For folks with `evil-collection-setup-minibuffer' enabled
-  (define-key! :states 'insert :keymaps +default-minibuffer-maps
-    "C-j"    #'next-line
-    "C-k"    #'previous-line)
-  (define-key! read-expression-map
-    "C-j" #'next-line-or-history-element
-    "C-k" #'previous-line-or-history-element)
-
-  (use-package! evil-org
-    ;;:when (modulep! :editor evil +everywhere)
-    :hook (org-mode . evil-org-mode)
-    :hook (org-capture-mode . evil-insert-state)
-    :hook (doom-docs-org-mode . evil-org-mode)
-    :init
-    (defvar evil-org-retain-visual-state-on-shift t)
-    (defvar evil-org-special-o/O '(table-row))
-    (defvar evil-org-use-additional-insert t)
-    :config
-    (add-hook 'evil-org-mode-hook #'evil-normalize-keymaps)
-    (evil-org-set-key-theme)
-    (add-hook! 'org-tab-first-hook :append
-               ;; Only fold the current tree, rather than recursively
-               #'+org-cycle-only-current-subtree-h
-               ;; Clear babel results if point is inside a src block
-               #'+org-clear-babel-results-h)
-    (let-alist evil-org-movement-bindings
-      (let ((Cright  (concat "C-" .right))
-            (Cleft   (concat "C-" .left))
-            (Cup     (concat "C-" .up))
-            (Cdown   (concat "C-" .down))
-            (CSright (concat "C-S-" .right))
-            (CSleft  (concat "C-S-" .left))
-            (CSup    (concat "C-S-" .up))
-            (CSdown  (concat "C-S-" .down)))
-        (map! :map evil-org-mode-map
-              ;;:nv "TAB" #'my/org-cycle
-              ;;:nv "<tab>" #'my/org-cycle
-              :ni [C-return]   #'+org/insert-item-below
-              :ni [C-S-return] #'+org/insert-item-above
-              ;; navigate table cells (from insert-mode)
-              :i Cright (cmds! (org-at-table-p) #'org-table-next-field
-                               #'org-end-of-line)
-              :i Cleft  (cmds! (org-at-table-p) #'org-table-previous-field
-                               #'org-beginning-of-line)
-              :i Cup    (cmds! (org-at-table-p) #'+org/table-previous-row
-                               #'org-up-element)
-              :i Cdown  (cmds! (org-at-table-p) #'org-table-next-row
-                               #'org-down-element)
-              :ni CSright   #'org-shiftright
-              :ni CSleft    #'org-shiftleft
-              :ni CSup      #'org-shiftup
-              :ni CSdown    #'org-shiftdown
-              ;; more intuitive RET keybinds
-              :n [return]   #'+org/dwim-at-point
-              :n "RET"      #'+org/dwim-at-point
-              :i [return]   #'+org/return
-              :i "RET"      #'+org/return
-              :i [S-return] #'+org/shift-return
-              :i "S-RET"    #'+org/shift-return
-              ;; more vim-esque org motion keys (not covered by evil-org-mode)
-              :m "]h"  #'org-forward-heading-same-level
-              :m "[h"  #'org-backward-heading-same-level
-              :m "]l"  #'org-next-link
-              :m "[l"  #'org-previous-link
-              :m "]c"  #'org-babel-next-src-block
-              :m "[c"  #'org-babel-previous-src-block
-              :n "gQ"  #'org-fill-paragraph
-              ;; sensible vim-esque folding keybinds
-              :n "za"  #'+org/toggle-fold
-              :n "zA"  #'org-shifttab
-              :n "zc"  #'+org/close-fold
-              :n "zC"  #'outline-hide-subtree
-              :n "zm"  #'+org/hide-next-fold-level
-              :n "zM"  #'+org/close-all-folds
-              :n "zn"  #'org-tree-to-indirect-buffer
-              :n "zo"  #'+org/open-fold
-              :n "zO"  #'outline-show-subtree
-              :n "zr"  #'+org/show-next-fold-level
-              :n "zR"  #'+org/open-all-folds
-              :n "zi"  #'org-toggle-inline-images
-
-              :map org-read-date-minibuffer-local-map
-              Cleft    (cmd! (org-eval-in-calendar '(calendar-backward-day 1)))
-              Cright   (cmd! (org-eval-in-calendar '(calendar-forward-day 1)))
-              Cup      (cmd! (org-eval-in-calendar '(calendar-backward-week 1)))
-              Cdown    (cmd! (org-eval-in-calendar '(calendar-forward-week 1)))
-              CSleft   (cmd! (org-eval-in-calendar '(calendar-backward-month 1)))
-              CSright  (cmd! (org-eval-in-calendar '(calendar-forward-month 1)))
-              CSup     (cmd! (org-eval-in-calendar '(calendar-backward-year 1)))
-              CSdown   (cmd! (org-eval-in-calendar '(calendar-forward-year 1))))))))
-
-
-(unbind-commands doom-leader-notes-map
-                 '(org-agenda
-                   +org/toggle-last-clock
-                   org-clock-cancel
-                   deft
-                   org-capture
-                   +default/find-in-notes
-                   +default/browse-notes
-                   org-store-link
-                   org-tags-view
-                   org-capture-goto-target
-                   org-clock-goto
-                   org-todo-list
-                   org-search-view
-                   +org/export-to-clipboard
-                   +org/export-to-clipboard-as-rich-text))
-
-;; Merge note and roam bindings. Add dendroam and citar commands.
-(map! :leader
-      (:prefix "n"
-       "r" nil ; "roam" (non-map) prefix
-       :desc "Open biblio ref note"  "b" #'citar-open-note
-       :desc "Delete empty attach dirs" "d" #'delete-empty-org-attach-id-dirs
-       :desc "Find node"               "f" #'dendroam-find
-       ;; :desc "Capture node"         "F" #'org-roam-capture
-       :desc "Find ref"                "F" #'org-roam-ref-find
-       :desc "Insert link to node"     "i" #'org-roam-node-insert
-       :desc "Toggle backlinks buffer" "l" #'org-roam-buffer-toggle
-       ;; :desc "Find parent" "<up>" #'dendroam-find-parent
-       ;; :desc "Find children" "<down>" #'dendroam-find-children
-       ;; :desc "Find siblings" "<left>" #'dendroam-find-siblings
-       ;; :desc "Find siblings" "<right>" #'dendroam-find-siblings
-       :desc "Find meeting node"       "m" #'dendroam-find-meeting
-       :desc "Find project node"       "p" #'dendroam-find-project
-       :desc "Switch to scratch"       "x" #'dendroam-find-master-scratch
-       :desc "Rename node"             "r" #'dendroam-rename-note
-       :desc "Refactor hierarchy"      "R" #'dendroam-refactor-hierarchy
-       :desc "Find scratch node"       "X" #'dendroam-find-scratch
-       :desc "Find related nodes"      "n" #'dendroam-find-related))
 
 ;; TODO Replace these with the sp-* commands? Investigate the differences
 ;; between the built-in and smartparens commands
@@ -1993,18 +1835,6 @@ filename with the root private module dir as initial input"
       :m "<down>" #'down-list
       :m "<left>" #'backward-list
       :m "<right>" #'forward-list)
-
-
-(map! :map org-mode-map
-      :localleader
-      "q" #'org-insert-quote
-      (:prefix ("l" . "links")
-               "C" #'org-compress-link
-               "y" #'org-store-link-to-filepath)
-      (:prefix ("s" . "tree/subtree")
-               ;; Pairs with org-cut-subtree
-               ;; TODO org-yank shouldn't split text if not called at beginning of a heading
-               "y" #'org-yank))
 
 
 ;; https://www.masteringemacs.org/article/emacs-builtin-elisp-cheat-sheet
