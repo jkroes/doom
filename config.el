@@ -1511,8 +1511,6 @@ return the path"
 (add-to-list 'load-path (expand-file-name "libraries" doom-private-dir))
 (require 'dendroam)
 
-(map! :leader :desc "Find node" "RET" #'dendroam-find) ; Replaces bookmark-jump
-
 ;; TODO org-roam links only complete the title, which is a problem for dendroam
 ;; since it allows for the same title with different hierarchies. See
 ;; `org-roam-link-auto-replace'

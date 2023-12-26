@@ -2,7 +2,12 @@
 ;;; This format is meant to be slightly human-readable;
 ;;; nevertheless, you probably don't want to edit it.
 ;;; -*- End Of Bookmark File Format Version Stamp -*-
-(("org-capture-last-stored"
+(("Startup"
+ (filename . "/mnt/c/Users/jkroes/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/")
+ (front-context-string . "GlobalMeet Guest")
+ (rear-context-string . ".3k 2020-01-06  ")
+ (position . 82))
+("org-capture-last-stored"
  (filename . "~/org/work.cdpr.projects.voc.memo.issues.org")
  (front-context-string)
  (rear-context-string . "#+title: issues\n")
