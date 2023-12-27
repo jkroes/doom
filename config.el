@@ -1,11 +1,11 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO Update edebug node to reflect new evil-collection bindings
 ;; TODO use-package statements in this file may cancel out deferment that
 ;; doom relies on. Use after! instead of :config where possible; otherwise make
 ;; sure to try and defer per Doom's defaults.
 ;; TODO Document setting force-load-messages to t and doom-inhibit-log to nil
 ;; in early-init.el. The latter for debugging evil-collection mode loading.
-;; TODO line numbers in e.g. messages buffer
 ;; TODO Document debug-watch
 ;; TODO Document the fact that you either need to doom sync or `doom/reload' to
 ;; see changes to module code
@@ -285,19 +285,13 @@ correctly display variable-pitch fonts. Instead use
 
 ;;; edebug / messages -------------------------------------------------
 
-;; As noted in
-;; https://github.com/noctuid/evil-guide#why-dont-keys-defined-with-evil-define-key-work-immediately,
-;; keymap normalization may be required in some cases. One seems to be use of
-;; edebug-mode-map as an evil-intercept map. Without normalization, if in normal
-;; mode SPC will trigger leader until you first switch to another evil state.
-(add-hook 'edebug-mode-hook #'evil-normalize-keymaps)
-(add-hook 'edebug-mode-hook (defun emacs-state-for-edebug ()
-                              (if edebug-mode (evil-emacs-state)
-                                (evil-exit-emacs-state))))
+(autoload #'edebug-instrument-function "edebug")
 
 ;; Because this buffer is launched early, I have to use this instead of
 ;; `messages-buffer-mode-hook'
-(with-current-buffer "*Messages*" (+word-wrap-mode))
+(with-current-buffer "*Messages*"
+  (+word-wrap-mode)
+  (display-line-numbers-mode))
 
 ;; Print full results to the messages buffer when evaluating expressions
 (setq eval-expression-print-length nil
@@ -503,13 +497,6 @@ confirmation."
 ;; (after! vertico (setq vertico-resize t))
 
 
-;; I don't use `evil-repeat', but `vertico-repeat' is incredibly useful for
-;; continuing vertico-based searches. See `vertico-repeat-filter' and
-;; `vertico-repeat-transformers' for configuration.
-(when (featurep! :completion vertico)
-  (map!
-   :n "." #'vertico-repeat
-   :n ">" #'vertico-repeat-select))
 
 (after! embark
     (map! :map embark-file-map
@@ -1730,6 +1717,11 @@ filename with the root private module dir as initial input"
                    file-A)))
      (list file-A file-B)))
   (ediff-files-internal file-B file-A nil nil 'ediff-files))
+
+
+(when buffer-file-name
+  (when-let (mod (doom-module-from-path buffer-file-name))
+    mod))
 
 (defun doom-private-modules-list (&optional paths-or-all)
   (cl-loop for (cat . mod) in

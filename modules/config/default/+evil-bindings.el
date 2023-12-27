@@ -92,7 +92,15 @@
       :n "C--"    #'text-scale-decrease
       ;; Frame-local font resizing
       :n "M-C-="  #'doom/increase-font-size
-      :n "M-C--"  #'doom/decrease-font-size)
+      :n "M-C--"  #'doom/decrease-font-size
+
+      :n ">"
+      (cond ((modulep! :completion vertico)    #'vertico-repeat)
+            ((modulep! :completion ivy)        #'ivy-resume)
+            ((modulep! :completion helm)       #'helm-resume))
+      ;; See `vertico-repeat-filter' and `vertico-repeat-transformers' for configuration.
+      (:when (modulep! :completion vertico)
+        :n "<" #'vertico-repeat-select))
 
 
 ;;
@@ -266,10 +274,6 @@
        :desc "Switch workspace buffer" "," #'persp-switch-to-buffer
        :desc "Switch buffer"           "<" #'switch-to-buffer)
       :desc "Switch to last buffer" "`"    #'evil-switch-to-windows-last-buffer
-      :desc "Resume last search"    "'"
-      (cond ((modulep! :completion vertico)    #'vertico-repeat)
-            ((modulep! :completion ivy)        #'ivy-resume)
-            ((modulep! :completion helm)       #'helm-resume))
 
       :desc "Search for symbol in project" "*" #'+default/search-project-for-symbol-at-point
       :desc "Search project"               "/" #'+default/search-project

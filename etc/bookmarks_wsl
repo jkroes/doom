@@ -2,7 +2,12 @@
 ;;; This format is meant to be slightly human-readable;
 ;;; nevertheless, you probably don't want to edit it.
 ;;; -*- End Of Bookmark File Format Version Stamp -*-
-(("Startup"
+(("modes"
+ (filename . "~/.config/emacs/.local/straight/repos/evil-collection/modes/")
+ (front-context-string . "2048-game\n  drwx")
+ (rear-context-string . " 4k 2023-05-04  ")
+ (position . 83))
+("Startup"
  (filename . "/mnt/c/Users/jkroes/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/")
  (front-context-string . "GlobalMeet Guest")
  (rear-context-string . ".3k 2020-01-06  ")
