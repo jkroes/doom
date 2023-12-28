@@ -182,7 +182,6 @@
        `(mode-line ((,c :box (:line-width 4 :color ,bg-mode-line-active))))
        `(mode-line-inactive ((,c :box (:line-width 4 :color ,bg-mode-line-inactive)))))))
 
-
   (add-hook 'modus-themes-after-load-theme-hook #'my-modus-themes-custom-faces)
 
   ;; Configure certain faces like org code blocks to inherit from the
@@ -478,7 +477,6 @@ confirmation."
 ;; (consult-dir-jump-file). In particular, use when within the minibuffer.
 ;; consult-dir will replace the prompt of any filepath-completing function
 ;; with the selected dir!
-
 
 ;; TODO The +icons flag to the vertico module loads package
 ;; all-the-icons-completion, which is used by adding
@@ -1635,6 +1633,13 @@ comments underneath, and display the buffer"
 
 (setq ediff-split-window-function #'split-window-vertically)
 
+;; The following results in a message contained in `ediff-KILLED-VITAL-BUFFER':
+;; (add-hook 'ediff-meta-mode-hook #'kill-buffer). Instead, use this to kill
+;; *Ediff Registry* buffer, which seems to spawn automatically in response to
+;; `ediff' being invoked, but is one of the few ediff buffers that does not
+;; clean itself up.
+(add-hook 'ediff-quit-hook (lambda () (kill-buffer "*Ediff Registry*")))
+
 ;; Run ediff in another frame. See lisp/doom-ui.el.
 (after! ediff
   (remove-hook 'ediff-before-setup-hook #'doom-ediff-save-wconf-h)
@@ -1688,40 +1693,52 @@ private module."
 
 (autoload #'ediff-read-file-name "ediff")
 (autoload #'ediff-files-internal "ediff")
-(defun my/ediff-doom-private-module (file-A file-B)
-  "Run Ediff on a private Doom module file and its non-private counterpart. If
-the current buffer is a private module file, diff this file; otherwise, read a
-filename with the root private module dir as initial input"
+(defun my/ediff-doom-private-module (file-A file-B &optional skip-prompt)
+  "Prompt for a private Doom module, then a file with differences
+from the corresponding non-private file. If the current buffer is
+a private module file, use its module and `buffer-file-name' as
+the default values for the two prompts."
   (interactive
-   (let* ((file-A
+   (let* ((mod (current-doom-module-string))
+          (file-B
            ;; Per https://howardism.org/Technical/Emacs/alt-completing-read.html,
            ;; completing-read accepts an alist but only uses the car of each alist as
            ;; candidates; however, we can access the cadr within the PREDICATE func
-           (completing-read "Private module file"
-                            (module-files-with-diffs
-                             (apply #'doom-module-get
-                                    (append (mapcar #'intern
-                                                    (split-string
-                                                     ;; Private modules with default of the current module
-                                                     (completing-read
-                                                      "Private module:"
-                                                      (doom-private-modules-list (directory-files (car doom-modules-dirs) t))
-                                                      nil t nil nil
-                                                      (when buffer-file-name
-                                                        (when-let (mod (doom-module-from-path buffer-file-name))
-                                                          (format "%s %s" (car mod) (cdr mod)))))))
-                                            (list :path))))))
-          (file-B (replace-regexp-in-string
+           (completing-read
+            "Private module file: "
+            (module-files-with-diffs
+             (apply #'doom-module-get
+                    (append
+                     (mapcar #'intern
+                             (split-string
+                              ;; Private modules with default of the current module
+                              (completing-read
+                               "Private module: "
+                               (doom-private-modules-list
+                                (directory-files
+                                 (car doom-modules-dirs) t))
+                               nil t nil nil mod)))
+                     (list :path))))
+            ;; If DEF is non-nil but not one of the candidates, the first
+            ;; candidate will not be selected. If `mod' is nil,
+            ;; then `buffer-file-name' will not be a candidate.
+            nil t nil nil (when mod buffer-file-name)))
+          (file-A (replace-regexp-in-string
                    (car doom-modules-dirs)
                    doom-modules-dir
-                   file-A)))
+                   file-B)))
      (list file-A file-B)))
-  (ediff-files-internal file-B file-A nil nil 'ediff-files))
+  (ediff-files-internal file-A file-B nil nil 'ediff-files))
 
+(defun current-doom-module ()
+  (when buffer-file-name
+    (when-let (mod (doom-module-from-path buffer-file-name))
+      (unless (memq (car mod) '(:core :user))
+        mod))))
 
-(when buffer-file-name
-  (when-let (mod (doom-module-from-path buffer-file-name))
-    mod))
+(defun current-doom-module-string ()
+  (when-let (mod (current-doom-module))
+    (format "%s %s" (car mod) (cdr mod))))
 
 (defun doom-private-modules-list (&optional paths-or-all)
   (cl-loop for (cat . mod) in
@@ -1730,19 +1747,17 @@ filename with the root private module dir as initial input"
            if mod ; Exclude (:core) and (:user)
            collect format))
 
-(defun module-files-with-diffs (module)
+(defun module-files-with-diffs (module-path)
   (-filter #'diff-file-between-modules
-           (directory-files-recursively
-            module
-            "")))
+           (directory-files-recursively module-path "")))
 
-(defun diff-file-between-modules (file-A)
-   (let* ((file-A (expand-file-name file-A))
-          (file-B (replace-regexp-in-string
-                  (car doom-modules-dirs)
-                  doom-modules-dir
-                  file-A)))
-     (diff2 file-A file-B)))
+(defun diff-file-between-modules (private-file)
+  (let* ((private-file (expand-file-name private-file))
+         (doom-file (replace-regexp-in-string
+                     (car doom-modules-dirs)
+                     doom-modules-dir
+                     private-file)))
+    (diff2 doom-file private-file)))
 
 (defun diff2 (old new &optional switches)
   (interactive

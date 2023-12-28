@@ -7,6 +7,8 @@
 ;; Overrides ~/.config/doom/modules/editor/evil/init.el
 (defvar evil-collection-mode-list
     '(edebug
+      ediff
+      info
       vundo))
 
 ;; This file controls what Doom modules are enabled and what order they load
