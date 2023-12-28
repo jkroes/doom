@@ -1029,6 +1029,7 @@ headings."
 
 ;; Keep drawers open
 (setq org-cycle-hide-drawer-startup nil)
+
 ;; Don't fold file-level drawer when cycling. Despite the changelog for org
 ;; v9.6, drawer folding state is not preserved for the file-level drawer.
 (after! org-fold (fset 'org-fold-hide-drawer-all #'ignore))
@@ -1219,44 +1220,6 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
       org-appear-trigger #'always
       org-appear-delay 1)
 
-;;;; org-superstar ----------------------------------------------------
-
-;; NOTE As of 4/16/23, I switched from org-visual-indent and
-;; org-dynamic-bullets to org-superstar. Commits prior to
-;; this time contain code for the deprecated packages in
-;; modules/lang/org/contrib/pretty.el.
-
-;; NOTE Three configurations for hiding leading stars on org headings:
-;;
-;; 1. Enable `org-superstar-remove-leading-stars' to hide leading stars and
-;; hide the "indentation" from those characters
-;;
-;; 2. Disable `org-superstar-remove-leading-stars' and enable
-;; `org-hide-leading-stars' to apply the `org-hide' face to leading stars,
-;; which might require customization depending on your theme. The intention is
-;; for this face's foreground to match the background. Note that stars will be
-;; visible when `hl-line-mode' is enabled or the cursor is on a star.
-;;
-;; 3. Disable `org-superstar-remove-leading-stars' and `org-hide-leading-stars'
-;; and set `org-superstar-leading-bullet' to `?s' to preserve all indentation
-;; but still hide leading stars. If `org-indent-mode' is enabled, you also
-;; need to disable `org-indent-mode-turns-on-hiding-stars' to disable
-;; `org-hide-leading-stars'.
-
-;; TODO This is not disabling `org-hide-leading-stars' on Windows. Need to
-;; refactor this or just create a private module and configure that.
-(after! org-superstar
-  (setq org-superstar-remove-leading-stars nil
-        org-hide-leading-stars nil
-        org-indent-mode-turns-on-hiding-stars nil
-        org-superstar-headline-bullets-list '(?\s ?\s ?\s ?\s))
-  ;; (setq org-superstar-headline-bullets-list '(?◉ ?○ ?✸ ?✿))
-  ;; Use completed checkbox for todo items marked done
-  (setq org-superstar-special-todo-items t)
-  (setq org-superstar-todo-bullet-alist
-        '(("TODO" . ?\s)
-          ("DONE" . ?☑)))
-  (org-superstar-restart))
 
 ;;;; pretty org checkboxes
 

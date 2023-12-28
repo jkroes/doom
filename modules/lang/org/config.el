@@ -113,7 +113,8 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
         org-fontify-done-headline t
         org-fontify-quote-and-verse-blocks t
         org-fontify-whole-heading-line t
-        org-hide-leading-stars t
+        org-hide-leading-stars nil
+        org-indent-mode-turns-on-hiding-stars nil
         org-image-actual-width nil
         org-imenu-depth 6
         org-priority-faces

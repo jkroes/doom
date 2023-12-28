@@ -72,25 +72,6 @@ org ----------------------------------------------------------------------
 
 org-superstar ------------------------------------------------------------
 
-;; NOTE Uncomment this if you disable org-superstar-remove-leading-stars and
-;; enable org-hide-leading-stars. It works in either situation, but I figured
-;; it was best to comment it out to reduce the overhead.
-
-;; (setq hl-line-range-function #'my/hl-line-skip-org-hide-stars)
-
-
-;; (defun my/hl-line-skip-org-hide-stars ()
-;;   "Don't apply the `hl-line' overlay to org heading stars. Note
-;; that leading stars are still visible via the cursor."
-;;   (if (and hl-line-mode
-;;            (eq major-mode 'org-mode)
-;;            (not (bound-and-true-p org-superstar-remove-leading-stars))
-;;            org-hide-leading-stars
-;;            (org-at-heading-p))
-;;       (cons (+ (line-beginning-position) (1+ (org-current-level)))
-;;             (line-beginning-position 2))
-;;     (cons (line-beginning-position)
-;;           (line-beginning-position 2))))
 
 ;; NOTE Uncomment this if not using evil-collection-edebug
 ;; As noted in
