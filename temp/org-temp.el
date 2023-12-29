@@ -1,12 +1,5 @@
 ;;; org-temp.el -*- lexical-binding: t; -*-
 
-;;; roam
-
-  ;; Hide attachment headings from roam
-  ;; (setq org-roam-db-node-include-function
-  ;;       (lambda ()
-  ;;         (not (member "ATTACH" (org-get-tags)))))
-
 ;;; org-blocks
 
 ;; NOTE: If org blocks are malformed (e.g., #+end_src is not on its own line),
