@@ -214,7 +214,7 @@
 (setq confirm-kill-emacs nil)
 
 ;; TODO Uncomment this to disable smartparens
-;; (remove-hook 'doom-first-buffer-hook #'smartparens-global-mode)
+(remove-hook 'doom-first-buffer-hook #'smartparens-global-mode)
 
 ;; Disable messages about available keybindings when using M-x
 (setq suggest-key-bindings nil)
@@ -259,6 +259,11 @@
 
 ;; Enable which-key paging for help-map
 (general-unbind help-map "C-h")
+
+;; Makes inserting org footnotes easier. Type M-e or M-a to
+;; forward- or backward-sentence, then SPC-m-f
+(setq-hook! 'org-mode-hook
+  sentence-end "[.?!…,;:]")
 
 ;;; titlecase -----------------------------------------------------------------
 
@@ -696,6 +701,12 @@ incrementally."
 
 ;; Where my org notes live
 (setq org-directory (expand-file-name "~/org"))
+
+;; Footnotes
+(setq org-footnote-define-inline nil
+                org-footnote-auto-label t
+                org-footnote-auto-adjust t ; Like org-footnote-normalize
+                org-footnote-section "Footnotes")
 
 ;; Shrink tables on startup and show shrunk text in the echo area automatically
 ;; when cursor is over the ellipses that represent the shrunk text
@@ -1283,64 +1294,6 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
        (lambda (file) (directory-empty-p file))
        (directory-files org-attach-id-dir t))
     #'delete-directory))
-
-
-;;;; org-appear -------------------------------------------
-
-(setq org-hide-emphasis-markers t
-      org-appear-autoemphasis t
-      org-pretty-entities t
-      org-appear-autoentities t
-      org-link-descriptive t
-      ;; Don't trigger link literal display; edit links with spc-m-l-l
-      org-appear-autolinks nil
-      ;; TODO Can't get this working
-      org-appear-autosubmarkers t
-      ;; Toggle org-appear off after 1-second idle over an element
-      org-appear-trigger #'always
-      org-appear-delay 0.25)
-
-
-;;;; pretty org checkboxes
-
-;; https://jft.home.blog/2019/07/17/use-unicode-symbol-to-display-org-mode-c
-
-;; BUG Because regexps can't be used, this has the potential for false
-;; positives. E.g. when specifying alternative flags for a shell command. To
-;; partially solve the issue, I added the dash and space, since in shell
-;; commands there would not be a space between the hyphen and the alternative
-;; flags.
-(defun prettify-org-checkboxes ()
-  (push '("- [ ]" . "- 󰝦") prettify-symbols-alist) ; todo
-  (push '("- [/]" . "- 󱎖") prettify-symbols-alist) ; doing
-  (push '("- [-]" . "- 󰜺") prettify-symbols-alist) ; cancelled
-  (push '("- [X]" . "- ") prettify-symbols-alist) ; done
-  (push '("- [>]" . "- ") prettify-symbols-alist) ; email
-  (push '("- [!]" . "- ") prettify-symbols-alist) ; important
-  (push '("- [?]" . "- ") prettify-symbols-alist) ; question
-  (push '("- [a]" . "- ") prettify-symbols-alist) ; answer
-  (push '("- [b]" . "- ") prettify-symbols-alist) ; bookmark
-  (push '("- [d]" . "- ") prettify-symbols-alist) ; calendar
-  (push '("- [e]" . "- ") prettify-symbols-alist) ; example
-  (push '("- [l]" . "- ") prettify-symbols-alist) ; location
-  (push '("- [q]" . "- 󰉾") prettify-symbols-alist) ; quote
-  (push '("- [w]" . "- ") prettify-symbols-alist) ; waiting
-  (prettify-symbols-mode))
-(add-hook 'org-mode-hook #'prettify-org-checkboxes)
-
-(defface org-checkbox-done-text
-  '((t (:foreground "#71696A" :strike-through t)))
-  "Face for the text part of a checked org-mode checkbox.")
-
-(font-lock-add-keywords
- 'org-mode
- `(("^[ \t]*\\(?:[-+*]\\|[0-9]+[).]\\)[ \t]+\\(\\(?:\\[@\\(?:start:\\)?[0-9]+\\][ \t]*\\)?\\[\\(?:X\\|\\([0-9]+\\)/\\2\\)\\][^\n]*\n\\)"
-    1 'org-checkbox-done-text prepend))
- 'append)
-
-;; TODO The following text can be used and modified to search for whatever
-;; pretty bullets you want within vertico/consult/embark.
-;; -\ \[[^X\s]\]
 
 ;;;; org-roam --------------------------------------------------
 
