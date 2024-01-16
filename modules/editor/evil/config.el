@@ -75,6 +75,9 @@ directives. By default, this only recognizes C directives.")
     evil-ex-hl-update-delay 0.25)
 
   :config
+  ;; TODO Per v9.6 (https://orgmode.org/Changes.html), isearch can search
+  ;; invisible portions of links (see `org-link-descriptive'); however,
+  ;; evil-search cannot. Consider changing `evil-search-module'.
   (evil-select-search-module 'evil-search-module 'evil-search)
 
   ;; PERF: Stop copying the selection to the clipboard each time the cursor
@@ -406,6 +409,11 @@ directives. By default, this only recognizes C directives.")
 
 (map! :v  "@"     #'+evil:apply-macro
       :m  [C-i]   #'evil-jump-forward
+
+      ;; TODO Bind `evil-record-macro' to leader when you're ready to start
+      ;; recording your own macros
+      ;; Free up "q" in lots of modes
+      :n "q"      nil
 
       ;; implement dictionary keybinds
       ;; evil already defines 'z=' to `ispell-word' = correct word at point

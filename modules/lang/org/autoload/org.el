@@ -436,6 +436,7 @@ Made for `org-tab-first-hook' in evil-mode."
          (call-interactively #'tab-to-tab-stop)
          t)))
 
+(autoload 'org-eldoc-get-src-lang "org-eldoc")
 ;;;###autoload
 (defun +org-yas-expand-maybe-h ()
   "Expand a yasnippet snippet, if trigger exists at point or region is active.

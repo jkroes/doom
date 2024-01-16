@@ -76,7 +76,8 @@
 (package! cape)
 (package! kind-icon)
 
-(package! modus-themes)
+(package! modus-themes
+  :recipe (:host github :repo "protesilaos/modus-themes"))
 
 ;; Windows issue:
 ;; https://github.com/org-roam/org-roam/issues/2384
@@ -86,6 +87,13 @@
   :recipe (:host github :repo "jdtsmith/vertico-truncate"))
 
 (package! titlecase)
+
+;; TODO Get rid of this once doom catches up to inf-ruby commit 74c8be8e270b8.
+;; This commit massively improved inf-ruby output from ruby-send-region.
+(unpin! inf-ruby)
+
+;; BUG 01/14/23 https://github.com/seagle0128/doom-modeline/issues/689
+(unpin! doom-modeline)
 
 ;; From old config
 ;; (package! outline-minor-faces)
@@ -105,7 +113,7 @@
 
 ;; BUG https://github.com/doomemacs/doomemacs/issues/7039
 ;; Don't download any snippets until the bug is fixed
-;;(package! doom-snippets :ignore t)
+(package! doom-snippets :ignore t)
 
 
 ;; BUG https://github.com/doomemacs/doomemacs/issues/7078

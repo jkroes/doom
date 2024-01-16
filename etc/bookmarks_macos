@@ -18,8 +18,9 @@
  (rear-context-string . "384 2023-03-14  ")
  (position . 84))
 ("org-capture-last-stored"
- (filename . "~/org/apps.emacs.edebug.scratch.org")
- (front-context-string . "* 20231218214115")
- (rear-context-string . "+title: scratch\n")
- (position . 85))
+ (filename . "~/org/learning.launchschool.prep.org")
+ (front-context-string)
+ (rear-context-string . ":\n#+title: prep\n")
+ (position . 82)
+ (last-modified 26016 26119 564764 0))
 )

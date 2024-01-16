@@ -71,15 +71,3 @@ org ----------------------------------------------------------------------
 ;;   (add-text-properties (point-min) (point-max) '(line-spacing 0.5 line-height 0)))
 
 org-superstar ------------------------------------------------------------
-
-
-;; NOTE Uncomment this if not using evil-collection-edebug
-;; As noted in
-;; https://github.com/noctuid/evil-guide#why-dont-keys-defined-with-evil-define-key-work-immediately,
-;; keymap normalization may be required in some cases. One seems to be use of
-;; edebug-mode-map as an evil-intercept map. Without normalization, if in normal
-;; mode SPC will trigger leader until you first switch to another evil state.
-;; (add-hook 'edebug-mode-hook #'evil-normalize-keymaps)
-;; (add-hook 'edebug-mode-hook (defun emacs-state-for-edebug ()
-;;                               (if edebug-mode (evil-emacs-state)
-;;                                 (evil-exit-emacs-state))))

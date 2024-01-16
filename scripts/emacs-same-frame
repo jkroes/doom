@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+
+# Usage: 
+# `e' launches an emacs server if none exists. If a server exists, 
+# it creates a new frame if none exists; otherwise, it errors 
+# requesting a file to display. 
+# `e <file>' loads a file in a new or existing frame.
+
+# Inspired by 
+# https://emacs.stackexchange.com/questions/12894/make-emacsclient-create-a-frame-only-if-there-isnt-one-already,
+# which was inspired by
+# https://stackoverflow.com/questions/21151992/why-emacs-as-daemon-gives-1-more-frame-than-is-opened/21153375#21153375
+
+# NOTE: This script is used by ~/.config/zsh/.zshrc, which aliases `e' and sets `EDITOR' to this script.
+
+frame=`emacsclient -e '(string-equal "initial_terminal" (terminal-name))'`
+# The first or-condition is when emacs server is not running. In this case, an error
+# message is thrown. The second is when no frame exists. If a frame exists, $frame equals "nil". 
+[[ $? == 1 || "$frame" == "t" ]] && opts='-c'
+#echo $frame
+[[ "${@/#-nw/}" == "$@" ]] && opts="$opts -n" # don't wait unless we've asked to run in a terminal
+#echo $opts
+exec emacsclient -a '' $opts "$@"

@@ -948,15 +948,15 @@ between the two."
         "e" #'org-export-dispatch
         "f" #'org-footnote-action
         "h" #'org-toggle-heading
-        "i" #'org-toggle-item
+        "i" #'org-insert-structure-template
         "I" #'org-id-get-create
         "k" #'org-babel-remove-result
         "K" #'+org/remove-result-blocks
         "n" #'org-store-link
         "o" #'org-set-property
-        "q" #'org-insert-quote
         "t" #'org-todo
         "T" #'org-todo-list
+        "v" #'org-columns
         "x" #'org-toggle-checkbox
         (:prefix ("a" . "attachments")
          "a" #'org-attach
@@ -1243,8 +1243,8 @@ between the two."
           (CSup    (concat "C-S-" .up))
           (CSdown  (concat "C-S-" .down)))
       (map! :map evil-org-mode-map
-            ;;:nv "TAB" #'my/org-cycle
-            ;;:nv "<tab>" #'my/org-cycle
+            :nv "TAB" #'my/org-cycle
+            :nv "<tab>" #'my/org-cycle
             :ni [C-return]   #'+org/insert-item-below
             :ni [C-S-return] #'+org/insert-item-above
             ;; navigate table cells (from insert-mode)

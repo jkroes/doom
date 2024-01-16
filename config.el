@@ -1,5 +1,17 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO After updating path in .zshrc, run doom env. E.g. you may have to do
+;; this after gem install solargraph to make sure ruby-mode and lsp can find
+;; the languageserver
+;; TODO (e)debug-on-quit can be used to debug emacs if it freezes and you have
+;; to presss c-g
+;; TODO Use autoload when you only need a function or command to be available
+;; and the package hasn't defined such an autoload. Use require when you need
+;; the library to be loaded right away rather than when a function or command
+;; is called.
+;; TODO Sometimes errors aren't obvious unless you use emacs after
+;; `toggle-debug-on-error'. This should be enabled most of the time.
+;; TODO Use aliases to construct multiple org-roam nodes. See apps.shell.cp.org
 ;; TODO Update edebug node to reflect new evil-collection bindings
 ;; TODO use-package statements in this file may cancel out deferment that
 ;; doom relies on. Use after! instead of :config where possible; otherwise make
@@ -134,11 +146,14 @@
 
 ;; NOTE To enable mixed monospace/fixed and proportional/variable fonts in
 ;; org-mode, uncomment the code below:
+;; NOTE When variable pitch is enabled, indentation will appear not to line up
+;; when inserting a line after a list item. This is because the width of a
+;; space is different than that of a hyphen.
 ;; NOTE Roboto is nearly identical to SF Pro but slightly slimmer. These fonts
 ;; are what Obsidian.md uses on MacOS.
-(setq doom-variable-pitch-font
-      (font-spec :family "Roboto"
-                 :size (if (length= (display-monitor-attributes-list) 2) 20 18)))
+;; (setq doom-variable-pitch-font
+;;       (font-spec :family "Roboto"
+;;                  :size (if (length= (display-monitor-attributes-list) 2) 20 18)))
 
 ;; NOTE While using modus themes, disable the `+pretty' flag for the
 ;; `vc-gutter' module or try the code provided in the manual. See
@@ -275,16 +290,21 @@ correctly display variable-pitch fonts. Instead use
 ;; Easier evil "j" and "k", harder "gg" navigation
 ;; (setq display-line-numbers-type 'relative)
 
-;; Free up "q" in lots of modes
-(general-unbind evil-normal-state-map "q")
-
-;; NOTE Per v9.6 (https://orgmode.org/Changes.html), isearch can search
-;; invisible portions of links (see `org-link-descriptive'); however,
-;; evil-search cannot. Consider changing `evil-search-module'.
-
 ;;; edebug / messages -------------------------------------------------
 
 (autoload #'edebug-instrument-function "edebug")
+
+;; NOTE Uncomment this if not using evil-collection-edebug
+;; As noted in
+;; https://github.com/noctuid/evil-guide#why-dont-keys-defined-with-evil-define-key-work-immediately,
+;; keymap normalization may be required in some cases. One seems to be use of
+;; edebug-mode-map as an evil-intercept map. Without normalization, if in normal
+;; mode SPC will trigger leader until you first switch to another evil state.
+;; (add-hook 'edebug-mode-hook #'evil-normalize-keymaps)
+
+(add-hook 'edebug-mode-hook
+          (defun edebug-enter-normal-state ()
+            (when edebug-mode (evil-normal-state))))
 
 ;; Because this buffer is launched early, I have to use this instead of
 ;; `messages-buffer-mode-hook'
@@ -379,16 +399,13 @@ confirmation."
 
 ;;; default -------------------------------------------------------------------
 
-;; c-ret and shift-ret
-
+(advice-remove #'newline-and-indent #'+default--newline-indent-and-continue-comments-a)
 ;; HACK First, if a comment does not have a blank line above it, it blocks RET
 ;; from inserting a blank line when the cursor is before the first comment
 ;; character. Second, there is no way to discontinue new comment lines using
 ;; RET. I redefined the advice to handle these issues.
-(advice-remove #'newline-and-indent #'+default--newline-indent-and-continue-comments-a)
-(defadvice! my/default--newline-indent-and-continue-comments-a (&rest _)
+(defun my/default--newline-indent-and-continue-comments-a (&rest _)
   "A replacement for Doom's version of this advice."
-  :before-until #'newline-and-indent
   (interactive "*")
   (when (and +default-want-RET-continue-comments
              (doom-point-in-comment-p)
@@ -406,7 +423,7 @@ confirmation."
                            (concat comment-start "\s"))
                           (= 0 (current-column)))
           (progn
-            (kill-line 0)
+            (delete-region (pos-bol) (pos-eol))
             (indent-for-tab-command)
             t)
         ;; Call the original function when the cursor is within whitespace
@@ -425,7 +442,8 @@ confirmation."
           (let (comment-auto-fill-only-comments)
             (funcall comment-line-break-function nil)
             t))))))
-
+(advice-add 'newline-and-indent :before-until #'my/default--newline-indent-and-continue-comments-a)
+;; (advice-remove 'newline-and-indent #'my/default--newline-indent-and-continue-comments-a)
 
 ;; `my/default--newline-indent-and-continue-comments-a' breaks
 ;; `+default/newline-below', and I need a way to continue comments aside from
@@ -433,6 +451,14 @@ confirmation."
 ;; for `+default/newline-below'. NOTE `comment-indent-new-line' is the current
 ;; value of `comment-line-break-function'.
 (map! "M-RET" comment-line-break-function)
+
+;; https://emacs.stackexchange.com/questions/22746/add-a-space-after-the-comment-delimiter
+(defun comment-indent-new-line--insert-a-space-after (&rest _)
+  "Ensure there is exactly one space after `comment-start'"
+  (when (and (looking-back comment-start)
+             (not (looking-back " ")))
+    (just-one-space)))
+(advice-add 'comment-indent-new-line :after #'comment-indent-new-line--insert-a-space-after)
 
 ;;; scrolling -----------------------------------------------------------------
 
@@ -560,6 +586,7 @@ prompt for a name, using filename as default input"
         corfu-popupinfo-delay 0.5
         ;; Less jarring to avoid hiding when `corfu-popupinfo-delay' is short
         corfu-popupinfo-hide nil)
+  ;; TODO Consider making this similar to minibuffer-map
   (evil-define-key 'insert corfu-map
     [tab]         #'corfu-insert
     (kbd "TAB")   #'corfu-insert
@@ -578,11 +605,13 @@ prompt for a name, using filename as default input"
     (kbd "C-h")   #'corfu-info-documentation ; Works with scroll-other-window(-down)
     (kbd "C-n")   #'corfu-next
     (kbd "C-p")   #'corfu-previous)
-  (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
-  (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
+  (advice-add 'corfu--setup :after 'evil-normalize-advice)
+  (advice-add 'corfu--teardown :after 'evil-normalize-advice)
   :config
-  (corfu-popupinfo-mode) ; Documentation popup next to completion
+  ;;(corfu-popupinfo-mode) ; Documentation popup next to completion
   (corfu-history-mode))
+
+(defun evil-normalize-advice (&rest _) (evil-normalize-keymaps))
 
 ;; TODO evil-org interferes with RET. This doesn't seem to be an issue in the
 ;; company module. See the fix for #1335 in company/config.el.
@@ -683,6 +712,42 @@ incrementally."
 ;; The org-transclude manual recommends removing this advice
 (after! org (advice-remove 'org-link-search '+org--recenter-after-follow-link-a))
 
+;; TODO It is still a pain in the ass to define headings this way, as opposed
+;; to just using a spreadsheet. There should be some way to interface between
+;; the two. Spreadsheets are easier to edit, because you enter the headers
+;; exactly once and don't need SPC-m-o to properly enter data.
+(defun org-property-from-columns ()
+  "Add properties that start with a lowercase character and are
+specified in a file-level COLUMNS property to the heading at
+point."
+  (interactive)
+  (let ((columns (split-string (org-entry-get 0 "COLUMNS") " ")))
+    (dolist (col columns)
+      (setq col (replace-regexp-in-string "^%" "" col))
+      (when (and (s-lowercase-p (substring col 0 1))
+                 (not (org-entry-get nil col)))
+        (org-set-property col "")))))
+
+;; TODO Has org-attach always been scrolled to the bottom? File a bug report so
+;; you can remove this hack eventually.
+(advice-add 'org-attach :around #'test)
+
+(defun test (fn &rest _)
+  (interactive)
+  (cl-letf (((symbol-function 'org-fit-window-to-buffer)
+             (lambda (&optional window max-height min-height shrink-only)
+               (cond ((not (window-full-width-p window))
+                      ;; Do nothing if another window would suffer.
+                      )
+                     ((not shrink-only)
+                      (fit-window-to-buffer window max-height min-height))
+                     (t (shrink-window-if-larger-than-buffer window)))
+               (or window (selected-window))
+               ;; HACK Display top of *Org-attach* buffers
+               (prin1 "hello")
+               (goto-line 1 (get-buffer "*Org Attach*")))))
+    (call-interactively fn)))
+
 ;; NOTE For this to work, the docs for `org-after-todo-statistics-hook' state that
 ;; the heading needs a statistics cookie. To insert a statistics cookie, manually
 ;; type "[/]" after e.g. a heading. As you toggle between todo and done for
@@ -699,7 +764,7 @@ incrementally."
 
 ;; Insert a blank line when inserting a (non-sub)heading (see advice below), and
 ;; fold that line when cycling
-(setq org-blank-before-new-entry '((heading . t) (plain-list-item))
+(setq org-blank-before-new-entry '((heading) (plain-list-item))
       org-cycle-separator-lines 2)
 
 
@@ -832,11 +897,6 @@ as the first child of a heading'"
         (org-N-empty-lines-before-current (if blank? 1 0))))))
   (run-hooks 'org-insert-heading-hook))
 
-(defun org-insert-quote ()
-  (interactive)
-  (org-insert-structure-template "quote"))
-
-
 ;; TODO Bind this to something
 (defun insert-org-entity ()
   "A dumb replacement for counsel-org-entity. See `org-pretty-entities'."
@@ -887,10 +947,10 @@ shared drives."
 ;; function shows annotations and works with embark-act for attachment headings
 ;; NOTE This function can be used to toggle display of images with attachment
 ;; links, even though org-toggle-inline-images fails!
-(defadvice! +org/dwim-at-point-a (&optional arg)
+(autoload 'ffap-string-at-point "ffap")
+(defun +org/dwim-at-point-a (&optional arg)
   "Additionally edit source code blocks and call org-attach-open on attachment
 headings."
-  :override '+org/dwim-at-point
   (interactive "P")
   (if (button-at (point))
       (call-interactively #'push-button)
@@ -1014,6 +1074,17 @@ headings."
          (let ((match (and (org-at-item-checkbox-p) (match-string 1))))
            (org-toggle-checkbox (if (equal match "[ ]") '(16)))))
 
+        ;; HACK Jump to INCLUDE files
+        (`keyword
+         (when (string= "INCLUDE" (org-element-property :key context))
+           (let (string-at-point)
+             (save-excursion
+               (beginning-of-line)
+               (search-forward "#+INCLUDE: \"")
+               (setq string-at-point (ffap-string-at-point)))
+             (if (file-exists-p string-at-point)
+                 (find-file string-at-point)
+               (message "Non-existent file argument in INCLUDE keyword")))))
         (_
          (if (or (org-in-regexp org-ts-regexp-both nil t)
                  (org-in-regexp org-tsr-regexp-both nil  t)
@@ -1023,6 +1094,7 @@ headings."
             (org-element-property :begin context)
             (org-element-property :end context))))))))
 
+(advice-add '+org/dwim-at-point :override '+org/dwim-at-point-a)
 ;;;; org-cycle / org-fold -----------------------------------------------------
 
 ;; Keep drawers open
@@ -1037,18 +1109,28 @@ headings."
 (after! org (setq org-hide-block-startup t))
 
 
-;; TODO This interferes with lots of stuff, but especially completing "roam"
-;; links. Fix it, then uncomment the evil-org bindings for it lower down.
 (defun my/org-cycle ()
-  "org-cycle everywhere within normal state. This includes cycling
-list items. Completion and indentation will only work in insert
-state when this is bound to tab."
+  "Adapt org-cycle to fold the current code block if point is within
+one. Useful for finding one's place within a large code block
+without folding any headings."
   (interactive)
-  ;; NOTE This cycles sublists and has an effect on other types of org items
-  ;; (let ((org-cycle-emulate-tab)) (call-interactively #'org-cycle))
-  (save-excursion
-    (org-back-to-heading-or-point-min)
+  (let* ((element (org-element-at-point))
+         (type (org-element-type element)))
+    (cond ((eq type 'src-block)
+           (let* ((post (org-element-property :post-affiliated element))
+                  (start (save-excursion
+                           (goto-char post)
+                           (line-end-position)))
+                  (end (save-excursion
+                         (goto-char (org-element-property :end element))
+                         (skip-chars-backward " \t\n")
+                         (line-end-position))))
+             (when (let ((eol (line-end-position)))
+                       (and (/= eol start) (/= eol end)))
+               (call-interactively #'org-previous-block)))))
     (call-interactively #'org-cycle)))
+
+
 
 
 ;;;; org-file -----------------------------------------------------------------
@@ -1216,28 +1298,33 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
       org-appear-autosubmarkers t
       ;; Toggle org-appear off after 1-second idle over an element
       org-appear-trigger #'always
-      org-appear-delay 1)
+      org-appear-delay 0.25)
 
 
 ;;;; pretty org checkboxes
 
 ;; https://jft.home.blog/2019/07/17/use-unicode-symbol-to-display-org-mode-c
 
+;; BUG Because regexps can't be used, this has the potential for false
+;; positives. E.g. when specifying alternative flags for a shell command. To
+;; partially solve the issue, I added the dash and space, since in shell
+;; commands there would not be a space between the hyphen and the alternative
+;; flags.
 (defun prettify-org-checkboxes ()
-  (push '("[ ]" . "󰝦") prettify-symbols-alist) ; todo
-  (push '("[/]" . "󱎖") prettify-symbols-alist) ; doing
-  (push '("[-]" . "󰜺") prettify-symbols-alist) ; cancelled
-  (push '("[X]" . "") prettify-symbols-alist) ; done
-  (push '("[>]" . "") prettify-symbols-alist) ; email
-  (push '("[!]" . "") prettify-symbols-alist) ; important
-  (push '("[?]" . "") prettify-symbols-alist) ; question
-  (push '("[a]" . "") prettify-symbols-alist) ; answer
-  (push '("[b]" . "") prettify-symbols-alist) ; bookmark
-  (push '("[d]" . "") prettify-symbols-alist) ; calendar
-  (push '("[e]" . "") prettify-symbols-alist) ; example
-  (push '("[l]" . "") prettify-symbols-alist) ; location
-  (push '("[q]" . "󰉾") prettify-symbols-alist) ; quote
-  (push '("[w]" . "") prettify-symbols-alist) ; waiting
+  (push '("- [ ]" . "- 󰝦") prettify-symbols-alist) ; todo
+  (push '("- [/]" . "- 󱎖") prettify-symbols-alist) ; doing
+  (push '("- [-]" . "- 󰜺") prettify-symbols-alist) ; cancelled
+  (push '("- [X]" . "- ") prettify-symbols-alist) ; done
+  (push '("- [>]" . "- ") prettify-symbols-alist) ; email
+  (push '("- [!]" . "- ") prettify-symbols-alist) ; important
+  (push '("- [?]" . "- ") prettify-symbols-alist) ; question
+  (push '("- [a]" . "- ") prettify-symbols-alist) ; answer
+  (push '("- [b]" . "- ") prettify-symbols-alist) ; bookmark
+  (push '("- [d]" . "- ") prettify-symbols-alist) ; calendar
+  (push '("- [e]" . "- ") prettify-symbols-alist) ; example
+  (push '("- [l]" . "- ") prettify-symbols-alist) ; location
+  (push '("- [q]" . "- 󰉾") prettify-symbols-alist) ; quote
+  (push '("- [w]" . "- ") prettify-symbols-alist) ; waiting
   (prettify-symbols-mode))
 (add-hook 'org-mode-hook #'prettify-org-checkboxes)
 
@@ -1309,7 +1396,7 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
   ;; well as the org-roam node string. Plus there's this unresolved bug:
   ;; https://github.com/org-roam/org-roam/issues/2066. On the flip side, you
   ;; can't search annotations.
-  (setq org-roam-node-annotation-function #'my/org-roam-node-read--annotation)
+  (after! dendroam (setq org-roam-node-annotation-function #'my/org-roam-node-read--annotation))
   ;; Faster live preview
   (setq consult-org-roam-grep-func #'consult-ripgrep)
   ;; Advise org-roam-node-read to use consult--read. This package uses
@@ -1430,6 +1517,7 @@ return the path"
 ;;;; citar-org-roam ------------------------------------------------------------
 
 (use-package! citar-org-roam
+  :after org-roam
   :config
   ;; Subdirectory of `org-roam-directory' for citar notes
   (setq citar-org-roam-subdir "references")
@@ -1460,7 +1548,9 @@ return the path"
 ;; creates a new node.
 
 (add-to-list 'load-path (expand-file-name "libraries" doom-private-dir))
-(require 'dendroam)
+
+;; TODO Is this the best solution?
+(autoload #'dendroam-find "dendroam")
 
 ;; TODO org-roam links only complete the title, which is a problem for dendroam
 ;; since it allows for the same title with different hierarchies. See
@@ -1806,7 +1896,6 @@ the default values for the two prompts."
       :m "<left>" #'backward-list
       :m "<right>" #'forward-list)
 
-
 ;; https://www.masteringemacs.org/article/emacs-builtin-elisp-cheat-sheet
 ;; TODO Replace the bindings below with this. I dono't think evil-collection is
 ;;loaded without the +everywhere flag for evil, so do this yourself. Or
@@ -1819,3 +1908,41 @@ the default values for the two prompts."
 ;;       :m "<tab>" #'forward-button
 ;;       :m "k" #'backward-button
 ;;       :m "<backtab>" #'backward-button)
+
+;;; comint --------------------------------------------------------------------
+(setq comint-prompt-read-only nil ; Read-only prompt in ess-R
+      comint-scroll-to-bottom-on-input t
+      ;; Prefer this to `comint-scroll-to-bottom-on-output'
+      comint-scroll-show-maximum-output t
+      comint-use-prompt-regexp nil) ; nil enables evil motions
+
+;;; launchschool --------------------------------------------------------------
+
+(setq-hook! 'js-mode-hook tab-width 2)
+
+;;; popup (experimental) ------------------------------------------------------
+
+;; See the hack in ~/.config/doom/modules/ui/popup/autoload/popup.el
+
+;; (eval-after-load (concat-path (doom-module-locate-path :ui 'popup)
+;;                               "autoload/popup.el")
+;;   (fset '+popup-kill-buffer-hook-h #'ignore))
+
+;; (advice-remove 'kill-current-buffer
+;;                #'doom--switch-to-fallback-buffer-maybe-a)
+
+;; (advice-remove 'kill-current-buffer
+;;                #'doom-set-jump-a)
+
+;; Stack trace with the above settings:
+;;
+;; +popup--delete-window(#<window 127 on *eglot-help for greeting*>)
+;; delete-window(#<window 127 on *eglot-help for greeting*>)
+;; window--delete(#<window 127 on *eglot-help for greeting*> t t)
+;; replace-buffer-in-windows(#<buffer *eglot-help for greeting*>)
+;; kill-current-buffer()
+;; funcall-interactively(kill-current-buffer)
+;; command-execute(kill-current-buffer record)
+;; execute-extended-command(nil "kill-current-buffer" nil)
+;; funcall-interactively(execute-extended-command nil "kill-current-buffer" nil)
+;; command-execute(execute-extended-command)
