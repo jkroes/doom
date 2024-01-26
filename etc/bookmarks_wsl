@@ -13,8 +13,8 @@
  (rear-context-string . ".3k 2020-01-06  ")
  (position . 82))
 ("org-capture-last-stored"
- (filename . "~/org/work.cdpr.projects.voc.memo.issues.org")
+ (filename . "~/org/work.cdpr.projects.voc.memo.issues.broken_fn.org")
  (front-context-string)
- (rear-context-string . "#+title: issues\n")
- (position . 84))
+ (rear-context-string . "itle: broken_fn\n")
+ (position . 87))
 )
