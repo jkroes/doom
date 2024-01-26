@@ -1,8 +1,18 @@
 ;;; lang/ruby/config.el -*- lexical-binding: t; -*-
 
+;; TODO Once you begin working with more complex ruby projects, switch from
+;; lsp-mode to robe-mode; however, first fix the remaining issues (see
+;; use-package robe)
+
+(defvar pause-for-first-prompt 0.5 "If this is too short, code
+will be inserted before the first inf-ruby prompt.")
+
+(defvar pause-for-subsequent-prompts 0.01 "If this is too short,
+one line of code will not be inserted per prompt, and multiple
+prompts will subsequently appear on a single line.")
+
 (after! projectile
   (add-to-list 'projectile-project-root-files "Gemfile"))
-
 
 ;;
 ;;; Packages
@@ -16,6 +26,8 @@
   :mode "/\\(?:Brew\\|Fast\\)file\\'"
   :interpreter "j?ruby\\(?:[0-9.]+\\)"
   :config
+  ;; Use pry
+  (setq inf-ruby-default-implementation "pry")
   (setq ruby-insert-encoding-magic-comment nil)
 
   ;; NOTE If :slot and :vsolt are missing or nil, they are eventually assigned
@@ -27,6 +39,7 @@
   ;; the popup module is to quit a window when the buffer is killed rather than
   ;; open a previous window. There is a hack in my private module to fix this.
   (set-popup-rule! "^\\*ruby\\*$" :size 0.3 :select nil :quit nil :ttl nil)
+  (set-popup-rule! "^\\*pry\\*$" :size 0.3 :select nil :quit nil :ttl nil)
 
   (set-electric! 'ruby-mode :words '("else" "end" "elsif"))
   (set-repl-handler! 'ruby-mode #'inf-ruby)
@@ -41,8 +54,11 @@
     (add-hook 'inf-ruby-mode-hook #'doom-mark-buffer-as-real-h)
     ;; switch to inf-ruby from compile if we detect a breakpoint has been hit
     (add-hook 'compilation-filter-hook #'inf-ruby-auto-enter)
+    ;; NOTE This is optional. Turn it off if it makes things more difficult to
+    ;; read
+    (add-hook 'inf-ruby-mode-hook #'visual-line-mode)
     ;; HACK This is what makes things hang when we are expecting user input.
-    ;; Disabling it also disables printing the results of evaluation in the
+    ;; Disa bling it also disables printing the results of evaluation in the
     ;; script.
     (fset 'ruby-print-result #'ignore))
 
@@ -53,19 +69,20 @@
   ;; launchschool recommendation
   (setq-hook! 'ruby-mode-hook tab-width 2)
 
-  ;; NOTE Sending regions seems to be the only reliable function for working
-  ;; with inf-ruby. It may be better to spawn irb or pry within a terminal and
-  ;; work with that.
   (map! :map ruby-mode-map
-        :gin "C-RET" #'ruby-send-region-if-used
-        :gin "C-<return>" #'ruby-send-region-if-used)
+        "C-RET" #'my/eir-eval-in-ruby
+        "C-<return>" #'my/eir-eval-in-ruby)
 
   (map! :localleader
         :map ruby-mode-map
         "[" #'ruby-toggle-block
         "{" #'ruby-toggle-block))
 
-;; BUG Enabling the +lsp flag disables robe-mode, which is 100% unusable.
+;; TODO lsp-mode has the advantage of enabling +lookup/documentation (K) and
+;; corfu-info-documentation (C-h during corfu completion). It also has more
+;; descriptive corfu candidates. In contrast, robe can jump to the definition
+;; of dynamically defined objects (lsp relies on static analysis). Patch
+;; robe-mode to behave more like lsp-mode
 (use-package! robe
   :defer t
   :init
@@ -90,11 +107,7 @@
     (add-hook 'robe-mode-hook #'evil-normalize-keymaps))
   (map! :localleader
         :map robe-mode-map
-        ;; Before I switched to lsp-mode, I was using inf-ruby-and-robe-start
-        ;; here; however, robe-mode was 100% unusable.
-        "'"  #'inf-ruby
-        ;; NOTE For now, adding a Gemfile via bundle init, then adding pry and
-        ;; pry-doc to the list of gems, has mostly
+        "'"  #'inf-ruby-and-robe-start
         "h"  #'robe-doc
         "R"  #'robe-rails-refresh
         :prefix "s"

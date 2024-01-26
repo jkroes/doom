@@ -95,6 +95,10 @@
 ;; BUG 01/14/23 https://github.com/seagle0128/doom-modeline/issues/689
 (unpin! doom-modeline)
 
+;; BUG https://github.com/doomemacs/doomemacs/issues/7039
+;; Don't download any snippets until the bug is fixed
+(package! doom-snippets :ignore t)
+
 ;; From old config
 ;; (package! outline-minor-faces)
 ;; (package! backline)
@@ -111,9 +115,6 @@
 ;;           :recipe (:host github :repo "egh/zotxt-emacs"))
 
 
-;; BUG https://github.com/doomemacs/doomemacs/issues/7039
-;; Don't download any snippets until the bug is fixed
-(package! doom-snippets :ignore t)
 
 
 ;; BUG https://github.com/doomemacs/doomemacs/issues/7078

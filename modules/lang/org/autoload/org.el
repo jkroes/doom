@@ -147,28 +147,15 @@
   (interactive)
   (org-return electric-indent-mode))
 
+;; TODO Once marginalia and embark are configured, check to see that this
+;; function shows annotations and works with embark-act for attachment headings
+;; NOTE This function can be used to toggle display of images with attachment
+;; links, even though org-toggle-inline-images fails!
+(autoload 'ffap-string-at-point "ffap")
 ;;;###autoload
 (defun +org/dwim-at-point (&optional arg)
-  "Do-what-I-mean at point.
-
-If on a:
-- checkbox list item or todo heading: toggle it.
-- citation: follow it
-- headline: cycle ARCHIVE subtrees, toggle latex fragments and inline images in
-  subtree; update statistics cookies/checkboxes and ToCs.
-- clock: update its time.
-- footnote reference: jump to the footnote's definition
-- footnote definition: jump to the first reference of this footnote
-- timestamp: open an agenda view for the time-stamp date/range at point.
-- table-row or a TBLFM: recalculate the table's formulas
-- table-cell: clear it and go into insert mode. If this is a formula cell,
-  recaluclate it instead.
-- babel-call: execute the source block
-- statistics-cookie: update it.
-- src block: execute it
-- latex fragment: toggle it.
-- link: follow it
-- otherwise, refresh all inline images in current tree."
+  "Additionally edit source code blocks and call org-attach-open on attachment
+headings."
   (interactive "P")
   (if (button-at (point))
       (call-interactively #'push-button)
@@ -183,7 +170,16 @@ If on a:
          (org-cite-follow context arg))
 
         (`headline
-         (cond ((memq (bound-and-true-p org-goto-map)
+         (cond ((or (member "ATTACH" (org-get-tags nil t))
+                    ;; org-attach-set-directory doesn't use an ATTACH tag
+                    (alist-get "DIR" (org-entry-properties) nil nil #'string=))
+                ;; HACK To enable marginalia annotations (and embark-act, which
+                ;; relies on the metadata marginalia sets), we either need to
+                ;; bind this-command to org-attach-open or call it with
+                ;; execute-extended-command
+                (let ((this-command #'org-attach-open))
+                  (org-attach-open)))
+               ((memq (bound-and-true-p org-goto-map)
                       (current-active-maps))
                 (org-goto-ret))
                ((and (fboundp 'toc-org-insert-toc)
@@ -257,7 +253,8 @@ If on a:
          (save-excursion (org-update-statistics-cookies arg)))
 
         ((or `src-block `inline-src-block)
-         (org-babel-execute-src-block arg))
+         ;; (org-babel-execute-src-block arg))
+         (org-edit-src-code))
 
         ((or `latex-fragment `latex-environment)
          (org-latex-preview arg))
@@ -270,7 +267,10 @@ If on a:
                (+org--toggle-inline-images-in-subtree
                 (org-element-property :begin lineage)
                 (org-element-property :end lineage))
-             (org-open-at-point arg))))
+             ;; HACK I substituted my own function for org-open-at-point and
+             ;; got rid of the `arg' argument. I should probably add that
+             ;; argument to my function...
+             (my/org-open-at-point))))
 
         (`paragraph
          (+org--toggle-inline-images-in-subtree))
@@ -279,6 +279,17 @@ If on a:
          (let ((match (and (org-at-item-checkbox-p) (match-string 1))))
            (org-toggle-checkbox (if (equal match "[ ]") '(16)))))
 
+        ;; HACK Jump to INCLUDE files
+        (`keyword
+         (when (string= "INCLUDE" (org-element-property :key context))
+           (let (string-at-point)
+             (save-excursion
+               (beginning-of-line)
+               (search-forward "#+INCLUDE: \"")
+               (setq string-at-point (ffap-string-at-point)))
+             (if (file-exists-p string-at-point)
+                 (find-file string-at-point)
+               (message "Non-existent file argument in INCLUDE keyword")))))
         (_
          (if (or (org-in-regexp org-ts-regexp-both nil t)
                  (org-in-regexp org-tsr-regexp-both nil  t)

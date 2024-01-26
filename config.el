@@ -1,5 +1,19 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO When you edit the contents of a collapsed org-src block from within an
+;; org src buffer, it expands the block once you exit. It would be nice to
+;; close it again upon exiting back to the org buffer.
+;; TODO Look into using the following packages plus (custom?) functions to send
+;; text to the buffer for execution in a shell, as an alternative to comint:
+;; https://codeberg.org/akib/emacs-eat
+;; https://github.com/szermatt/mistty (misty-send-string)
+;; https://www.masteringemacs.org/article/running-shells-in-emacs-overview
+;; TODO C-h v over a long function or variable name when emacs is half a window
+;; on my laptop leads to wrapped lnies with vertico and marginalia. I've seen
+;; this issue before. Try C-h v on this: window-selection-change-functions. It
+;; might be because it's displaying the text at point and somehow that is
+;; changing the display.
+;; TODO Learn proper vim commands. ci" deletes inside of double quotes.
 ;; TODO After updating path in .zshrc, run doom env. E.g. you may have to do
 ;; this after gem install solargraph to make sure ruby-mode and lsp can find
 ;; the languageserver
@@ -678,9 +692,9 @@ incrementally."
 ;; Left-truncate matches/candidates in e.g. consult-line (spc s b) and
 ;; consult-recent-file (spc f r) and the recent file source for consult-buffer
 ;; (spc b b)
-(use-package! vertico-truncate
-  :config
-  (vertico-truncate-mode))
+;; (use-package! vertico-truncate
+;;   :config
+;;   (vertico-truncate-mode))
 
 ;;; emacs lisp ----------------------------------------------------------------
 
@@ -916,9 +930,9 @@ as the first child of a heading'"
 
 
 ;; TODO Replace this function with advice and remove the reference to it in
-;; `org-dwim-at-point-a'
+;; `+org-dwim-at-point'
 ;;
-;; Note that this function is used by `+org/dwim-at-point-a' for links
+;; Note that this function is used by `+org/dwim-at-point' for links
 ;; when hitting RET
 (defun my/org-open-at-point ()
   "Use find-file with file link as initial input instead of opening file link
@@ -942,159 +956,6 @@ shared drives."
           (call-interactively #'find-file))
         (call-interactively #'org-open-at-point))))
 
-
-;; TODO Once marginalia and embark are configured, check to see that this
-;; function shows annotations and works with embark-act for attachment headings
-;; NOTE This function can be used to toggle display of images with attachment
-;; links, even though org-toggle-inline-images fails!
-(autoload 'ffap-string-at-point "ffap")
-(defun +org/dwim-at-point-a (&optional arg)
-  "Additionally edit source code blocks and call org-attach-open on attachment
-headings."
-  (interactive "P")
-  (if (button-at (point))
-      (call-interactively #'push-button)
-    (let* ((context (org-element-context))
-           (type (org-element-type context)))
-      ;; skip over unimportant contexts
-      (while (and context (memq type '(verbatim code bold italic underline strike-through subscript superscript)))
-        (setq context (org-element-property :parent context)
-              type (org-element-type context)))
-      (pcase type
-        ((or `citation `citation-reference)
-         (org-cite-follow context arg))
-
-        (`headline
-         (cond ((or (member "ATTACH" (org-get-tags nil t))
-                    ;; org-attach-set-directory doesn't use an ATTACH tag
-                    (alist-get "DIR" (org-entry-properties) nil nil #'string=))
-                ;; HACK To enable marginalia annotations (and embark-act, which
-                ;; relies on the metadata marginalia sets), we either need to
-                ;; bind this-command to org-attach-open or call it with
-                ;; execute-extended-command
-                (let ((this-command #'org-attach-open))
-                  (org-attach-open)))
-               ((memq (bound-and-true-p org-goto-map)
-                      (current-active-maps))
-                (org-goto-ret))
-               ((and (fboundp 'toc-org-insert-toc)
-                     (member "TOC" (org-get-tags)))
-                (toc-org-insert-toc)
-                (message "Updating table of contents"))
-               ((string= "ARCHIVE" (car-safe (org-get-tags)))
-                (org-force-cycle-archived))
-               ((or (org-element-property :todo-type context)
-                    (org-element-property :scheduled context))
-                (org-todo
-                 (if (eq (org-element-property :todo-type context) 'done)
-                     (or (car (+org-get-todo-keywords-for (org-element-property :todo-keyword context)))
-                         'todo)
-                   'done))))
-         ;; Update any metadata or inline previews in this subtree
-         (org-update-checkbox-count)
-         (org-update-parent-todo-statistics)
-         (when (and (fboundp 'toc-org-insert-toc)
-                    (member "TOC" (org-get-tags)))
-           (toc-org-insert-toc)
-           (message "Updating table of contents"))
-         (let* ((beg (if (org-before-first-heading-p)
-                         (line-beginning-position)
-                       (save-excursion (org-back-to-heading) (point))))
-                (end (if (org-before-first-heading-p)
-                         (line-end-position)
-                       (save-excursion (org-end-of-subtree) (point))))
-                (overlays (ignore-errors (overlays-in beg end)))
-                (latex-overlays
-                 (cl-find-if (lambda (o) (eq (overlay-get o 'org-overlay-type) 'org-latex-overlay))
-                             overlays))
-                (image-overlays
-                 (cl-find-if (lambda (o) (overlay-get o 'org-image-overlay))
-                             overlays)))
-           (+org--toggle-inline-images-in-subtree beg end)
-           (if (or image-overlays latex-overlays)
-               (org-clear-latex-preview beg end)
-             (org--latex-preview-region beg end))))
-
-        (`clock (org-clock-update-time-maybe))
-
-        (`footnote-reference
-         (org-footnote-goto-definition (org-element-property :label context)))
-
-        (`footnote-definition
-         (org-footnote-goto-previous-reference (org-element-property :label context)))
-
-        ((or `planning `timestamp)
-         (org-follow-timestamp-link))
-
-        ((or `table `table-row)
-         (if (org-at-TBLFM-p)
-             (org-table-calc-current-TBLFM)
-           (ignore-errors
-             (save-excursion
-               (goto-char (org-element-property :contents-begin context))
-               (org-call-with-arg 'org-table-recalculate (or arg t))))))
-
-        (`table-cell
-         (org-table-blank-field)
-         (org-table-recalculate arg)
-         (when (and (string-empty-p (string-trim (org-table-get-field)))
-                    (bound-and-true-p evil-local-mode))
-           (evil-change-state 'insert)))
-
-        (`babel-call
-         (org-babel-lob-execute-maybe))
-
-        (`statistics-cookie
-         (save-excursion (org-update-statistics-cookies arg)))
-
-        ((or `src-block `inline-src-block)
-         ;; (org-babel-execute-src-block arg))
-         (org-edit-src-code))
-
-        ((or `latex-fragment `latex-environment)
-         (org-latex-preview arg))
-
-        (`link
-         (let* ((lineage (org-element-lineage context '(link) t))
-                (path (org-element-property :path lineage)))
-           (if (or (equal (org-element-property :type lineage) "img")
-                   (and path (image-type-from-file-name path)))
-               (+org--toggle-inline-images-in-subtree
-                (org-element-property :begin lineage)
-                (org-element-property :end lineage))
-             ;; HACK I substituted my own function for org-open-at-point and
-             ;; got rid of the `arg' argument. I should probably add that
-             ;; argument to my function...
-             (my/org-open-at-point))))
-
-        (`paragraph
-         (+org--toggle-inline-images-in-subtree))
-
-        ((guard (org-element-property :checkbox (org-element-lineage context '(item) t)))
-         (let ((match (and (org-at-item-checkbox-p) (match-string 1))))
-           (org-toggle-checkbox (if (equal match "[ ]") '(16)))))
-
-        ;; HACK Jump to INCLUDE files
-        (`keyword
-         (when (string= "INCLUDE" (org-element-property :key context))
-           (let (string-at-point)
-             (save-excursion
-               (beginning-of-line)
-               (search-forward "#+INCLUDE: \"")
-               (setq string-at-point (ffap-string-at-point)))
-             (if (file-exists-p string-at-point)
-                 (find-file string-at-point)
-               (message "Non-existent file argument in INCLUDE keyword")))))
-        (_
-         (if (or (org-in-regexp org-ts-regexp-both nil t)
-                 (org-in-regexp org-tsr-regexp-both nil  t)
-                 (org-in-regexp org-link-any-re nil t))
-             (call-interactively #'org-open-at-point)
-           (+org--toggle-inline-images-in-subtree
-            (org-element-property :begin context)
-            (org-element-property :end context))))))))
-
-(advice-add '+org/dwim-at-point :override '+org/dwim-at-point-a)
 ;;;; org-cycle / org-fold -----------------------------------------------------
 
 ;; Keep drawers open
@@ -1175,14 +1036,17 @@ without folding any headings."
 ;; Save edits and exit back to org file with "q"
 (setq org-src-ask-before-returning-to-edit-buffer nil)
 (map! :map org-src-mode-map :n "q" #'my/org-edit-src-save-and-exit)
-
-
 (defun my/org-edit-src-save-and-exit ()
   (interactive)
   (org-edit-src-save)
   (org-edit-src-exit)
   ;; Prevents accidental text insertion
-  (evil-normal-state))
+  (evil-normal-state)
+  ;; Assume we want a folded block, because editing a block unfolds it. Since
+  ;; we are exiting a src block, we don't need to test whether we are within a block.
+  (org-end-of-line)
+  (when (not (org-fold-folded-p))
+    (my/org-cycle)))
 
 
 ;; BUG This advice was creating huge lags for org-babel-tangle
@@ -1916,9 +1780,32 @@ the default values for the two prompts."
       comint-scroll-show-maximum-output t
       comint-use-prompt-regexp nil) ; nil enables evil motions
 
+;;; help ----------------------------------------------------------------------
+
+(add-hook 'help-mode-hook #'visual-line-mode)
+
+;;; misc --------------------------------------------------------------------
+
+;; (defun evil-insert-state-on-window-selection ()
+;;   "When switching to modes such as inf-ruby-mode, enter insert mode."
+;;   (when (memq major-mode '(inf-ruby-mode))
+;;     (evil-insert-state)))
+
+;; (add-hook 'doom-switch-window-hook
+;;           #'evil-insert-state-on-window-selection)
+
 ;;; launchschool --------------------------------------------------------------
 
 (setq-hook! 'js-mode-hook tab-width 2)
+
+;;; toml ----------------------------------------------------------------------
+
+(setq-hook! 'conf-toml-mode-hook tab-width 2)
+
+;;; chezmoi (go) templates ----------------------------------------------------
+
+(push '("\\.tmpl" . go-template-mode) auto-mode-alist)
+(require 'go-template-mode)
 
 ;;; popup (experimental) ------------------------------------------------------
 

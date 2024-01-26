@@ -1245,6 +1245,9 @@ between the two."
       (map! :map evil-org-mode-map
             :nv "TAB" #'my/org-cycle
             :nv "<tab>" #'my/org-cycle
+            ;; Enable bindings for vertico-repeat and vertico-repeat-select
+            :nv ">" nil
+            :nv "<" nil
             :ni [C-return]   #'+org/insert-item-below
             :ni [C-S-return] #'+org/insert-item-above
             ;; navigate table cells (from insert-mode)

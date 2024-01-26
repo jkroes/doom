@@ -338,6 +338,46 @@ by passing a PREFIX key."
                   'face 'marginalia-key))))
 
 ;;;###autoload
+(defun my/marginalia-annotate-variable (cand)
+  (when-let (sym (intern-soft cand))
+    (marginalia--fields
+     ;; ((marginalia--symbol-class sym) :face 'marginalia-type)
+     ((marginalia--variable-value sym))
+     ;; ((marginalia--variable-value sym) :truncate 0.5)
+     ;; ((documentation-property sym 'variable-documentation)
+     ;;  :truncate 1.0 :face 'marginalia-documentation)
+     )))
+
+;; This affects describe-function
+;;;###autoload
+(defun my/marginalia-annotate-function (cand)
+  (when-let (sym (intern-soft cand))
+    (when (fboundp sym)
+      (marginalia--fields
+       (:left (marginalia-annotate-binding cand))
+       ;; ((marginalia--symbol-class sym) :face 'marginalia-type)
+       ;; ((marginalia--function-args sym) :face 'marginalia-value
+       ;;  :truncate 0.5)
+       ((marginalia--function-doc sym) :truncate 1.0
+        :face 'marginalia-documentation)))))
+
+;; This affects helpful-callable
+;;;###autoload
+(defun my/marginalia-annotate-symbol (cand)
+  (when-let (sym (intern-soft cand))
+    (marginalia--fields
+     (:left (marginalia-annotate-binding cand))
+     ;;((marginalia--symbol-class sym) :face 'marginalia-type)
+     ((cond
+       ((fboundp sym) (marginalia--function-doc sym))
+       ((facep sym) (documentation-property sym 'face-documentation))
+       (t (documentation-property sym 'variable-documentation)))
+      :truncate 1.0 :face 'marginalia-documentation)
+     ;; ((abbreviate-file-name (or (symbol-file sym) ""))
+     ;;  :truncate -0.5 :face 'marginalia-file-name)
+     )))
+
+;;;###autoload
 (defun embark--expand-attachment (_ target)
   (with-current-buffer (window-buffer (minibuffer-selected-window))
     (cons 'file (expand-file-name target (org-attach-dir)))))

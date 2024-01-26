@@ -157,6 +157,7 @@ and enables `+popup-buffer-mode'."
     (set-window-parameter window 'delete-other-windows #'+popup--delete-other-windows)
     ;; HACK JK: Changing to 'side ensures that replace-buffer-in-windows
     ;; switches back to a previous window rather than quitting a window.
+    ;; This might lead to hard-to-diagnose bugs, so I'm reverting it for now.
     (set-window-dedicated-p window 'side)
     (window-preserve-size
      window (memq (window-parameter window 'window-side)

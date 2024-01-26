@@ -7,20 +7,14 @@
  (front-context-string . "vundo/\n  drwxr-x")
  (rear-context-string . " 96 12-02 21:08 ")
  (position . 7687))
-("config.el"
- (filename . "~/.config/doom/modules/editor/evil/config.el")
- (front-context-string . "llection-mode-li")
- (rear-context-string . ";; (setq evil-co")
- (position . 3273))
 ("hs"
  (filename . "/Applications/Hammerspoon.app/Contents/Resources/extensions/hs/")
  (front-context-string . "hsdocs/\n  -rw-r-")
  (rear-context-string . "384 2023-03-14  ")
  (position . 84))
 ("org-capture-last-stored"
- (filename . "~/org/learning.launchschool.prep.org")
+ (filename . "~/org/apps.emacs.debugging.freeze.org")
  (front-context-string)
- (rear-context-string . ":\n#+title: prep\n")
- (position . 82)
- (last-modified 26016 26119 564764 0))
+ (rear-context-string . "#+title: freeze\n")
+ (position . 84))
 )

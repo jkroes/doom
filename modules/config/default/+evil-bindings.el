@@ -281,6 +281,8 @@
       :desc "Find file in project"  "SPC"  #'projectile-find-file
       :desc "Jump to bookmark"      "RET"  #'bookmark-jump
       "<backspace>" #'ace-window
+      "TAB" #'ace-window
+      "<tab>" #'ace-window
       ;;"<deletechar>" #'ace-window
 
       ;;; <leader> TAB --- workspace
@@ -375,7 +377,7 @@
          :desc "Jump to symbol in current workspace" "j"   #'consult-eglot-symbols))
        :desc "Compile"                               "c"   #'compile
        :desc "Recompile"                             "C"   #'recompile
-       :desc "Jump to definition"                    "d"   #'+lookup/definition
+       :desc "Jump to definition"                    "d"   #'my/lookup-definition
        :desc "Jump to references"                    "D"   #'+lookup/references
        :desc "Evaluate buffer/region"                "e"   #'+eval/buffer-or-region
        :desc "Evaluate & replace region"             "E"   #'+eval:replace-region

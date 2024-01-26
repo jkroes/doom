@@ -31,6 +31,14 @@ overrides `completion-styles' during company completion sessions.")
                   (car args))
           (cdr args)))
   :config
+  ;; Hopefully `vertico-buffer-mode' will prevent errors and messages from
+  ;; mixing in with the vertico buffer and make debugging vertico possible
+  ;; (vertico-buffer-mode)
+  ;; ;; See the defcustom
+  ;; (setq vertico-buffer-display-action
+  ;;       '(display-buffer-in-side-window
+  ;;         (window-height. ,(+ 3 vertico-count))
+  ;;         (side . bottom)))
   (setq vertico-resize nil
         vertico-count 17
         vertico-cycle t)
@@ -356,6 +364,12 @@ orderless."
     (add-hook 'marginalia-mode-hook #'nerd-icons-completion-marginalia-setup))
   (advice-add #'marginalia--project-root :override #'doom-project-root)
   (advice-add #'marginalia-annotate-binding :override #'my/marginalia-annotate-binding)
+  (setf (car (alist-get 'symbol marginalia-annotator-registry))
+        'my/marginalia-annotate-symbol
+        (car (alist-get 'function marginalia-annotator-registry))
+        'my/marginalia-annotate-function
+        (car (alist-get 'variable marginalia-annotator-registry))
+        'my/marginalia-annotate-variable)
   ;; Annotate org attachments
   (pushnew! marginalia-annotator-registry
             '(attach marginalia-annotate-attachment builtin none))
