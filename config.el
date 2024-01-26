@@ -1899,3 +1899,7 @@ the default values for the two prompts."
 ;; execute-extended-command(nil "kill-current-buffer" nil)
 ;; funcall-interactively(execute-extended-command nil "kill-current-buffer" nil)
 ;; command-execute(execute-extended-command)
+
+;;; org-mode export hack ------------------------------------------------------
+
+;; (setq org-export-with-sub-superscripts '{})
