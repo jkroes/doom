@@ -45,7 +45,6 @@
   ;; Used by citar-open-notes
   (setq citar-open-note-function 'citar--open-noter)
 
-
   ;; HACK From within an org-roam note (see ESM 203), citar-open-notes will
   ;; use the filetag as the initial input when completing bib entry candidates
   ;; The filetag should be a Zotero tag used in the org-cite folder.

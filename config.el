@@ -325,11 +325,14 @@ correctly display variable-pitch fonts. Instead use
           (defun edebug-enter-normal-state ()
             (when edebug-mode (evil-normal-state))))
 
+;; BUG When switching to buffer *Messages*, Emacs seems to go into an infinite
+;; loop. It is caused by the following. Hang can even be triggered by consult
+;; preview of *Messages* when within consult-buffer
 ;; Because this buffer is launched early, I have to use this instead of
 ;; `messages-buffer-mode-hook'
-(with-current-buffer "*Messages*"
-  (+word-wrap-mode)
-  (display-line-numbers-mode))
+;; (with-current-buffer "*Messages*"
+;;   (+word-wrap-mode)
+;;   (display-line-numbers-mode))
 
 ;; Print full results to the messages buffer when evaluating expressions
 (setq eval-expression-print-length nil
@@ -976,11 +979,6 @@ shared drives."
 ;; v9.6, drawer folding state is not preserved for the file-level drawer.
 (after! org-fold (fset 'org-fold-hide-drawer-all #'ignore))
 
-;; Keep blocks folded. Unclear why the after statement is required, but it
-;; works.
-(after! org (setq org-hide-block-startup t))
-
-
 (defun my/org-cycle ()
   "Adapt org-cycle to fold the current code block if point is within
 one. Useful for finding one's place within a large code block
@@ -1249,6 +1247,10 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
 ;; - TODO This throws an error "Wrong type argument: org-roam-node, nil" if
 ;; there are no citations. The function is fine, but it needs to be rewritten
 ;; to return nil rather than attempting to visit a nonexistent node.
+
+;; TODO +org/dwim erases citations when this is the default action (on WSL,
+;; untested on MacOS).
+;; (setq citar-default-action #'citar-insert-edit)
 
 ;; Location of citar notes (what I call "reference" notes). NOTE citar-open can
 ;; find files outside of citar-org-roam-subdir.
@@ -1787,6 +1789,3 @@ the default values for the two prompts."
 ;; funcall-interactively(execute-extended-command nil "kill-current-buffer" nil)
 ;; command-execute(execute-extended-command)
 
-;;; org-mode export hack ------------------------------------------------------
-
-;; (setq org-export-with-sub-superscripts '{})

@@ -668,7 +668,9 @@ relative to `org-directory', unless it is an absolute path."
   "TODO"
   (setq org-export-with-smart-quotes t
         org-html-validation-link nil
-        org-latex-prefer-user-labels t)
+        org-latex-prefer-user-labels t
+        ;; #+OPTIONS: ^:{}
+        org-export-with-sub-superscripts '{})
 
   (when (modulep! :lang markdown)
     (add-to-list 'org-export-backends 'md))
@@ -677,6 +679,9 @@ relative to `org-directory', unless it is an absolute path."
     :when (modulep! +hugo)
     :after ox)
 
+
+  ;; Unlike CLI pandoc, ox-pandoc and citar/org-cite seem to work together to
+  ;; export citations.
   (use-package! ox-pandoc
     :when (modulep! +pandoc)
     :when (executable-find "pandoc")
@@ -686,7 +691,12 @@ relative to `org-directory', unless it is an absolute path."
     (setq org-pandoc-options
           '((standalone . t)
             (mathjax . t)
-            (variable . "revealjs-url=https://revealjs.com"))))
+            (variable . "revealjs-url=https://revealjs.com")))
+    :config
+    ;; Run this if you need to generate a Word style template file:
+    ;; pandoc --print-default-data-file=reference.docx > ~/org/custom-reference.docx
+    ;; See org-pandoc-valid-options for available pandoc CLI flags
+    (push (cons 'reference-doc "~/org/custom-reference.docx") org-pandoc-options))
 
   (defadvice! +org--dont-trigger-save-hooks-a (fn &rest args)
     "Exporting and tangling trigger save hooks; inadvertantly triggering
@@ -934,7 +944,7 @@ between the two."
         "+" #'org-ctrl-c-minus
         "," #'org-switchb
         "." #'org-goto
-        "@" #'org-cite-insert
+        "@" #'citar-insert-edit
         (:when (modulep! :completion ivy)
          "." #'counsel-org-goto
          "/" #'counsel-org-goto-all)
