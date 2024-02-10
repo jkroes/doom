@@ -1,15 +1,14 @@
-;;; init.el -*- lexical-binding: t; -*-
+;;; init.el -*- lexical-binding: t; auto-fill-function: nil;  -*-
 
-;; Define this early so it is available to private modules
-(defconst IS-WSL (and (string-match "-[Mm]icrosoft" operating-system-release)
-                      (eq system-type 'gnu/linux)))
+;; See the load order described by ~/.config/emacs/lisp/doom.el
 
-;; Overrides ~/.config/doom/modules/editor/evil/init.el
-(defvar evil-collection-mode-list
-    '(edebug
-      ediff
-      info
-      vundo))
+(defun load-doom-private (relpath)
+  (load (expand-file-name relpath doom-private-dir)))
+
+(defun load-pre-module-init ()
+  (load-doom-private "pre-module-init.el"))
+
+(add-hook 'before-init-hook #'load-pre-module-init)
 
 ;; This file controls what Doom modules are enabled and what order they load
 ;; in. Remember to run 'doom sync' after modifying it!
@@ -50,6 +49,7 @@
        ;;ligatures         ; ligatures and symbols to make your code pretty again
        ;;minimap           ; show a map of the code on the side
        modeline          ; snazzy, Atom-inspired modeline, plus API
+       modus-themes
        ;;nav-flash         ; blink cursor line after big motions
        ;;neotree           ; a project drawer, like NERDTree for vim
        ophints           ; highlight the region an operation acts on
@@ -57,6 +57,11 @@
        ;;tabs              ; a tab bar for Emacs
        ;;treemacs          ; a project drawer, like neotree but cooler
        ;;unicode           ; extended unicode support for various languages
+       ;; NOTE Don't use +pretty with vc-gutter while using a
+       ;; modus theme:
+       ;; https://protesilaos.com/emacs/modus-themes#h:a195e37c-e58c-4148-b254-8ba1ed8a731a,
+       ;; https://protesilaos.com/codelog/2022-08-04-doom-git-gutter-modus-themes/,
+       ;; ~/.config/emacs/modules/ui/vc-gutter/README.org
        vc-gutter         ; vcs diff in the fringe
        vi-tilde-fringe   ; fringe tildes to mark beyond EOB
        window-select     ; visually switch windows
@@ -75,7 +80,8 @@
        ;;parinfer          ; turn lisp into python, sort of
        ;;rotate-text       ; cycle region at point between text candidates
        snippets          ; my elves. They type so I don't have to
-       word-wrap         ; soft wrapping with language-aware indent
+       ;; BUG 2/9/24 This module may be the cause of recent Emacs hangs
+       ;;word-wrap         ; soft wrapping with language-aware indent
 
        :emacs
        (dired +ranger +icons) ; making dired pretty [functional]

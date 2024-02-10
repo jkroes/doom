@@ -26,7 +26,7 @@ open."
 (defun my/eir-eval-in-ruby ()
   "Based on `eir-eval-in-ruby' from the package `eval-in-repl'."
   (interactive)
-  (let (begin end beg-line end-line nlines script code)
+  (let (begin end beg-line end-line nlines script code eobp)
     (if (and transient-mark-mode mark-active)
         (progn
           (setq begin (region-beginning)
@@ -35,19 +35,23 @@ open."
           ;; Get the substring from either region-beginning or
           ;; line-beginning-position to either region-end or line-end-position
           (goto-char begin)
-          (while (<= (point) end)
+          (while (and (< (point) end) (not (eobp)))
             (setq code (cons
                         (buffer-substring-no-properties (max (line-beginning-position) begin)
                                                         (min end (line-end-position)))
                         code))
-            (next-line))
+            (if (not (save-excursion (end-of-line) (eobp)))
+                (next-line)
+              ;; Necessary to prevent an infinite loop when the
+              ;; last line in the buffer is evaluated
+              (end-of-line)))
           (setq code (nreverse code))
           (deactivate-mark))
       (setq code (list
                   (buffer-substring-no-properties
                    (line-beginning-position)
                    (line-end-position))))
-      (next-line))
+      (unless (save-excursion (end-of-line) (eobp)) (next-line)))
     (setq code (delete "" code))
     (setq script-win (selected-window))
     (if (buffer-live-p inf-ruby-buffer)

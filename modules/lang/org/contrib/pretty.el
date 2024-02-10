@@ -65,21 +65,21 @@
   :config (setq org-fancy-priorities-list '("⚑" "⬆" "■")))
 
 
-(use-package! org-appear ; better markup edit
-  :hook (org-mode . org-appear-mode)
-  :config
-  (setq org-hide-emphasis-markers t
-        org-appear-autoemphasis t
-        org-pretty-entities t
-        org-appear-autoentities t
-        org-link-descriptive t
-        ;; Don't trigger link literal display; edit links with spc-m-l-l
-        org-appear-autolinks nil
-        ;; TODO Can't get this working
-        org-appear-autosubmarkers t
-        ;; Toggle org-appear off after 1-second idle over an element
-        org-appear-trigger #'always
-        org-appear-delay 0.5))
+;; (use-package! org-appear ; better markup edit
+;;   :hook (org-mode . org-appear-mode)
+;;   :config
+;;   (setq org-hide-emphasis-markers t
+;;         org-appear-autoemphasis t
+;;         org-pretty-entities t
+;;         org-appear-autoentities t
+;;         org-link-descriptive t
+;;         ;; Don't trigger link literal display; edit links with spc-m-l-l
+;;         org-appear-autolinks nil
+;;         ;; TODO Can't get this working
+;;         org-appear-autosubmarkers t
+;;         ;; Toggle org-appear off after 1-second idle over an element
+;;         org-appear-trigger #'always
+;;         org-appear-delay 0.5))
 
 ;;; https://jft.home.blog/2019/07/17/use-unicode-symbol-to-display-org-mode-c
 

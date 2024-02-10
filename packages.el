@@ -51,8 +51,9 @@
 
 ;;; My code and notes ---------------------------------------------------------
 
-;; TODO Unless otherwise stated, update package versions as the
-;; corresponding package! statement in Doom Emacs changes.
+;; TODO Unless otherwise noted below, continuously update package
+;; versions as the corresponding package! statement in Doom Emacs
+;; changes.
 
 (package! vundo)
 
@@ -76,9 +77,6 @@
 (package! cape)
 (package! kind-icon)
 
-(package! modus-themes
-  :recipe (:host github :repo "protesilaos/modus-themes"))
-
 ;; Windows issue:
 ;; https://github.com/org-roam/org-roam/issues/2384
 (package! org :pin "ca873f7fe47546bca19")
@@ -98,6 +96,20 @@
 ;; BUG https://github.com/doomemacs/doomemacs/issues/7039
 ;; Don't download any snippets until the bug is fixed
 (package! doom-snippets :ignore t)
+
+(package! devdocs)
+
+(package! yaml-mode)
+
+;; NOTE This demonstrates how to include a custom user package;
+;; however, I have since deleted this package and moved it to
+;; utility.el so that I can load it prior to any module files.
+;; https://github.com/doomemacs/doomemacs/blob/master/docs/getting_started.org#usingloading-local-packages
+;; Usage: (use-package! utility)
+;; (package! doom-utility-functions
+;;   :recipe (:host github :repo "jkroes/doom-utility-functions"
+;;            :files ("lisp/*.el")
+;;            :build (:not compile)))
 
 ;; From old config
 ;; (package! outline-minor-faces)
