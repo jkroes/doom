@@ -85,15 +85,6 @@
 ;; Do not prompt when killing Emacs
 (setq confirm-kill-emacs nil)
 
-;; TODO Uncomment this to disable smartparens
-;;
-;; BUG evil-join-a fails to remove comment character when joining
-;; comment lines when smartparens is disabled. The cause is
-;; doom-point-in-comment-p, where doom-point-in-comment-functions
-;; is empty because it no longer includes its otherwise sole
-;; value: sp-point-in-comment.
-(remove-hook 'doom-first-buffer-hook #'smartparens-global-mode)
-
 ;; Disable messages about available keybindings when using M-x
 (setq suggest-key-bindings nil)
 
