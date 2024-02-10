@@ -20,6 +20,17 @@
 ;;
 ;;; Code:
 
+(defconst IS-WSL (and (string-match "-[Mm]icrosoft" operating-system-release)
+                      (eq system-type 'gnu/linux)))
+
+;; Overrides ~/.config/doom/modules/editor/evil/init.el
+(defvar evil-collection-mode-list
+    '(edebug
+      ediff
+      info
+      vundo
+      devdocs))
+
 (defun concat-path (directory &rest components)
   "Append COMPONENTS to DIRECTORY and return the resulting string.
 
