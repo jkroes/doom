@@ -142,12 +142,7 @@
 ;; (setq doom-localleader-alt-key "C-SPC m")
 
 ;; The file where bookmarks are saved
-(setq bookmark-default-file
-      (concat-path doom-private-dir
-                   "etc"
-                   (concat "bookmarks_"
-                           (cond (IS-MAC "macos")
-                                 (IS-WSL "wsl")))))
+(setq bookmark-default-file (concat-path doom-emacs-dir "etc" "bookmarks"))
 
 ;; Projectile caching is used with e.g. doom-project-find-file (SPC-f-F).
 ;; It's probably worth enabling for large projects, but for now it's
