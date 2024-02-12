@@ -13,8 +13,8 @@
  (rear-context-string . ".3k 2020-01-06  ")
  (position . 82))
 ("org-capture-last-stored"
- (filename . "~/org/references/GuidePesticideRegulation2017.org")
+ (filename . "~/org/work.cdpr.sampling.travel forms.org")
  (front-context-string)
- (rear-context-string . ":END:\n#+title: \n")
- (position . 78))
+ (rear-context-string . "e: travel forms\n")
+ (position . 90))
 )
