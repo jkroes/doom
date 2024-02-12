@@ -1,5 +1,9 @@
 ;;; config/default/+bindings.el -*- lexical-binding: t; -*-
 
+;; Easier to type than "M-SPC u"
+(when (or evil-want-C-u-delete evil-want-C-u-scroll)
+  (map! "M-u" #'universal-argument))
+
 ;; Minibuffer
 (map! :map (evil-ex-completion-map evil-ex-search-keymap)
       "C-a" #'evil-beginning-of-line
@@ -691,8 +695,7 @@
        :desc "Jump to bookmark"             "m" #'bookmark-jump
        :desc "Look up online"               "o" #'+lookup/online
        :desc "Look up online (w/ prompt)"   "O" #'+lookup/online-select
-       :desc "Look up in local docsets"     "k" #'+lookup/in-docsets
-       :desc "Look up in all docsets"       "K" #'+lookup/in-all-docsets
+       :desc "Look up in local docsets"     "k" #'devdocs-peruse
        :desc "Search project"               "p" #'+default/search-project
        :desc "Search other project"         "P" #'+default/search-other-project
        :desc "Jump to mark"                 "r" #'evil-show-marks

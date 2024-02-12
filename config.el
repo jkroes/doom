@@ -1,234 +1,117 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
-;; TODO When you edit the contents of a collapsed org-src block from within an
-;; org src buffer, it expands the block once you exit. It would be nice to
-;; close it again upon exiting back to the org buffer.
-;; TODO Look into using the following packages plus (custom?) functions to send
-;; text to the buffer for execution in a shell, as an alternative to comint:
-;; https://codeberg.org/akib/emacs-eat
+;; TODO Look into xonsh
+;; TODO Learn how to align things with evil-lion.
+;; TODO Look into using https://github.com/cyrus-and/zoom
+;; TODO Replace dash-docs with devdocs for the +docsets flag. This will be a
+;; big project, so in the meantime I am simply rebinding spc-s-k to
+;; devdocs-peruse.
+;; TODO Debug the font-lock-related issues that are causing emacs to hang on
+;; both macos and linux. Someone on
+;; https://www.reddit.com/r/emacs/comments/k7cku8/when_emacs_hangs_what_do_you_do/
+;; recommended
+;; https://github.com/alphapapa/emacs-package-dev-handbook?tab=readme-ov-file#tools-8
+;; TODO Also use open-dribble-file to debug Emacs. Kill Emacs as soon as it
+;; hangs, then examine the file for whatever keystrokes triggered the hang.
+;; TODO Read the zhsell manual (not just the man pages)
+;; TODO Look into https://github.com/tuh8888/chezmoi.el
+;; TODO Setup https://docs.atuin.sh/ (recommended by chezmoi for
+;; tracking shell history)
+;; TODO Purchase https://www.monolisa.dev/buy
+;; TODO When you edit the contents
+;; of a collapsed org-src block from within an org src buffer, it expands the
+;; block once you exit. It would be nice to close it again upon exiting back to
+;; the org buffer.
+;; TODO Look into using the following packages plus (custom?)
+;; functions to send text to the buffer for execution in a shell, as an
+;; alternative to comint: https://codeberg.org/akib/emacs-eat
 ;; https://github.com/szermatt/mistty (misty-send-string)
 ;; https://www.masteringemacs.org/article/running-shells-in-emacs-overview
-;; TODO C-h v over a long function or variable name when emacs is half a window
-;; on my laptop leads to wrapped lnies with vertico and marginalia. I've seen
-;; this issue before. Try C-h v on this: window-selection-change-functions. It
-;; might be because it's displaying the text at point and somehow that is
-;; changing the display.
-;; TODO Learn proper vim commands. ci" deletes inside of double quotes.
-;; TODO After updating path in .zshrc, run doom env. E.g. you may have to do
-;; this after gem install solargraph to make sure ruby-mode and lsp can find
-;; the languageserver
-;; TODO (e)debug-on-quit can be used to debug emacs if it freezes and you have
-;; to presss c-g
-;; TODO Use autoload when you only need a function or command to be available
-;; and the package hasn't defined such an autoload. Use require when you need
-;; the library to be loaded right away rather than when a function or command
-;; is called.
-;; TODO Sometimes errors aren't obvious unless you use emacs after
-;; `toggle-debug-on-error'. This should be enabled most of the time.
-;; TODO Use aliases to construct multiple org-roam nodes. See apps.shell.cp.org
-;; TODO Update edebug node to reflect new evil-collection bindings
-;; TODO use-package statements in this file may cancel out deferment that
-;; doom relies on. Use after! instead of :config where possible; otherwise make
-;; sure to try and defer per Doom's defaults.
-;; TODO Document setting force-load-messages to t and doom-inhibit-log to nil
-;; in early-init.el. The latter for debugging evil-collection mode loading.
+;; TODO C-h v over a long function or variable name when emacs is
+;; half a window on my laptop leads to wrapped lnies with vertico
+;; and marginalia. I've seen this issue before. Try C-h v on
+;; this: window-selection-change-functions. It might be because
+;; it's displaying the text at point and somehow that is changing
+;; the display.
+;; TODO Learn proper vim commands. ci" deletes inside of double
+;; quotes.
+;; TODO After updating path in .zshrc, run doom env. E.g. you may have
+;; to do this after gem install solargraph to make sure ruby-mode and lsp can
+;; find the languageserver
+;; TODO (e)debug-on-quit can be used to debug emacs if
+;; it freezes and you have to presss c-g
+;; TODO Use autoload when you only need a
+;; function or command to be available and the package hasn't defined such an
+;; autoload. Use require when you need the library to be loaded right away
+;; rather than when a function or command is called.
+;; TODO Sometimes errors aren't obvious unless you use emacs
+;; after `toggle-debug-on-error'. This should be enabled most of
+;; the time.
+;; TODO Use aliases to construct multiple org-roam nodes. See
+;; apps.shell.cp.org
+;; TODO Update edebug node to reflect new evil-collection
+;; bindings
+;; TODO use-package statements in this file may cancel out
+;; deferment that doom relies on. Use after! instead of :config
+;; where possible; otherwise make sure to try and defer per
+;; Doom's defaults.
+;; TODO Document setting force-load-messages to t and
+;; doom-inhibit-log to nil in early-init.el. The latter for
+;; debugging evil-collection mode loading.
 ;; TODO Document debug-watch
-;; TODO Document the fact that you either need to doom sync or `doom/reload' to
-;; see changes to module code
+;; TODO Document the fact that you either need to doom sync or
+;; `doom/reload' to see changes to module code
 ;; TODO Bind ffap-menu
-;; TODO Finish documenting edebug (see org-roam)
+;; TODO Finish documenting edebug (see org-roam) n
 ;; TODO org column view
 ;; TODO Make some buffers entirely temporary (e.g. helpful)
-;; TODO evil bindings for ediff
 ;; TODO learn about orderless-style-dispatchers
-;; TODO c-spc previews variable help pages but c-m-v does not scoll it as the
-;; other window. make help the other window.
-;; TODO Shrunk org table columns show three dots. C-h . over the dots echoes
-;; the truncated text. This should be done after a delay anywhere withi nthe column.
+;; TODO c-spc previews variable help
+;; pages but c-m-v does not scoll it as the other window. make help the other
+;; window.
+;; TODO Shrunk org table columns show three dots. C-h . over the dots
+;; echoes the truncated text. This should be done after a delay anywhere withi
+;; nthe column.
 ;; TODO bind ace-window
-;; TODO The best way to handle advice is shown by the definition of consult-org-roam-mode
-;; TODO Functions used as advice can be debugged if you use advice-add and
-;; not bullshit `defadvice!'
+;; TODO The best way to handle advice is shown by the definition
+;; of consult-org-roam-mode
+;; TODO Functions used as advice can be debugged if you use
+;; advice-add and not bullshit `defadvice!'
 ;; TODO Document somewhere how attempting to edebug an advised function fails
 ;; silently. If edebug doesn't trigger, check via C-h f whether the function is
 ;; advised. There are other resons why debugging might fail.
-;; TODO Create an archive file instead of a graveyard section below
-;; TODO Unbind all references to  "C-<return>" and [C-return], "<tab>" and [tab],
-;; etc., in all packages and modules that you use. It makes debugging
-;; keybindings extremely difficult and there is no good reason to bind to them
-;; over RET, TAB, etc.
+;; TODO Create an archive file instead of a graveyard section
+;; below
+;; TODO Unbind all references to "C-<return>" and [C-return],
+;; "<tab>" and [tab], etc., in all packages and modules that you
+;; use. It makes debugging keybindings extremely difficult and
+;; there is no good reason to bind to them over RET, TAB, etc.
 ;; TODO corfu bindings. Use define-key! ?
 ;; TODO vertico preview settings
-;; TODO Learna about orderless. In particular, see orderless-affix-dispatch-list.
-;; TODO Finish migrating outstanding modules from temp/ and/or master branch
-;; TODO Where possible, convert advice to new functions with remaps. See
-;; `describe-face-under-hl-line'. This of course won't prevent you from
-;; executing original command with M-x. Also consider using `fset'.
-;; TODO Update (org) advice to reflect new function definitions as of v9.6. I've
-;; already done this for org-insert-heading-a.
+;; TODO Learna about orderless. In particular, see
+;; orderless-affix-dispatch-list.
+;; TODO Finish migrating outstanding modules from temp/ and/or
+;; master branch
+;; TODO Where possible, convert advice to new functions with
+;; remaps. See `describe-face-under-hl-line'. This of course
+;; won't prevent you from executing original command with M-x.
+;; Also consider using `fset'.
+;; TODO Update (org) advice to reflect new function definitions
+;; as of v9.6. I've already done this for org-insert-heading-a.
 
-;; Place your private configuration here! Remember, you do not need to run 'doom
-;; sync' after modifying this file!
+;; See ~/.config/doom/modules/editor/file-templates/README.org
+(setq user-full-name "Justin Kroes"
+      user-mail-address "jkroes14@ucsbalum.com")
 
-;; Doom exposes five (optional) variables for controlling fonts in Doom:
-;;
-;; - `doom-font' -- the primary font to use
-;; - `doom-variable-pitch-font' -- a non-monospace font (where applicable)
-;; - `doom-big-font' -- used for `doom-big-font-mode'; use this for
-;;   presentations or streaming.
-;; - `doom-symbol-font' -- for symbols
-;; - `doom-serif-font' -- for the `fixed-pitch-serif' face
-;;
-;; See 'C-h v doom-font' for documentation and more examples of what they
-;; accept. For example:
-;;
-;;(setq doom-font (font-spec :family "Fira Code" :size 12 :weight 'semi-light)
-;;      doom-variable-pitch-font (font-spec :family "Fira Sans" :size 13))
-;;
-;; If you or Emacs can't find your font, use 'M-x describe-font' to look them
-;; up, `M-x eval-region' to execute elisp code, and 'M-x doom/reload-font' to
-;; refresh your font settings. If Emacs still can't find your font, it likely
-;; wasn't installed correctly. Font issues are rarely Doom issues!
-;;
-;; Whenever you reconfigure a package, make sure to wrap your config in an
-;; `after!' block, otherwise Doom's defaults may override your settings. E.g.
-;;
-;;   (after! PACKAGE
-;;     (setq x y))
-;;
-;; The exceptions to this rule:
-;;
-;;   - Setting file/directory variables (like `org-directory')
-;;   - Settinht/repos/evil/evil-core.el
-
-;;; Helper functions-----------------------------------------------------------
-
-
-(defun concat-path (&rest parts)
-  "Concatenate unlimited path components"
-  (cl-reduce (lambda (a b) (expand-file-name b a)) parts))
-
-
-(defun insert-comment-header-dashes ()
-  "Fill a triple-semicolon-style comment with dashes up to
-`fill-column'. Meant to be invoked after the comment text."
-  (interactive)
-  (when (save-excursion
-          ;; Skip backwards by non-comment characters
-          (skip-chars-backward (concat "^" comment-start))
-          (skip-chars-backward comment-start)
-          (= 0 (current-column)))
-    (insert (make-string (- fill-column (current-column)) ?-))))
-
-
-(defun open-in-windows (path &rest _)
-  "Open a file with the default application in Windows"
-  (let ((browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe")
-        (browse-url-generic-args '("/c" "start" "")))
-    (browse-url-generic
-     (substring
-      (shell-command-to-string
-       (format "wslpath -w '%s'" path))
-      0 -1))))
-
-
-(defun unbind-command (keymap command)
-  (require 'dash)
-  ;; (-map #'key-description (where-is-internal func doom-leader-map))
-  (let ((all-bindings (where-is-internal command keymap)))
-    (-map (lambda (binding) (unbind-key binding keymap))
-          all-bindings)))
-
-
-(defun unbind-commands (keymap cmds)
-  (let ((cmds (ensure-list cmds)))
-    (dolist (command cmds)
-      (unbind-command keymap command))))
-
-
-;;; Basic settings ------------------------------------------------------------
-
-;; NOTE This only affects font on Emacs startup, and subsequent changes
-;; in monitor setup (e.g., undocking your laptop) will not trigger a font
-;; size change.
-;; Different font size for laptop vs my current dual monitor setup. Inspired
-;; by
-;; https://christiantietze.de/posts/2021/06/emacs-center-window-on-current-monitor/.
-(setq doom-font
-      (font-spec :family "JuliaMono"
-                 :size (if (length= (display-monitor-attributes-list) 2) 18 16)))
-
-;; NOTE To enable mixed monospace/fixed and proportional/variable fonts in
-;; org-mode, uncomment the code below:
-;; NOTE When variable pitch is enabled, indentation will appear not to line up
-;; when inserting a line after a list item. This is because the width of a
-;; space is different than that of a hyphen.
-;; NOTE Roboto is nearly identical to SF Pro but slightly slimmer. These fonts
-;; are what Obsidian.md uses on MacOS.
-;; (setq doom-variable-pitch-font
-;;       (font-spec :family "Roboto"
-;;                  :size (if (length= (display-monitor-attributes-list) 2) 20 18)))
-
-;; NOTE While using modus themes, disable the `+pretty' flag for the
-;; `vc-gutter' module or try the code provided in the manual. See
-;; https://protesilaos.com/emacs/modus-themes#h:a195e37c-e58c-4148-b254-8ba1ed8a731a,
-;; https://protesilaos.com/codelog/2022-08-04-doom-git-gutter-modus-themes/,
-;; and ~/.config/emacs/modules/ui/vc-gutter/README.org.
-(setq doom-theme 'modus-vivendi)
-
-;; See https://protesilaos.com/emacs/modus-themes for additional configuration.
-(use-package modus-themes
-  :config
-  ;; Render docstrings and comments in italic
-  (setq modus-themes-italic-constructs t)
-
-  ;; Different backgrounds for org-src blocks with different languages.
-  (setq modus-themes-org-blocks 'tinted-background)
-
-  ;; A background with no specific foreground (use foreground of
-  ;; underlying text)
-  (setq modus-themes-common-palette-overrides
-        '((bg-region bg-ochre) ; try to replace `bg-ochre' with `bg-lavender', `bg-sage'
-          (fg-region unspecified)))
-
-  ;; Customize org-mode title and headings. Note that H9 is possible, but it
-  ;; will have the same settings as for H1, H10 as for H2, etc.
-  (setq modus-themes-headings '((0 2.0)
-                                (1 1.2)
-                                (2 1.2)
-                                (3 1.2)
-                                (4 1.2)
-                                (5 1.2)
-                                (6 1.2)
-                                (7 1.2)
-                                (8 1.2)))
-
-  ;; Add padding to mode line
-  (defun my-modus-themes-custom-faces ()
-    (modus-themes-with-colors
-      (custom-set-faces
-       ;; Add "padding" to the mode lines
-       `(mode-line ((,c :box (:line-width 4 :color ,bg-mode-line-active))))
-       `(mode-line-inactive ((,c :box (:line-width 4 :color ,bg-mode-line-inactive)))))))
-
-  (add-hook 'modus-themes-after-load-theme-hook #'my-modus-themes-custom-faces)
-
-  ;; Configure certain faces like org code blocks to inherit from the
-  ;; `fixed-pitch' face when `variable-pitch-mode' is enabled in a given mode.
-  ;; A non-modus example of how to do this is shown in
-  ;; https://zzamboni.org/post/beautifying-org-mode-in-emacs/. See also
-  ;; org-variable-pitch.el
-
-  (when doom-variable-pitch-font
-    (setq modus-themes-mixed-fonts t)))
-
-;;(modus-themes-load-theme 'modus-vivendi)
+;; https://christiantietze.de/posts/2021/06/emacs-center-window-on-current-monitor/
+;; On startup, set the font to a smaller size if working on the
+;; laptop without external monitors
+(setq doom-font (font-spec
+                 :family "JuliaMono"
+                 :size (startup-font-size)))
 
 ;; Do not prompt when killing Emacs
 (setq confirm-kill-emacs nil)
-
-;; TODO Uncomment this to disable smartparens
-(remove-hook 'doom-first-buffer-hook #'smartparens-global-mode)
 
 ;; Disable messages about available keybindings when using M-x
 (setq suggest-key-bindings nil)
@@ -236,34 +119,30 @@
 ;; See lisp/doom-keybinds.el for additional settings
 (setq which-key-idle-delay 0.3)
 
-;; NOTE This is less useful for commands where Doom defines descriptions that
-;; mask remaps
+;; NOTE This is less useful for commands where Doom defines
+;; descriptions that mask remaps
 (setq which-key-compute-remaps t)
 
-;; TODO Comment this out if you want to re-enable Doom's descriptions of
-;; bindings
+;; TODO Comment this out if you want to re-enable Doom's
+;; descriptions of bindings
 (setq which-key-replacement-alist nil)
-
-;; NOTE If using the default of M-SPC instead, in Windows Terminal actions
-;; settings unbind alt+space and save settings.
-;; (setq doom-leader-alt-key "C-SPC")
-;; (setq doom-localleader-alt-key "C-SPC m")
 
 ;; Treat command key like control
 (setq ns-command-modifier 'control
       mac-command-modifier 'control)
 
-;; On MacOS the binding here should match the shortcut in  System Settings >
-;; Keyboard > Keyboard Shortcuts > Keyboard > Move focus to next window
+;; On MacOS the binding here should match the shortcut in System
+;; Settings > Keyboard > Keyboard Shortcuts > Keyboard > Move
+;; focus to next window
 (map! "C-SPC" #'other-frame)
 
+;; NOTE If using the default of M-SPC instead, in Windows
+;; Terminal actions settings unbind alt+space and save settings.
+;; (setq doom-leader-alt-key "C-SPC")
+;; (setq doom-localleader-alt-key "C-SPC m")
+
 ;; The file where bookmarks are saved
-(setq bookmark-default-file
-      (concat-path doom-private-dir
-                   "etc"
-                   (concat "bookmarks_"
-                           (cond (IS-MAC "macos")
-                                 (IS-WSL "wsl")))))
+(setq bookmark-default-file (concat-path doom-emacs-dir "etc" "bookmarks"))
 
 ;; Projectile caching is used with e.g. doom-project-find-file (SPC-f-F).
 ;; It's probably worth enabling for large projects, but for now it's
@@ -421,65 +300,12 @@ confirmation."
 
 ;;; default -------------------------------------------------------------------
 
-(advice-remove #'newline-and-indent #'+default--newline-indent-and-continue-comments-a)
-;; HACK First, if a comment does not have a blank line above it, it blocks RET
-;; from inserting a blank line when the cursor is before the first comment
-;; character. Second, there is no way to discontinue new comment lines using
-;; RET. I redefined the advice to handle these issues.
-(defun my/default--newline-indent-and-continue-comments-a (&rest _)
-  "A replacement for Doom's version of this advice."
-  (interactive "*")
-  (when (and +default-want-RET-continue-comments
-             (doom-point-in-comment-p)
-             (functionp comment-line-break-function))
-    ;; Call the original function when the cursor is preceded by whitespace
-    ;; (e.g. before the first comment character)
-    (unless (save-excursion (skip-chars-backward "\s") (= 0 (current-column)))
-      ;; On an empty comment line, remove the comment characters but don't
-      ;; insert a newline yet. Equivalent to pressing RET twice at the end of a
-      ;; non-empty comment.
-      (if (save-excursion (end-of-line)
-                          (skip-chars-backward
-                           ;; This function treats its argument like a
-                           ;; character class. No need to use `regexp-opt'!
-                           (concat comment-start "\s"))
-                          (= 0 (current-column)))
-          (progn
-            (delete-region (pos-bol) (pos-eol))
-            (indent-for-tab-command)
-            t)
-        ;; Call the original function when the cursor is within whitespace
-        ;; between a comment and a nonspace character.
-        (unless (save-excursion (skip-chars-backward
-                                 (concat comment-start "\s"))
-                                (= 0 (current-column)))
-          ;; BUG When `comment-auto-fill-only-comments' is non-nil,
-          ;; `comment-line-break-function' behaves insanely when the cursor is
-          ;; on a blank emacs lisp comment line with any amount of space
-          ;; following the comment characters. The misbehavior actually
-          ;; increases in proportion to the number of spaces between the
-          ;; comment's start and the cursor. Even if you want to limit
-          ;; auto-fill to comments, and even if you don't want the rest of my
-          ;; changes to this advice above, you should still use this.
-          (let (comment-auto-fill-only-comments)
-            (funcall comment-line-break-function nil)
-            t))))))
-(advice-add 'newline-and-indent :before-until #'my/default--newline-indent-and-continue-comments-a)
-;; (advice-remove 'newline-and-indent #'my/default--newline-indent-and-continue-comments-a)
-
-;; `my/default--newline-indent-and-continue-comments-a' breaks
-;; `+default/newline-below', and I need a way to continue comments aside from
-;; when the cursor is on a nonblank comment line. So let's reuse the bindings
-;; for `+default/newline-below'. NOTE `comment-indent-new-line' is the current
-;; value of `comment-line-break-function'.
 (map! "M-RET" comment-line-break-function)
 
 ;; https://emacs.stackexchange.com/questions/22746/add-a-space-after-the-comment-delimiter
 (defun comment-indent-new-line--insert-a-space-after (&rest _)
   "Ensure there is exactly one space after `comment-start'"
-  (when (and (looking-back comment-start)
-             (not (looking-back " ")))
-    (just-one-space)))
+    (just-one-space))
 (advice-add 'comment-indent-new-line :after #'comment-indent-new-line--insert-a-space-after)
 
 ;;; scrolling -----------------------------------------------------------------
@@ -498,7 +324,7 @@ confirmation."
 ;; column will cause Emacs to hard wrap your comment
 (add-hook 'prog-mode-hook 'turn-on-auto-fill) ; https://www.gnu.org/software/emacs/manual/html_node/efaq/Turning-on-auto_002dfill-by-default.html
 (setq comment-auto-fill-only-comments t)
-(setq-default fill-column 79)
+(setq-default fill-column 65)
 
 ;; When auto-filling, automatically undo the effects of auto-hscroll-mode by
 ;; scrolling back again to the left.
@@ -1211,7 +1037,8 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
   ;; well as the org-roam node string. Plus there's this unresolved bug:
   ;; https://github.com/org-roam/org-roam/issues/2066. On the flip side, you
   ;; can't search annotations.
-  (after! dendroam (setq org-roam-node-annotation-function #'my/org-roam-node-read--annotation))
+  ;; TODO my/org-roam-node-read--annotation isn't working as of 2/4/24. I
+  ;; (after! dendroam (setq org-roam-node-annotation-function #'my/org-roam-node-read--annotation))
   ;; Faster live preview
   (setq consult-org-roam-grep-func #'consult-ripgrep)
   ;; Advise org-roam-node-read to use consult--read. This package uses
@@ -1220,6 +1047,7 @@ This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
   (consult-org-roam-mode)
   (consult-customize org-roam-node-find :preview-key "C-SPC"))
 
+(autoload #'org-roam-node-dendroam-tags "dendroam")
 (defun my/org-roam-node-read--annotation (node)
   "Replaces org-roam's dummy annotation function for org-roam-node-read"
   (concat (make-string 5 ?\s)
@@ -1756,6 +1584,7 @@ the default values for the two prompts."
 ;;; toml ----------------------------------------------------------------------
 
 (setq-hook! 'conf-toml-mode-hook tab-width 2)
+(setq-hook! 'conf-unix-mode-hook tab-width 2)
 
 ;;; chezmoi (go) templates ----------------------------------------------------
 
@@ -1789,3 +1618,28 @@ the default values for the two prompts."
 ;; funcall-interactively(execute-extended-command nil "kill-current-buffer" nil)
 ;; command-execute(execute-extended-command)
 
+(with-eval-after-load 'evil-collection-devdocs
+  (evil-collection-define-key 'normal 'devdocs-mode-map
+    ;; Same binding as Info-top-node
+    "gt" 'devdocs-first-page))
+
+(set-popup-rule! "^\\*devdocs\\*$" :size 0.3 :quit 'current)
+
+;; HACK I'm not sure Doom's settings for these variables make sense.
+;; They push the functions to the RHS of the screen. I don't
+;; understand this variable fully, since there's no docs. I just
+;; tried left-aligning, but you may have to tweak this.
+(after! profiler
+  (setq profiler-report-memory-line-format
+        '((20 left
+           ((15 left profiler-format-number)
+            (5 left)))
+          (1 left "%s")
+          (0 left)))
+
+  (setq profiler-report-cpu-line-format
+        '((20 left
+           ((12 left)
+            (5 left)))
+          (1 left "%s")
+          (0 left))))

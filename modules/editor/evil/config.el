@@ -21,8 +21,8 @@ directives. By default, this only recognizes C directives.")
 ;; to loading.
 (defvar evil-want-C-g-bindings t)
 (defvar evil-want-C-i-jump nil)  ; we do this ourselves
-(defvar evil-want-C-u-scroll nil)
-(defvar evil-want-C-u-delete nil)
+(defvar evil-want-C-u-scroll t)
+(defvar evil-want-C-u-delete t)
 (defvar evil-want-C-w-delete t)
 (defvar evil-want-Y-yank-to-eol t)
 (defvar evil-want-abbrev-expand-on-insert-exit nil)
@@ -346,8 +346,9 @@ directives. By default, this only recognizes C directives.")
 
 (use-package! evil-snipe
   :commands evil-snipe-local-mode evil-snipe-override-local-mode
-  :hook (doom-first-input . evil-snipe-override-mode)
-  :hook (doom-first-input . evil-snipe-mode)
+  ;; Frees up e.g. "s" in devdocs buffers when using it with evil-collection
+  :hook (prog-mode . evil-snipe-override-local-mode)
+  :hook (prog-mode . evil-snipe-local-mode)
   :init
   (setq evil-snipe-smart-case t
         evil-snipe-scope 'line

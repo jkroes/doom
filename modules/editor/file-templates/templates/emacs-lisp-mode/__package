@@ -1,0 +1,24 @@
+;;; `(file-name-nondirectory buffer-file-name)` --- ${1:Description} -*- lexical-binding: t; -*-
+;;
+;; Copyright (C) `(format-time-string "%Y")` `user-full-name`
+;;
+;; Author: `user-full-name` <`user-mail-address`>
+;; Maintainer: `user-full-name` <`user-mail-address`>
+;; Created: `(format-time-string "%B %d, %Y")`
+;; Modified: `(format-time-string "%B %d, %Y")`
+;; Version: 0.0.1
+;; Homepage: `(cdr (doom-call-process "git" "remote" "get-url" "origin"))`
+;; Package-Requires: ((emacs `emacs-version`))
+;;
+;; This file is not part of GNU Emacs.
+;;
+;;; Commentary:
+;;
+;;  $1
+;;
+;;; Code:
+
+$0
+
+(provide '`(file-name-base buffer-file-name)`)
+;;; `(file-name-nondirectory buffer-file-name)` ends here

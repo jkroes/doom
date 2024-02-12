@@ -124,11 +124,12 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
         org-startup-indented t
         org-tags-column 0
         org-use-sub-superscripts '{}
+        org-hide-block-startup t
         ;; `showeverything' is org's default, but it doesn't respect
         ;; `org-hide-block-startup' (#+startup: hideblocks), archive trees,
         ;; hidden drawers, or VISIBILITY properties. `nil' is equivalent, but
         ;; respects these settings.
-        org-startup-folded nil)
+        org-startup-folded t)
 
   (setq org-refile-targets
         '((nil :maxlevel . 3)

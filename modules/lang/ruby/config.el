@@ -7,7 +7,7 @@
 (defvar pause-for-first-prompt 0.5 "If this is too short, code
 will be inserted before the first inf-ruby prompt.")
 
-(defvar pause-for-subsequent-prompts 0.01 "If this is too short,
+(defvar pause-for-subsequent-prompts 0.2 "If this is too short,
 one line of code will not be inserted per prompt, and multiple
 prompts will subsequently appear on a single line.")
 
