@@ -1,5 +1,6 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO Compare bpython and ptpython to ipython
 ;; TODO Look into xonsh
 ;; TODO Learn how to align things with evil-lion.
 ;; TODO Look into using https://github.com/cyrus-and/zoom

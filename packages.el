@@ -101,6 +101,8 @@
 
 (package! yaml-mode)
 
+(package! jupyter)
+
 ;; NOTE This demonstrates how to include a custom user package;
 ;; however, I have since deleted this package and moved it to
 ;; utility.el so that I can load it prior to any module files.

@@ -27,16 +27,15 @@
   ;; Render docstrings and comments in italic
   (setq modus-themes-italic-constructs t)
 
-  ;; Different backgrounds for org-src blocks with different
-  ;; languages. gray-background fontifies org-block-begin-line
-  ;; and org-block-end-line, which bleeds out onto other lines
-  ;; when folded, even if these faces are not extended.
-  (setq modus-themes-org-blocks 'tinted-background)
-
-  ;; Additional languages that should use code block highlighting
-  (after! org-src
-    (push '("ruby" modus-themes-nuanced-cyan)
-          org-src-block-faces))
+  ;; TODO This is messing with org-hide-block-startup and has
+  ;; inconsistent results
+  ;; Src block highlighting
+  ;; (setq org-fontify-whole-block-delimiter-line nil)
+  ;; (setq modus-themes-org-blocks 'rainbow)
+  ;; (after! org-src
+  ;;   ;; Additional languages that should use code block highlighting
+  ;;   (push '("ruby" modus-themes-nuanced-cyan)
+  ;;         org-src-block-faces))
 
   ;; Make the region (marked text) preserve the underlying text
   ;; colors; experiment with different backgrounds
