@@ -51,8 +51,12 @@ open."
                   (buffer-substring-no-properties
                    (line-beginning-position)
                    (line-end-position))))
-      (unless (save-excursion (end-of-line) (eobp)) (next-line)))
+      ;; Note that it looks weird if we don't jump to the next
+      ;; line's beginning, since we're evaluating an entire line
+      (unless (save-excursion (end-of-line) (eobp)) (next-line) (beginning-of-line)))
     (setq code (delete "" code))
+      ;; Note that it looks weird if we don't jump to the next
+      ;; line's beginning
     (setq script-win (selected-window))
     (if (buffer-live-p inf-ruby-buffer)
         (select-window (get-buffer-window inf-ruby-buffer))

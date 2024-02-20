@@ -224,6 +224,9 @@ directives. By default, this only recognizes C directives.")
 ;;
 ;;; Packages
 
+(use-package! evil-tutor
+  :defer t)
+
 (use-package! evil-easymotion
   :after-call doom-first-input-hook
   :commands evilem-create evilem-default-keybindings

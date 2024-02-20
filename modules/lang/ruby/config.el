@@ -1,9 +1,5 @@
 ;;; lang/ruby/config.el -*- lexical-binding: t; -*-
 
-;; TODO Once you begin working with more complex ruby projects, switch from
-;; lsp-mode to robe-mode; however, first fix the remaining issues (see
-;; use-package robe)
-
 (defvar pause-for-first-prompt 0.5 "If this is too short, code
 will be inserted before the first inf-ruby prompt.")
 
@@ -84,6 +80,10 @@ prompts will subsequently appear on a single line.")
 ;; of dynamically defined objects (lsp relies on static analysis). Patch
 ;; robe-mode to behave more like lsp-mode
 (use-package! robe
+  ;; BUG I've found robe-mode activates itself in the middle of a
+  ;; REPL session, and it has a nasty habit of runaway comint
+  ;; output that grinds Emacs to a virtual halt
+  :when (modulep! +robe)
   :defer t
   :init
   (add-hook! 'ruby-mode-hook

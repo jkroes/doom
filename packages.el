@@ -101,7 +101,7 @@
 
 (package! yaml-mode)
 
-(package! jupyter)
+(package! evil-tutor)
 
 ;; NOTE This demonstrates how to include a custom user package;
 ;; however, I have since deleted this package and moved it to

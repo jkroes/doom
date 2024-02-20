@@ -42,7 +42,8 @@ Arguments otherwise are the same as for `file-name-concat'."
   (expand-file-name (apply 'file-name-concat (cons directory components))))
 
 
-(defun outline-heading-pad-dashes-right ()
+;; TODO Unify these functions for different modes
+(defun lisp-comment-pad-dashes-right ()
   "Fill a three-semicolon lisp comment with dash characters from
 the end of the line to `fill-column'."
   (interactive)
@@ -53,6 +54,16 @@ the end of the line to `fill-column'."
       (just-one-space)
       (insert (make-string (- fill-column (current-column)) ?-)))))
 
+(defun ruby-comment-pad-dashes-right ()
+  "Fill a three-semicolon lisp comment with dash characters from
+the end of the line to `fill-column'."
+  (interactive)
+  (save-excursion
+    (beginning-of-line)
+    (when (save-match-data (looking-at "^#"))
+      (end-of-line)
+      (just-one-space)
+      (insert (make-string (- fill-column (current-column)) ?-)))))
 
 (defun open-in-windows (path &rest _)
   "Open a file from WSL with the default application in Windows"

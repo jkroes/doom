@@ -1,5 +1,6 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO Get lsp-mode working within org-mode buffers
 ;; TODO Compare bpython and ptpython to ipython
 ;; TODO Look into xonsh
 ;; TODO Learn how to align things with evil-lion.
@@ -1537,12 +1538,12 @@ the default values for the two prompts."
 ;; and discussion of cursor movement in
 ;; https://www.dr-qubit.org/Evil_cursor_model.html and additional commands in
 ;; https://www.gnu.org/software/emacs/manual/html_node/elisp/List-Motion.html
-(map! :map emacs-lisp-mode-map
-      :when evil-move-beyond-eol
-      :m "<up>" #'up-list
-      :m "<down>" #'down-list
-      :m "<left>" #'backward-list
-      :m "<right>" #'forward-list)
+;; (map! :map emacs-lisp-mode-map
+;;       :when evil-move-beyond-eol
+;;       :m "<up>" #'up-list
+;;       :m "<down>" #'down-list
+;;       :m "<left>" #'backward-list
+;;       :m "<right>" #'forward-list)
 
 ;; https://www.masteringemacs.org/article/emacs-builtin-elisp-cheat-sheet
 ;; TODO Replace the bindings below with this. I dono't think evil-collection is
