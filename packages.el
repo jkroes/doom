@@ -51,6 +51,8 @@
 
 ;;; My code and notes ---------------------------------------------------------
 
+(package! benchmark-init)
+
 ;; TODO Unless otherwise noted below, continuously update package
 ;; versions as the corresponding package! statement in Doom Emacs
 ;; changes.

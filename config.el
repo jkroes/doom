@@ -29,77 +29,7 @@
 ;; alternative to comint: https://codeberg.org/akib/emacs-eat
 ;; https://github.com/szermatt/mistty (misty-send-string)
 ;; https://www.masteringemacs.org/article/running-shells-in-emacs-overview
-;; TODO C-h v over a long function or variable name when emacs is
-;; half a window on my laptop leads to wrapped lnies with vertico
-;; and marginalia. I've seen this issue before. Try C-h v on
-;; this: window-selection-change-functions. It might be because
-;; it's displaying the text at point and somehow that is changing
-;; the display.
-;; TODO Learn proper vim commands. ci" deletes inside of double
-;; quotes.
-;; TODO After updating path in .zshrc, run doom env. E.g. you may have
-;; to do this after gem install solargraph to make sure ruby-mode and lsp can
-;; find the languageserver
-;; TODO (e)debug-on-quit can be used to debug emacs if
-;; it freezes and you have to presss c-g
-;; TODO Use autoload when you only need a
-;; function or command to be available and the package hasn't defined such an
-;; autoload. Use require when you need the library to be loaded right away
-;; rather than when a function or command is called.
-;; TODO Sometimes errors aren't obvious unless you use emacs
-;; after `toggle-debug-on-error'. This should be enabled most of
-;; the time.
-;; TODO Use aliases to construct multiple org-roam nodes. See
-;; apps.shell.cp.org
-;; TODO Update edebug node to reflect new evil-collection
-;; bindings
-;; TODO use-package statements in this file may cancel out
-;; deferment that doom relies on. Use after! instead of :config
-;; where possible; otherwise make sure to try and defer per
-;; Doom's defaults.
-;; TODO Document setting force-load-messages to t and
-;; doom-inhibit-log to nil in early-init.el. The latter for
-;; debugging evil-collection mode loading.
-;; TODO Document debug-watch
-;; TODO Document the fact that you either need to doom sync or
-;; `doom/reload' to see changes to module code
-;; TODO Bind ffap-menu
-;; TODO Finish documenting edebug (see org-roam) n
-;; TODO org column view
-;; TODO Make some buffers entirely temporary (e.g. helpful)
-;; TODO learn about orderless-style-dispatchers
-;; TODO c-spc previews variable help
-;; pages but c-m-v does not scoll it as the other window. make help the other
-;; window.
-;; TODO Shrunk org table columns show three dots. C-h . over the dots
-;; echoes the truncated text. This should be done after a delay anywhere withi
-;; nthe column.
-;; TODO bind ace-window
-;; TODO The best way to handle advice is shown by the definition
-;; of consult-org-roam-mode
-;; TODO Functions used as advice can be debugged if you use
-;; advice-add and not bullshit `defadvice!'
-;; TODO Document somewhere how attempting to edebug an advised function fails
-;; silently. If edebug doesn't trigger, check via C-h f whether the function is
-;; advised. There are other resons why debugging might fail.
-;; TODO Create an archive file instead of a graveyard section
-;; below
-;; TODO Unbind all references to "C-<return>" and [C-return],
-;; "<tab>" and [tab], etc., in all packages and modules that you
-;; use. It makes debugging keybindings extremely difficult and
-;; there is no good reason to bind to them over RET, TAB, etc.
-;; TODO corfu bindings. Use define-key! ?
-;; TODO vertico preview settings
-;; TODO Learna about orderless. In particular, see
-;; orderless-affix-dispatch-list.
-;; TODO Finish migrating outstanding modules from temp/ and/or
-;; master branch
-;; TODO Where possible, convert advice to new functions with
-;; remaps. See `describe-face-under-hl-line'. This of course
-;; won't prevent you from executing original command with M-x.
-;; Also consider using `fset'.
-;; TODO Update (org) advice to reflect new function definitions
-;; as of v9.6. I've already done this for org-insert-heading-a.
+;; TODO C-h v over a long function or variable n
 
 ;; See ~/.config/doom/modules/editor/file-templates/README.org
 (setq user-full-name "Justin Kroes"

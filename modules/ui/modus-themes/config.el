@@ -11,9 +11,8 @@
 ;;       (font-spec :family "Roboto"
 ;;                  :size (if (length= (display-monitor-attributes-list) 2) 20 18)))
 
-
 (use-package modus-themes
-  :config
+  :init
   (setq doom-theme 'modus-vivendi)
 
   ;; Configure certain faces like org code blocks to inherit from
