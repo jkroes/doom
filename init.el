@@ -6,7 +6,8 @@
   (load (expand-file-name relpath doom-private-dir)))
 
 (load-doom-private "utility.el")
-(load-doom-private "hackery.el")
+;; TODO Uncomment this if you want to disable smartparens
+;;(load-doom-private "hackery.el")
 
 ;; This file controls what Doom modules are enabled and what order they load
 ;; in. Remember to run 'doom sync' after modifying it!
@@ -101,7 +102,7 @@
 
        :tools
        ;;ansible
-       biblio            ; Writes a PhD for you (citation needed)
+       ;; biblio            ; Writes a PhD for you (citation needed)
        ;;collab            ; buffers with friends
        ;;debugger          ; FIXME stepping through code, to help you add bugs
        ;;direnv
@@ -206,5 +207,5 @@
        ;;twitter           ; twitter client https://twitter.com/vnought
 
        :config
-       ;;literate
+       ;; literate
        (default +bindings))

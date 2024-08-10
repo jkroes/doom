@@ -1,8 +1,9 @@
 ;;; config/default/+bindings.el -*- lexical-binding: t; -*-
 
+;; NOTE SPC u replaces C-u as the universal argument
 ;; Easier to type than "M-SPC u"
-(when (or evil-want-C-u-delete evil-want-C-u-scroll)
-  (map! "M-u" #'universal-argument))
+;; (when (or evil-want-C-u-delete evil-want-C-u-scroll)
+;;   (map! "M-u" #'universal-argument))
 
 ;; Minibuffer
 (map! :map (evil-ex-completion-map evil-ex-search-keymap)

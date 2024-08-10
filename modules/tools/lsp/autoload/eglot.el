@@ -37,3 +37,21 @@ Example : (set-eglot-client! 'python-mode `(,(concat doom-data-dir \"lsp/mspyls/
               (setq-local nobreak-char-display nil)))
         (display-local-help))))
   'deferred)
+
+;;;###autoload
+(defun format-eglot-help-a (buffer-text)
+  "Clean up the format of *eglot-help* and *eglot-doc* buffer text.
+Accepts unformatted help text. Returns pre-formatted text."
+  (pcase major-mode
+    ('ruby-mode
+     (replace-regexp-in-string "  \n" " " buffer-text))))
+
+;;;###autoload
+(defun wrap-corfu-eglot-doc-buffer-a (window)
+  "Apply `visual-line-mode' to *eglot doc* buffer created by
+invoking corfu-info-documentation. Use to advise
+`corfu-info--display-buffer'. Note that eglot help buffers can
+achieve the same effect by simply using `help-mode-hook'."
+  (with-current-buffer (window-buffer window)
+    (visual-line-mode))
+  window)

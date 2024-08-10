@@ -8,7 +8,8 @@
    '("8746b94181ba961ebd07c7397339d6a7160ee29c75ca1734aa3744274cbe0370" default))
  '(magit-todos-insert-after '(bottom) nil nil "Changed by setter of obsolete option `magit-todos-insert-at'")
  '(safe-local-variable-values
-   '((elisp-lint-indent-specs
+   '((org-insert-tilde-language . ruby)
+     (elisp-lint-indent-specs
       (describe . 1)
       (it . 1)
       (thread-first . 0)
@@ -29,3 +30,4 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(aw-leading-char-face ((t (:foreground "white" :background "red" :height 200)))))
+(put 'erase-buffer 'disabled nil)

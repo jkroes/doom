@@ -40,6 +40,14 @@
 
   (add-to-list 'doom-debug-variables '(eglot-events-buffer-size . 2000000))
 
+  ;; Format eglot help and doc buffers.
+  (advice-add 'eglot--format-markup :filter-return
+              ;; TODO Only ruby-mode has been configured so far.
+              #'format-eglot-help-a)
+
+  (advice-add 'corfu-info--display-buffer :filter-return
+              #'wrap-corfu-eglot-doc-buffer-a)
+
   (defadvice! +lsp--defer-server-shutdown-a (fn &optional server)
     "Defer server shutdown for a few seconds.
 This gives the user a chance to open other project files before the server is

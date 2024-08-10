@@ -264,6 +264,30 @@
 ;;  e) do none of this when inside a string
 (advice-add #'delete-backward-char :override #'+default--delete-backward-char-a)
 
+;; HACK Makes `newline-and-indent' continue comments (and more reliably).
+;;      Consults `doom-point-in-comment-functions' to detect a commented region
+;;      and uses that mode's `comment-line-break-function' to continue comments.
+;;      If neither exists, it will fall back to the normal behavior of
+;;      `newline-and-indent'.
+;;
+;;      We use an advice here instead of a remapping because many modes define
+;;      and remap to their own newline-and-indent commands, and tackling all
+;;      those cases was judged to be more work than dealing with the edge cases
+;;      on a case by case basis.
+;; (defadvice! +default--newline-indent-and-continue-comments-a (&rest _)
+;;   "A replacement for `newline-and-indent'.
+
+;; Continues comments if executed from a commented line. Consults
+;; `doom-point-in-comment-functions' to determine if in a comment."
+;;   :before-until #'newline-and-indent
+;;   (interactive "*")
+;;   (when (and +default-want-RET-continue-comments
+;;              (doom-point-in-comment-p)
+;;              (functionp comment-line-break-function))
+;;     (funcall comment-line-break-function nil)
+;;     t))
+
+
 ;; This section is dedicated to "fixing" certain keys so that they behave
 ;; sensibly (and consistently with similar contexts).
 

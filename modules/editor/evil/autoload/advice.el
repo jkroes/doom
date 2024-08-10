@@ -185,6 +185,7 @@ This advice improves on `evil-join' by removing comment delimiters when joining
 commented lines, without `fill-region-as-paragraph'.
 
 Adapted from https://github.com/emacs-evil/evil/issues/606"
+  (require 'smartparens)
   (if-let* (((not (= (line-end-position) (point-max))))
             (cend (save-excursion (goto-char end) (line-end-position)))
             (cbeg (save-excursion

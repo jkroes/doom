@@ -96,7 +96,7 @@ except for periods, spaces, and dashes. Based on `org-roam-node-slug'."
                       ("_*$" . "")    ; remove ending underscore
                       ))
              (slug (-reduce-from #'cl-replace (strip-nonspacing-marks title) pairs)))
-        (downcase slug)))))
+        slug))))
 
 (cl-defmethod org-roam-node-dendroam-tags ((node org-roam-node))
   "When this function is used in `org-roam-node-display-template',
@@ -374,8 +374,7 @@ This is a convenience function that skips a prompt."
 (cl-defmethod dendroam--refactor-hierarchy ((node org-roam-node))
   (let* ((hierarchy (org-roam-node-dendroam-hierarchy node))
          (new-hierarchy (read-string "Refactor: " hierarchy))
-         ;; NOTE The slug and rename methods downcase filenames/titles. And
-         ;; regexp functions ignore case by default (see case-fold-search).
+         ;; regexp functions ignore case by default (see case-fold-search)
          (case-fold-search)
          (files (directory-files-recursively org-roam-directory (concat "^" hierarchy)))
          (new-title (car (last (split-string new-hierarchy (regexp-quote dendroam-separator))))))
@@ -410,7 +409,7 @@ This is a convenience function that skips a prompt."
               (dendroam--scratch-note-p node)
               (dendroam--citar-note-p node))
     (let* ((hierarchy (org-roam-node-dendroam-hierarchy node))
-           (new-hierarchy (downcase (read-string "Rename: " hierarchy)))
+           (new-hierarchy (read-string "Rename: " hierarchy))
            (new-title (car (last (split-string new-hierarchy (regexp-quote dendroam-separator)))))
            (file (buffer-file-name))
            (new-file (replace-regexp-in-string hierarchy new-hierarchy file)))

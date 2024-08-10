@@ -73,6 +73,13 @@ override `display-buffer-alist'."
   (let ((+popup--inhibit-select t))
     (apply fn args)))
 
+;; Copied from previous doom configuration. Haven't tested.
+;;;###package company
+;; (defadvice! +popup--dont-select-me-a (fn &rest args)
+;;   :around #'my/company-show-doc-buffer
+;;   (let ((+popup--inhibit-select t))
+;;     (apply fn args)))
+
 
 ;;;###package compile
 (defadvice! +popup--compilation-goto-locus-a (fn &rest args)
@@ -148,6 +155,7 @@ the command buffer."
   (advice-add #'evil-window-move-far-right   :around #'+popup-save-a))
 
 
+;;;###package help-mode
 (after! help-mode
   (defun +popup--switch-from-popup (location)
     (let (origin enable-local-variables)
@@ -253,6 +261,7 @@ the command buffer."
     (apply fn args)))
 
 
+;;;###package org
 (after! org
   (defadvice! +popup--suppress-delete-other-windows-a (fn &rest args)
     "Org has a scorched-earth window management policy I'm not fond of. i.e. it
@@ -308,15 +317,6 @@ Ugh, such an ugly hack."
           (apply fn args))
       (apply fn args)))
 
-  (defadvice! +popup--org-edit-src-exit-a (fn &rest args)
-    "If you switch workspaces or the src window is recreated..."
-    :around #'org-edit-src-exit
-    (let* ((window (selected-window))
-           (popup-p (+popup-window-p window)))
-      (prog1 (apply fn args)
-        (when (and popup-p (window-live-p window))
-          (delete-window window)))))
-
   ;; Ensure todo, agenda, and other minor popups are delegated to the popup system.
   (defadvice! +popup--org-pop-to-buffer-a (fn buf &optional norecord)
     "Use `pop-to-buffer' instead of `switch-to-buffer' to open buffer.'"
@@ -342,6 +342,7 @@ Ugh, such an ugly hack."
       (+popup--init window nil))))
 
 
+;;;###package pdf-tools
 (after! pdf-tools
   (setq tablist-context-window-display-action
         '((+popup-display-buffer-stacked-side-window-fn)
@@ -385,6 +386,7 @@ Ugh, such an ugly hack."
   (advice-add #'wgrep-finish-edit :after #'+popup-close-a))
 
 
+;;;###package which-key
 (after! which-key
   (when (eq which-key-popup-type 'side-window)
     (setq which-key-popup-type 'custom

@@ -21,7 +21,7 @@ directives. By default, this only recognizes C directives.")
 ;; to loading.
 (defvar evil-want-C-g-bindings t)
 (defvar evil-want-C-i-jump nil)  ; we do this ourselves
-(defvar evil-want-C-u-scroll t)
+(defvar evil-want-C-u-scroll t)  ; moved the universal arg to <leader> u
 (defvar evil-want-C-u-delete t)
 (defvar evil-want-C-w-delete t)
 (defvar evil-want-Y-yank-to-eol t)
@@ -47,6 +47,7 @@ directives. By default, this only recognizes C directives.")
         ;; Only do highlighting in selected window so that Emacs has less work
         ;; to do highlighting them all.
         evil-ex-interactive-search-highlight 'selected-window
+        evil-ex-search-persistent-highlight nil
         ;; It's infuriating that innocuous "beginning of line" or "end of line"
         ;; errors will abort macros, so suppress them:
         evil-kbd-macro-suppress-motion-error t
@@ -310,6 +311,9 @@ directives. By default, this only recognizes C directives.")
   :commands evil-escape
   :hook (doom-first-input . evil-escape-mode)
   :init
+  ;; One example of where this is useful: In visual state, holding down "k" to
+  ;; expand the region followed by "j" to correct overexpansion. Without exclusion,
+  ;; the visual region is lost.
   (setq evil-escape-excluded-states '(normal visual multiedit emacs motion)
         evil-escape-excluded-major-modes '(neotree-mode treemacs-mode vterm-mode)
         evil-escape-key-sequence "kj"
@@ -598,13 +602,17 @@ directives. By default, this only recognizes C directives.")
       ;; evil-surround
       :v "S" #'evil-surround-region
       :o "s" #'evil-surround-edit
+      ;; NOTE: This explicitly does not work with delete or change, so I only
+      ;; know of yS. What other operators are there?
       :o "S" #'evil-Surround-edit
 
+      ;; TODO Currently overrides org-down-element mapping to gl.
+      ;; How to make org-evil map take priority?
       ;; evil-lion
-      :n "gl" #'evil-lion-left
-      :n "gL" #'evil-lion-right
-      :v "gl" #'evil-lion-left
-      :v "gL" #'evil-lion-right
+      ;; :n "gl" #'evil-lion-left
+      ;; :n "gL" #'evil-lion-right
+      ;; :v "gl" #'evil-lion-left
+      ;; :v "gL" #'evil-lion-right
 
       ;; Omni-completion
       (:when (modulep! :completion company)

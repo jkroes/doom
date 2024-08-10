@@ -48,14 +48,15 @@ prompts will subsequently appear on a single line.")
 
   (after! inf-ruby
     (add-hook 'inf-ruby-mode-hook #'doom-mark-buffer-as-real-h)
-    ;; switch to inf-ruby from compile if we detect a breakpoint has been hit
+    ;; switch to inf-ruby from compile if we detect a breakpoint
+    ;; has been hit
     (add-hook 'compilation-filter-hook #'inf-ruby-auto-enter)
-    ;; NOTE This is optional. Turn it off if it makes things more difficult to
-    ;; read
-    (add-hook 'inf-ruby-mode-hook #'visual-line-mode)
-    ;; HACK This is what makes things hang when we are expecting user input.
-    ;; Disa bling it also disables printing the results of evaluation in the
-    ;; script.
+    ;; NOTE This is optional. Turn it off if it makes things more
+    ;; difficult to read
+    ;;(add-hook 'inf-ruby-mode-hook #'visual-line-mode)
+    ;; HACK This is what makes things hang when we are expecting
+    ;; user input. Disa bling it also disables printing the
+    ;; results of evaluation in the script.
     (fset 'ruby-print-result #'ignore))
 
 
@@ -74,16 +75,18 @@ prompts will subsequently appear on a single line.")
         "[" #'ruby-toggle-block
         "{" #'ruby-toggle-block))
 
-;; TODO lsp-mode has the advantage of enabling +lookup/documentation (K) and
-;; corfu-info-documentation (C-h during corfu completion). It also has more
-;; descriptive corfu candidates. In contrast, robe can jump to the definition
-;; of dynamically defined objects (lsp relies on static analysis). Patch
-;; robe-mode to behave more like lsp-mode
+;; TODO lsp-mode has the advantage of enabling
+;; +lookup/documentation (K) and corfu-info-documentation (C-h
+;; during corfu completion). It also has more descriptive corfu
+;; candidates. In contrast, robe can jump to the definition of
+;; dynamically defined objects (lsp relies on static analysis).
+;; Patch robe-mode to behave more like lsp-mode
 (use-package! robe
   ;; BUG I've found robe-mode activates itself in the middle of a
   ;; REPL session, and it has a nasty habit of runaway comint
-  ;; output that grinds Emacs to a virtual halt
-  :when (modulep! +robe)
+  ;; output that grinds Emacs to a virtual halt. I need to file a
+  ;; new bug report, but the bug seems to pop up out of nowhere.
+  :when (not (modulep! +lsp))
   :defer t
   :init
   (add-hook! 'ruby-mode-hook
@@ -95,12 +98,15 @@ prompts will subsequently appear on a single line.")
   :config
   (set-repl-handler! 'ruby-mode #'robe-start)
   (set-company-backend! 'ruby-mode 'company-robe 'company-dabbrev-code)
+  ;; BUG This is broken
+  ;; https://github.com/doomemacs/doomemacs/issues/3055
   (set-lookup-handlers! 'ruby-mode
     :definition #'robe-jump
     :documentation #'robe-doc)
   (when (boundp 'read-process-output-max)
-    ;; Robe can over saturate IPC, making interacting with it slow/clobbering
-    ;; the GC, so increase the amount of data Emacs reads from it at a time.
+    ;; Robe can over saturate IPC, making interacting with it
+    ;; slow/clobbering the GC, so increase the amount of data
+    ;; Emacs reads from it at a time.
     (setq-hook! '(robe-mode-hook inf-ruby-mode-hook)
       read-process-output-max (* 1024 1024)))
   (when (modulep! :editor evil)

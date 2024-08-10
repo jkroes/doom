@@ -26,15 +26,13 @@
   ;; Render docstrings and comments in italic
   (setq modus-themes-italic-constructs t)
 
-  ;; TODO This is messing with org-hide-block-startup and has
-  ;; inconsistent results
   ;; Src block highlighting
-  ;; (setq org-fontify-whole-block-delimiter-line nil)
-  ;; (setq modus-themes-org-blocks 'rainbow)
-  ;; (after! org-src
-  ;;   ;; Additional languages that should use code block highlighting
-  ;;   (push '("ruby" modus-themes-nuanced-cyan)
-  ;;         org-src-block-faces))
+  (setq org-fontify-whole-block-delimiter-line nil)
+  (setq modus-themes-org-blocks 'rainbow)
+  (after! org-src
+    ;; Additional languages that should use code block highlighting
+    (push '("ruby" modus-themes-nuanced-cyan)
+          org-src-block-faces))
 
   ;; Make the region (marked text) preserve the underlying text
   ;; colors; experiment with different backgrounds

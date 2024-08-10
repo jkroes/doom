@@ -94,10 +94,10 @@ the end of the line to `fill-column'."
     ;; Dual monitor setup
     ((pred (lambda (dmal)
              (length= dmal 2))) 18)
-    ;; Macbook Air (M1, 2020)
+    ;; Macbook Air (M3, 2024)
     ((pred (lambda (dmal)
              (and (length= dmal 1)
-                  (equal (last (caar dmal) 2) '(1440 900))))) 16)))
+                  (equal (last (caar dmal) 2) '(1470 956))))) 16)))
 
 
 

@@ -124,7 +124,7 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
         org-startup-indented t
         org-tags-column 0
         org-use-sub-superscripts '{}
-        org-hide-block-startup t
+        org-hide-block-startup nil
         ;; `showeverything' is org's default, but it doesn't respect
         ;; `org-hide-block-startup' (#+startup: hideblocks), archive trees,
         ;; hidden drawers, or VISIBILITY properties. `nil' is equivalent, but

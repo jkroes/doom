@@ -1,5 +1,16 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO Backup files from previous doom installation are in
+;; the backup subfolder
+;; TODO Pressing M-TAB in a new heading completes todo keywords.
+;; See https://orgmode.org/manual/Completion.html
+;; TODO Every time you update Doom or its packages, you need to
+;; go to
+;; ~/.config/emacs/.local/straight/repos/smartparens/smartparens-ruby.el
+;; and change ruby-base-mode to ruby-mode. Do this for Emacs 28
+;; until you upgrade to Emacs 29. Then delete the .elc version of
+;; the file, then run doom sync.
+
 ;; TODO Get lsp-mode working within org-mode buffers
 ;; TODO Compare bpython and ptpython to ipython
 ;; TODO Look into xonsh
@@ -234,11 +245,13 @@ confirmation."
 
 (map! "M-RET" comment-line-break-function)
 
+;; TODO This inserts a space even if one should not be inserted.
+;; e.g. during ruby multiline comments.
 ;; https://emacs.stackexchange.com/questions/22746/add-a-space-after-the-comment-delimiter
-(defun comment-indent-new-line--insert-a-space-after (&rest _)
-  "Ensure there is exactly one space after `comment-start'"
-    (just-one-space))
-(advice-add 'comment-indent-new-line :after #'comment-indent-new-line--insert-a-space-after)
+;; (defun comment-indent-new-line--insert-a-space-after (&rest _)
+;;   "Ensure there is exactly one space after `comment-start'"
+;;     (just-one-space))
+;; (advice-add 'comment-indent-new-line :after #'comment-indent-new-line--insert-a-space-after)
 
 ;;; scrolling -----------------------------------------------------------------
 
@@ -550,7 +563,7 @@ point."
 
 ;; Insert a blank line when inserting a (non-sub)heading (see advice below), and
 ;; fold that line when cycling
-(setq org-blank-before-new-entry '((heading) (plain-list-item))
+(setq org-blank-before-new-entry '((heading . 1) (plain-list-item))
       org-cycle-separator-lines 2)
 
 
@@ -809,11 +822,14 @@ without folding any headings."
   (org-edit-src-exit)
   ;; Prevents accidental text insertion
   (evil-normal-state)
+  ;; TODO Make this respect current fold settings. Only re-fold
+  ;; if it was previously folded.
   ;; Assume we want a folded block, because editing a block unfolds it. Since
   ;; we are exiting a src block, we don't need to test whether we are within a block.
-  (org-end-of-line)
-  (when (not (org-fold-folded-p))
-    (my/org-cycle)))
+  ;; (org-end-of-line)
+  ;; (when (not (org-fold-folded-p))
+  ;;   (my/org-cycle))
+  )
 
 
 ;; BUG This advice was creating huge lags for org-babel-tangle
@@ -1362,6 +1378,19 @@ the default values for the two prompts."
      (list file-A file-B)))
   (ediff-files-internal file-A file-B nil nil 'ediff-files))
 
+;; TODO Delete this after getting through .doom.d.bck
+(defun temp ()
+  (interactive)
+  (ediff-files-internal
+   (replace-regexp-in-string
+    (car doom-modules-dirs)
+    "/Users/jkroes/.doom.d.bck/modules/"
+    buffer-file-name)
+   buffer-file-name
+   nil
+   nil
+   'ediff-files))
+
 (defun current-doom-module ()
   (when buffer-file-name
     (when-let (mod (doom-module-from-path buffer-file-name))
@@ -1575,3 +1604,72 @@ the default values for the two prompts."
             (5 left)))
           (1 left "%s")
           (0 left))))
+
+
+;; TODO Integrate code block expansion. See
+;; https://orgmode.org/manual/Structure-Templates.html and
+;; https://emacs.stackexchange.com/questions/12841/quickly-insert-source-blocks-in-org-mode
+
+;; (setq org-structure-template-alist
+;;       '(("r" . "src ruby")
+;;         ("e" . "src emacs-lisp")))
+
+;; Insert pairs of tildes in org-mode
+(after! smartparens (sp-local-pair 'org-mode "~" "~" ))
+
+;; Inspired by
+;; https://mbork.pl/2022-01-17_Making_code_snippets_in_Org-mode_easier_to_type.
+;;
+;; Insert backticks instead of tildes and vice versa in org-mode.
+;; Insert and enter a code block by inserting three backticks.
+;; The language can be specified with `org-insert-tilde-language'
+;;
+;; NOTE Set `org-insert-tlde-language' to the language you are
+;; currently working with most often, within `org-directory'/.dir-locals.el
+
+(defvar-local org-insert-tilde-language nil
+  "Default language name in the current Org file.
+If nil, `org-insert-tilde' after 2 tildes inserts an \"example\"
+block.  If a string, it inserts a \"src\" block with the given
+language name.")
+
+(defun org-insert-tilde ()
+  "Insert a tilde using `org-self-insert-command'."
+  (interactive)
+  (if (string= (buffer-substring-no-properties (- (point) 3) (point))
+	       "\n~~")
+      (progn (delete-char -2)
+	     (if org-insert-tilde-language
+		 (insert (format "#+begin_src %s\n#+end_src"
+				 org-insert-tilde-language))
+	       (insert "#+begin_example\n#+end_example"))
+	     (forward-line -1)
+	     (if (string= org-insert-tilde-language "")
+		 (move-end-of-line nil)
+	       (org-edit-special)))
+    (setq last-command-event ?~)
+    (call-interactively #'org-self-insert-command)))
+
+(defun org-insert-backtick ()
+  "Insert a backtick using `org-self-insert-command'."
+  (interactive)
+  (setq last-command-event ?`)
+  (call-interactively #'org-self-insert-command))
+
+
+(after! org
+  (define-key org-mode-map (kbd "`") #'org-insert-tilde)
+  (define-key org-mode-map (kbd "~") #'org-insert-backtick))
+
+;; Prefer heading navigation to element navigation
+(defun my/evil-org--populate-navigation-bindings ()
+  "Configures gj/gk/gh/gl for navigation."
+  (let-alist evil-org-movement-bindings
+    (evil-define-key 'motion evil-org-mode-map
+      (kbd (concat "g" .left)) #'org-backward-heading-same-level
+      (kbd (concat "g" .right)) #'org-forward-heading-same-level
+      (kbd (concat "g" .up)) #'org-previous-visible-heading
+      (kbd (concat "g" .down)) #'org-next-visible-heading
+      (kbd (concat "g" (capitalize .left))) #'evil-org-top)))
+
+(after! evil-org (my/evil-org--populate-navigation-bindings))

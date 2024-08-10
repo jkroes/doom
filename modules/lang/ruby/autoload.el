@@ -53,7 +53,9 @@ open."
                    (line-end-position))))
       ;; Note that it looks weird if we don't jump to the next
       ;; line's beginning, since we're evaluating an entire line
-      (unless (save-excursion (end-of-line) (eobp)) (next-line) (beginning-of-line)))
+      (unless (save-excursion (end-of-line) (eobp))
+        (beginning-of-line)
+        (next-line)))
     (setq code (delete "" code))
       ;; Note that it looks weird if we don't jump to the next
       ;; line's beginning
