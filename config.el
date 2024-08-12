@@ -77,6 +77,9 @@
 (setq ns-command-modifier 'control
       mac-command-modifier 'control)
 
+;; Focus Emacs on MacOS
+(select-frame-set-input-focus (selected-frame))
+
 ;; On MacOS the binding here should match the shortcut in System
 ;; Settings > Keyboard > Keyboard Shortcuts > Keyboard > Move
 ;; focus to next window
