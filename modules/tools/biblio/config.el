@@ -67,11 +67,12 @@
           #'aj/citar-org-key-at-point))
 
   ;; Use icons to indicate resources associated with a bib entry
-  (when (display-graphic-p)
-    (setq citar-symbols
-          `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
-            (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
-            (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " ")))))
+ ;; (when (display-graphic-p)
+  ;;  (setq citar-symbols
+    ;;      `((file ,(all-the-icons-faicon "file-o" :face 'all-the-icons-green :v-adjust -0.1) . " ")
+      ;;      (note ,(all-the-icons-material "speaker_notes" :face 'all-the-icons-blue :v-adjust -0.3) . " ")
+        ;;    (link ,(all-the-icons-octicon "link" :face 'all-the-icons-orange :v-adjust 0.01) . " "))))
+  )
 
 
 ;; Make embark-act recognize org-cite keys at point in roam_refs

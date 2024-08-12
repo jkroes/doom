@@ -102,7 +102,7 @@
 
        :tools
        ;;ansible
-       ;; biblio            ; Writes a PhD for you (citation needed)
+       biblio            ; Writes a PhD for you (citation needed)
        ;;collab            ; buffers with friends
        ;;debugger          ; FIXME stepping through code, to help you add bugs
        ;;direnv
@@ -170,7 +170,9 @@
        ;;nim               ; python + lisp at the speed of c
        ;;nix               ; I hereby declare "nix geht mehr!"
        ;;ocaml             ; an objective camel
-       (org +roam2 +pretty +pandoc) ; organize your plain life in plain text
+       ;; TODO This module has some errors that need to be resolved due to
+       ;; incorporation of legacy doom code
+       ;;(org +roam2 +pretty +pandoc) ; organize your plain life in plain text
        ;;php               ; perl's insecure younger brother
        ;;plantuml          ; diagrams for confusing people more
        ;;purescript        ; javascript, but functional

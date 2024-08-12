@@ -1,5 +1,8 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
+;; TODO I renamed ~/.config/doom/modules/lang/org to org_bck
+;; to allow Doom to launch. Figure out where the issue is so that
+;; you can begin using org again.
 ;; TODO Backup files from previous doom installation are in
 ;; the backup subfolder
 ;; TODO Pressing M-TAB in a new heading completes todo keywords.
