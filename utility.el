@@ -97,7 +97,7 @@ the end of the line to `fill-column'."
     ;; Macbook Air (M3, 2024)
     ((pred (lambda (dmal)
              (and (length= dmal 1)
-                  (equal (last (caar dmal) 2) '(1470 956))))) 16)))
+                  (equal (last (caar dmal) 2) '(1470 956))))) 14)))
 
 
 
