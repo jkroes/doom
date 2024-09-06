@@ -20,6 +20,19 @@
 
 (defvar dendroam-hidden-tags nil)
 
+;; (defun concat-path (&rest parts)
+;;   "Concatenate unlimited path components"
+;;   (cl-reduce (lambda (a b) (expand-file-name b a)) parts))
+(defun concat-path (directory &rest components)
+  "Append COMPONENTS to DIRECTORY and return the resulting string.
+
+DIRECTORY must be an absolute path.
+
+Arguments otherwise are the same as for `file-name-concat'."
+  (unless (file-name-absolute-p directory)
+    (error "DIRECTORY is not an absolute path"))
+  (expand-file-name (apply 'file-name-concat (cons directory components))))
+
 ;;; NODE DISPLAY --------------------------------------------------------------------
 
 ;; Functions defined via cl-defgeneric, as in vertico.el, can be extended

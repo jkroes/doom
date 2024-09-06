@@ -292,10 +292,6 @@ module."
 ;; Don't truncate results when using edebug
 (setq edebug-print-length 1000)
 
-;; Try xref-find-definitions without anything at point and with something
-;; at point. Notice that "gd" or "SPC c d" can't do both!
-(setq xref-show-definitions-function #'xref-show-definitions-completing-read)
-
 ;; TODO Checkout shortdoc-display-group! It's a cheatsheet!
 
 

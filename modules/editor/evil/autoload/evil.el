@@ -39,71 +39,82 @@ replacing its contents."
   (let ((evil-kill-on-visual-paste (not evil-kill-on-visual-paste)))
     (call-interactively #'evil-paste-after)))
 
-(defun +evil--window-swap (direction)
+(defun +evil--window-swap (direction &optional invert-wrap?)
   "Move current window to the next window in DIRECTION.
+
 If there are no windows there and there is only one window, split in that
 direction and place this window there. If there are no windows and this isn't
-the only window, use evil-window-move-* (e.g. `evil-window-move-far-left')."
+the only window, uses evil-window-move-* (e.g. `evil-window-move-far-left').
+
+If already at the edge of the frame and `+evil-want-move-window-to-wrap-around'
+is non-nil, move the window to the other end of the frame. Inverts
+`+evil-want-move-window-to-wrap-around' if INVERT-WRAP? is non-nil."
+  (unless (memq direction '(left right up down))
+    (user-error "Invalid direction: %s" direction))
   (when (window-dedicated-p)
     (user-error "Cannot swap a dedicated window"))
   (let* ((this-window (selected-window))
-         (this-buffer (current-buffer))
          (that-window (window-in-direction direction nil this-window))
          (that-buffer (window-buffer that-window)))
     (when (or (minibufferp that-buffer)
               (window-dedicated-p this-window))
       (setq that-buffer nil that-window nil))
     (if (not (or that-window (one-window-p t)))
-        (funcall (pcase direction
-                   ('left  #'evil-window-move-far-left)
-                   ('right #'evil-window-move-far-right)
-                   ('up    #'evil-window-move-very-top)
-                   ('down  #'evil-window-move-very-bottom)))
+        (if (and (window-at-side-p
+                  this-window (pcase direction ('up 'top) ('down 'bottom) (_ direction)))
+                 (not (cl-loop for dir in (if (memq direction '(left right))
+                                              '(up down) '(left right))
+                               if (window-in-direction dir nil this-window)
+                               return t)))
+            (if (funcall (if invert-wrap? #'not #'identity) +evil-want-move-window-to-wrap-around)
+                (call-interactively
+                 (pcase direction
+                   ('left  #'evil-window-move-far-right)
+                   ('right #'evil-window-move-far-left)
+                   ('up    #'evil-window-move-very-bottom)
+                   ('down  #'evil-window-move-very-top)))
+              (user-error "Window is already at the edge"))
+          (call-interactively
+           (pcase direction
+             ('left  #'evil-window-move-far-left)
+             ('right #'evil-window-move-far-right)
+             ('up    #'evil-window-move-very-top)
+             ('down  #'evil-window-move-very-bottom))))
       (unless that-window
-        (setq that-window
-              (split-window this-window nil
-                            (pcase direction
-                              ('up 'above)
-                              ('down 'below)
-                              (_ direction))))
+        (setq that-window (split-window this-window nil direction))
         (with-selected-window that-window
           (switch-to-buffer (doom-fallback-buffer)))
         (setq that-buffer (window-buffer that-window)))
       (window-swap-states this-window that-window)
       (select-window that-window))))
 
+;; HACK The original definition of these functions is incorrect. A prefix
+;; argument to +evil--window-swap is supposed to be used to invert the value of
+;; +evil-want-move-window-to-wrap-around within +evil--window-swap. These
+;; functions should not use +evil-want-move-window-to-wrap-around to determine
+;; the prefix used to invert the value of that same variable in the backend
+;; function.
+
 ;;;###autoload
-(defun +evil/window-move-left ()
+(defun +evil/window-move-left (&optional arg)
   "Swap windows to the left."
-  (interactive) (+evil--window-swap 'left))
+  (interactive "P")
+  (+evil--window-swap 'left arg))
 ;;;###autoload
-(defun +evil/window-move-right ()
+(defun +evil/window-move-right (&optional arg)
   "Swap windows to the right"
-  (interactive) (+evil--window-swap 'right))
+  (interactive "P")
+  (+evil--window-swap 'right arg))
 ;;;###autoload
-(defun +evil/window-move-up ()
+(defun +evil/window-move-up (&optional arg)
   "Swap windows upward."
-  (interactive) (+evil--window-swap 'up))
+  (interactive "P")
+  (+evil--window-swap 'up arg))
 ;;;###autoload
-(defun +evil/window-move-down ()
+(defun +evil/window-move-down (&optional arg)
   "Swap windows downward."
-  (interactive) (+evil--window-swap 'down))
-
-;;;###autoload
-(defun +evil/window-split-and-follow ()
-  "Split current window horizontally, then focus new window.
-If `evil-split-window-below' is non-nil, the new window isn't focused."
-  (interactive)
-  (let ((evil-split-window-below (not evil-split-window-below)))
-    (call-interactively #'evil-window-split)))
-
-;;;###autoload
-(defun +evil/window-vsplit-and-follow ()
-  "Split current window vertically, then focus new window.
-If `evil-vsplit-window-right' is non-nil, the new window isn't focused."
-  (interactive)
-  (let ((evil-vsplit-window-right (not evil-vsplit-window-right)))
-    (call-interactively #'evil-window-vsplit)))
+  (interactive "P")
+  (+evil--window-swap 'down arg))
 
 ;;;###autoload (autoload '+evil:apply-macro "editor/evil/autoload/evil" nil t)
 (evil-define-operator +evil:apply-macro (beg end)

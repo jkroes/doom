@@ -13,7 +13,9 @@
 :in PATH
   Sets what directory to base the search out of. Defaults to the current project's root.
 :recursive BOOL
-  Whether or not to search files recursively from the base directory."
+  Whether or not to search files recursively from the base directory.
+:args LIST
+  Arguments to be appended to `consult-ripgrep-args'."
   (declare (indent defun))
   (unless (executable-find "rg")
     (user-error "Couldn't find ripgrep in your PATH"))
@@ -29,7 +31,7 @@
                   "--path-separator /   --smart-case --no-heading "
                   "--with-filename --line-number --search-zip "
                   "--hidden -g !.git -g !.svn -g !.hg "
-                  (mapconcat #'shell-quote-argument args " ")))
+                  (mapconcat #'identity args " ")))
          (prompt (if (stringp prompt) (string-trim prompt) "Search"))
          (query (or query
                     (when (doom-region-active-p)
@@ -135,26 +137,6 @@ Supports exporting consult-grep to wgrep, file to wdeired, and consult-location 
         (+vertico/embark-preview)
       (user-error (vertico-directory-enter)))))
 
-(defvar +vertico/find-file-in--history nil)
-;;;###autoload
-(defun +vertico/find-file-in (&optional dir initial)
-  "Jump to file under DIR (recursive).
-If INITIAL is non-nil, use as initial input."
-  (interactive)
-  (require 'consult)
-  (let* ((default-directory (or dir default-directory))
-         (prompt-dir (consult--directory-prompt "Find" default-directory))
-         (cmd (split-string-and-unquote +vertico-consult-fd-args " ")))
-    (find-file
-     (consult--read
-      (split-string (cdr (apply #'doom-call-process cmd)) "\n" t)
-      :prompt default-directory
-      :sort nil
-      :initial (if initial (shell-quote-argument initial))
-      :add-history (thing-at-point 'filename)
-      :category 'file
-      :history '(:input +vertico/find-file-in--history)))))
-
 ;;;###autoload
 (defun +vertico/jump-list (jump)
   "Go to an entry in evil's (or better-jumper's) jumplist."
@@ -203,51 +185,23 @@ If INITIAL is non-nil, use as initial input."
       (forward-line (string-to-number line)))))
 
 ;;;###autoload
-(defun +vertico-embark-which-key-indicator ()
-  "An embark indicator that displays keymaps using which-key.
-The which-key help message will show the type and value of the
-current target followed by an ellipsis if there are further
-targets."
-  (lambda (&optional keymap targets prefix)
-    (if (null keymap)
-        (which-key--hide-popup-ignore-command)
-      (which-key--show-keymap
-       (if (eq (plist-get (car targets) :type) 'embark-become)
-           "Become"
-         (format "Act on %s '%s'%s"
-                 (plist-get (car targets) :type)
-                 (embark--truncate-target (plist-get (car targets) :target))
-                 (if (cdr targets) "…" "")))
-       (if prefix
-           (pcase (lookup-key keymap prefix 'accept-default)
-             ((and (pred keymapp) km) km)
-             (_ (key-binding prefix 'accept-default)))
-         keymap)
-       nil nil t (lambda (binding)
-                   (not (string-suffix-p "-argument" (cdr binding))))))))
-
-;;;###autoload
-(defun +vertico--consult--fd-make-builder ()
-  (let ((cmd (split-string-and-unquote +vertico-consult-fd-args)))
-    (lambda (input)
-      (pcase-let* ((`(,arg . ,opts) (consult--command-split input))
-                   (`(,re . ,hl) (funcall consult--regexp-compiler
-                                          arg 'extended t)))
-        (when re
-          (cons (append cmd
-                        (list (consult--join-regexps re 'extended))
-                        opts)
-                hl))))))
-
-(autoload #'consult--directory-prompt "consult")
-;;;###autoload
-(defun +vertico/consult-fd (&optional dir initial)
+(defun +vertico/consult-fd-or-find (&optional dir initial)
+  "Runs consult-fd if fd version > 8.6.0 exists, consult-find otherwise.
+See minad/consult#770."
   (interactive "P")
-  (if doom-projectile-fd-binary
-      (pcase-let* ((`(,prompt ,paths ,dir) (consult--directory-prompt "Fd" dir))
-                   (default-directory dir)
-                   (builder (consult--find-make-builder paths)))
-        (find-file (consult--find prompt builder initial)))
+  ;; TODO this condition was adapted from a similar one in lisp/doom-projects.el, to be replaced with a more robust check post v3
+  (if (when-let*
+          ((bin (if (ignore-errors (file-remote-p default-directory nil t))
+                    (cl-find-if (doom-rpartial #'executable-find t)
+                                (list "fdfind" "fd"))
+                  doom-fd-executable))
+           (version (with-memoization (get 'doom-fd-executable 'version)
+                      (cadr (split-string (cdr (doom-call-process bin "--version"))
+                                          " " t))))
+           ((ignore-errors (version-to-list version))))
+        ;; TODO remove once fd 8.6.0 is widespread enough to be the minimum version for doom
+        (version< "8.6.0" version))
+      (consult-fd dir initial)
     (consult-find dir initial)))
 
 ;;;###autoload
@@ -261,56 +215,51 @@ targets."
        (completion-basic-all-completions string table pred point)))
 
 ;;;###autoload
-(defun my/embark-prefix-help-command (popup-showing)
-  "Prompt for and run a command bound in the prefix used to reach this command.
-This command is intended to be used as the value of
-`which-key--prefix-help-cmd-backup' when `prefix-help-command' is set to
-`which-key-C-h-dispatch' and `which-key-use-C-h-commands' is set to `t'. `which-key-C-h-dispatch' calls
-`which-key-show-standard-help', which calls `which-key--prefix-help-cmd-backup',
-which by default is set to the original value of `prefix-help-command' when
-`which-key-mode' is first enabled. In Doom Emacs with `vertico',
-`prefix-help-command' is typically the original `embark-prefix-help-command'
-that this function replaces. Note that this function must be called from a
-modified version of `which-key-show-standard-help' that passes `popup-showing'.
-
-In addition to using completion to select a command, you can also type @ and the
-key binding (without the prefix)."
-  (interactive)
-  (let (keys)
-    (if popup-showing
-        (setq keys (which-key--current-prefix))
-      (setq keys (this-command-keys-vector))
-      (setq keys (seq-take keys (1- (length keys)))))
-    (embark-bindings keys)))
+(defun jkroes/orderless-dispatch (pattern _index _total)
+  "Like `+vertico-orderless-dispatch' but match initials with a
+comma. Alter Doom's orderless matching style for match
+sub-components using prefix or suffix characters"
+  (cond
+   ;; Ensure $ works with Consult commands, which add disambiguation suffixes
+   ((string-suffix-p "$" pattern)
+    `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))
+   ;; Ignore single !
+   ((string= "!" pattern) `(orderless-literal . ""))
+   ;; Without literal
+   ((string-prefix-p "!" pattern) `(orderless-without-literal . ,(substring pattern 1)))
+   ;; Annotation
+   ((string-prefix-p "&" pattern) `(orderless-annotation . ,(substring pattern 1)))
+   ((string-suffix-p "&" pattern) `(orderless-annotation . ,(substring pattern 0 -1)))
+   ;; Character folding
+   ((string-prefix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 1)))
+   ((string-suffix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 0 -1)))
+   ;; Initialism matching
+   ((string-prefix-p "," pattern) `(orderless-initialism . ,(substring pattern 1)))
+   ((string-suffix-p "," pattern) `(orderless-initialism . ,(substring pattern 0 -1)))
+   ;; Literal matching
+   ((string-prefix-p "=" pattern) `(orderless-literal . ,(substring pattern 1)))
+   ((string-suffix-p "=" pattern) `(orderless-literal . ,(substring pattern 0 -1)))
+   ;; Flex matching
+   ((string-prefix-p "~" pattern) `(orderless-flex . ,(substring pattern 1)))
+   ((string-suffix-p "~" pattern) `(orderless-flex . ,(substring pattern 0 -1)))))
 
 ;;;###autoload
-(defun my/which-key-show-standard-help (&optional _)
-  "Call the command in `which-key--prefix-help-cmd-backup'.
-Usually this is `describe-prefix-bindings'.
-
-Unlike the original function, `popup-showing' is passed t
-`which-key--prefix-help-cmd-backup'."
+(defun jkroes/embark-prefix-help-command (&optional _)
   (interactive)
-  (let ((which-key-inhibit t)
-        (popup-showing (which-key--popup-showing-p)))
-    (which-key--hide-popup-ignore-command)
-    (cond ((and (eq which-key--prefix-help-cmd-backup
-                    'describe-prefix-bindings)
-                ;; If the popup is not showing, we call
-                ;; `describe-prefix-bindings' directly.
-                popup-showing)
-           ;; This is essentially what `describe-prefix-bindings' does. We can't
-           ;; use this function directly, because the prefix will not be correct
-           ;; when we enter using `which-key-C-h-dispatch'.
-           (describe-bindings (kbd (which-key--current-key-string))))
-          ((functionp which-key--prefix-help-cmd-backup)
-           (funcall which-key--prefix-help-cmd-backup popup-showing)))))
+  (let (keys)
+    (if (which-key--popup-showing-p)
+        (progn
+          (setq keys (which-key--current-prefix))
+          (which-key--hide-popup-ignore-command))
+      (setq keys (this-command-keys-vector))
+      (setq keys (seq-take keys (1- (length keys)))))
+    (my/embark-prefix-bindings keys)))
 
+(autoload #'embark-completing-read-prompter "embark")
 ;; HACK Later versions of embark altered this function so that it no
 ;; longer filters bindings by the current key prefix. This is the
 ;; original definition from commit 35f3961cd1e6
-;;;###autoload
-(defun my/embark-bindings (&optional prefix)
+(defun my/embark-prefix-bindings (&optional prefix)
   "Explore all current keybindings and commands with `completing-read'.
 The selected command will be executed. The set keybindings can be restricted
 by passing a PREFIX key."
@@ -323,51 +272,22 @@ by passing a PREFIX key."
     (when-let (command (embark-completing-read-prompter keymap 'no-default))
       (call-interactively command))))
 
-;; Note that the original command is still called when using
-;; execute-extended-command. Only keybindings are remapped.
 ;;;###autoload
 (defun my/marginalia-annotate-binding (cand)
   "Annotate command CAND with keybinding. If CAND is remapped to
   OTHER-COMMAND, return [remap OTHER-COMMAND]."
   (when-let* ((sym (intern-soft cand))
-              (key (and (commandp sym) (where-is-internal sym nil
-                                                          'first-only))))
+              (key (and (commandp sym) (where-is-internal sym nil 'first-only))))
     (let ((remap (command-remapping sym)))
-      (propertize (format " (%s)" (if remap remap
-                                    (key-description key)))
+      (propertize (format " (%s)" (if remap remap (key-description key)))
                   'face 'marginalia-key))))
 
-;;;###autoload
-(defun my/marginalia-annotate-variable (cand)
-  (when-let (sym (intern-soft cand))
-    (marginalia--fields
-     ;; ((marginalia--symbol-class sym) :face 'marginalia-type)
-     ((marginalia--variable-value sym))
-     ;; ((marginalia--variable-value sym) :truncate 0.5)
-     ;; ((documentation-property sym 'variable-documentation)
-     ;;  :truncate 1.0 :face 'marginalia-documentation)
-     )))
-
-;; This affects describe-function
-;;;###autoload
-(defun my/marginalia-annotate-function (cand)
-  (when-let (sym (intern-soft cand))
-    (when (fboundp sym)
-      (marginalia--fields
-       (:left (marginalia-annotate-binding cand))
-       ;; ((marginalia--symbol-class sym) :face 'marginalia-type)
-       ;; ((marginalia--function-args sym) :face 'marginalia-value
-       ;;  :truncate 0.5)
-       ((marginalia--function-doc sym) :truncate 1.0
-        :face 'marginalia-documentation)))))
-
-;; This affects helpful-callable
 ;;;###autoload
 (defun my/marginalia-annotate-symbol (cand)
   (when-let (sym (intern-soft cand))
     (marginalia--fields
      (:left (marginalia-annotate-binding cand))
-     ;;((marginalia--symbol-class sym) :face 'marginalia-type)
+     ((marginalia--symbol-class sym) :face 'marginalia-type)
      ((cond
        ((fboundp sym) (marginalia--function-doc sym))
        ((facep sym) (documentation-property sym 'face-documentation))
@@ -378,10 +298,16 @@ by passing a PREFIX key."
      )))
 
 ;;;###autoload
-(defun embark--expand-attachment (_ target)
-  (with-current-buffer (window-buffer (minibuffer-selected-window))
-    (cons 'file (expand-file-name target (org-attach-dir)))))
-
-;;;###autoload
 (defun marginalia-annotate-attachment (cand)
   (marginalia-annotate-file (cdr (embark--expand-attachment nil cand))))
+
+;;;###autoload
+(defun embark--expand-attachment (_ target)
+  "Transform marginalia category from `attach' to `file' and
+ convert target to filepath. `org-attach-open' does not use the
+ path returned by `org-attach-dir' as minibuffer input.
+ `embark--vertico-selected' constructs embark targets from the
+ candidate and the minibuffer input, so the target is not the
+ full path."
+  (with-current-buffer (window-buffer (minibuffer-selected-window))
+    (cons 'file (expand-file-name target (org-attach-dir)))))

@@ -1,73 +1,109 @@
-;;; graveyard.el -*- lexical-binding: t; -*-
 
-;;;; shell snippets -------------------------------------------------------
+;; TODO Has the org-attach window always been scrolled to the bottom? File a bug report so
+;; you can remove this hack eventually.
+(advice-add 'org-attach :around #'test)
 
-;; NOTE Abandoning this project in favor of running the-way out of vterm. It
-;; can search both description and shell snippet, and it allows spaces within
-;; the description. It's live preview is similar to annotatins provided with
-;; tempel-insert. And it provides placeholders as well.
+(defun test (fn &rest _)
+  (interactive)
+  (cl-letf (((symbol-function 'org-fit-window-to-buffer)
+             (lambda (&optional window max-height min-height shrink-only)
+               (cond ((not (window-full-width-p window))
+                      ;; Do nothing if another window would suffer.
+                      )
+                     ((not shrink-only)
+                      (fit-window-to-buffer window max-height min-height))
+                     (t (shrink-window-if-larger-than-buffer window)))
+               (or window (selected-window))
+               ;; HACK Display top of *Org-attach* buffers
+               (prin1 "hello")
+               (goto-line 1 (get-buffer "*Org Attach*")))))
+    (call-interactively fn)))
 
-;; (use-package! tempel)
-;; (use-package! tempel-collection)
 
-;; ;; User-defined templates live in ~/.config/doom/templates
-;; (unless (listp tempel-path) (setq tempel-path (list tempel-path)))
-;; (push (expand-file-name "~/.config/doom/templates") tempel-path)
 
-;; ;; Originally inspired by:
-;; ;; https://github.com/akermu/emacs-libvterm/issues/50.
-;; ;; https://www.reddit.com/r/emacs/comments/jd4tu4/how_does_one_insert_text_in_vterm_from_elisp/
-;; (defun my/tempel-insert ()
-;;   "When used within vterm-mode, insert the snippet into a temporary
-;; buffer to allow for snippet completiong using bindings in
-;; tempel-map (e.g., tempel-next). As soon as the snippet is
-;; finalized by calling `tempel-next' or `tempel-previous' enough
-;; times (see TempEl's README.org), insert the results into the original
-;; buffer."
-;;   (interactive)
-;;   (when (eq major-mode 'vterm-mode) ; TODO Handle other terminal and shell modes
-;;     (let ((old (current-buffer))
-;;           (scratch (make-temp-name "scratch")))
-;;       (switch-to-buffer scratch)
-;;       (sh-mode) ; Can't use vterm-mode, might as well use mode w/ shell syntax
-;;       (when evil-mode (evil-insert-state)) ; For placeholder completion
-;;       (defadvice! my/tempel--disable (fn &rest args)
-;;         :around #'tempel--disable
-;;         (apply fn args)
-;;         (when (null tempel--active)
-;;           (copy-region-as-kill (point-min) (point-max))
-;;           (kill-buffer scratch)
-;;           (switch-to-buffer old)
-;;           (vterm-yank)
-;;           (advice-remove 'tempel--disable 'my/tempel--disable)))))
-;;     (call-interactively 'tempel-insert))
 
-;; NOTE If you want normal org cycle behavior when using evil-org (subtree ->
-;; contents -> collapse), uncomment this. Note that this only applies when the
-;; evil module's +everywhere flag is enabled. Since I've disabled the flag and
-;; ported evil-org's use-package and disabled this anyway, I'm archiving this
-;; (remove-hook 'org-tab-first-hook '+org-cycle-only-current-subtree-h)
+;; Insert one blank line with a heading, and fold one blank line when cycling.
+(setq org-blank-before-new-entry '((heading . 1) (plain-list-item))
+      org-cycle-separator-lines 2)
 
-;;;; emacs lisp -------------------------------------------------
+;; Enter insert state after inserting a heading. See evil-org-mode bindings
+;; to heading insertion commands
+(defadvice! jkroes/org-meta-return-insert-state-a (&rest _)
+  :after (list #'org-meta-return #'org-insert-subheading)
+  (when (and (bound-and-true-p evil-local-mode)
+             (not (evil-emacs-state-p)))
+    (evil-insert 1)))
 
-;; TODO Remove this if no longer needed. From the backup config.
-;; (defvar +emacs-lisp-outline-regexp "[ \t]*;;;;* [^ \t\n]")
+(map! :map evil-org-mode-map
+      ;; Insert heading at end of current subtree. Appears to be the same
+      ;; as org-insert-heading-respect-content and
+      org-insert-heading-after-current.
+      :ni "C-RET"    (cmd! (let ((current-prefix-arg '(4))) (call-interactively #'org-meta-return)))
+      :ni [C-return] (cmd! (let ((current-prefix-arg '(4))) (call-interactively #'org-meta-return)))
+      ;; Insert heading at end of parent subtree.
+      :ni "C-S-RET"    (cmd! (let ((current-prefix-arg '(16))) (call-interactively #'org-meta-return)))
+      :ni [C-S-return] (cmd! (let ((current-prefix-arg '(16))) (call-interactively #'org-meta-return)))
+      ;; Insert heading, list item, or table row directly above or below
+      ;; current heading.
+      :ni "M-RET"        #'jkroes/insert-item-below
+      :ni [M-return]     #'jkroes/insert-item-below
+      :ni "M-S-RET"      #'jkroes/insert-item-above
+      :ni [M-S-return]   #'jkroes/insert-item-above
+      ;; Insert subheading
+      :ni [C-M-return] #'jkroes/org-insert-subheading)
 
-;; TODO Re-enable this if you switch from corfu to company
-;; Due to alterations to private company module, emacs-lisp otherwise has
-;; empty `company-backends'
-;;(set-company-backend! 'emacs-lisp-mode '(company-capf))
+;;;###autoload
+(defun jkroes/insert-item-below ()
+  "Inserts a new heading, table cell or item below the current one."
+  (interactive)
+  (move-end-of-line nil)
+  (let (org-insert-heading-respect-content)
+    (org-meta-return)))
 
-org ----------------------------------------------------------------------
+;;;###autoload
+(defun jkroes/insert-item-above ()
+  "Inserts a new heading, table cell or item above the current one.
+If on text outside of a heading or list item, convert the text into a heading."
+  (interactive)
+  (move-beginning-of-line nil)
+  ;; Don't insert a line above the new heading if it is the first child and is
+  ;; not preceded by content
+  (let ((org-blank-before-new-entry
+         (unless (jkroes/org-first-child-p)
+           org-blank-before-new-entry))
+         org-insert-heading-respect-content)
+    (org-meta-return)
+    ;; HACK When `org-blank-before-new-entry' is disabled, it removes the line
+    ;; before the heading, but it also removes a line after the heading. We
+    ;; still want a line after the first heading
+    (when (jkroes/org-first-child-p)
+      (let ((cur-pos (point)))
+        ;; For some reason, we need a character here in order to go back to
+        ;; point later
+        (insert "_")
+        (newline-and-indent)
+        (goto-char cur-pos)
+        (delete-forward-char 1)))))
 
-;; NOTE Line spacing pads the bottom of lines, while line height pads the top.
-;; Both are meant to work with literal lines, not visual ones. Line height adds
-;; padding only to the final visual line, which is definitely not desirable.
-;; Line spacing is better but won't pad between visual lines at all. It also
-;; seems like the effect is quite different for the same (floating point)
-;; values for the two text properties.
-;; (defun test ()
-;;   (interactive)
-;;   (add-text-properties (point-min) (point-max) '(line-spacing 0.5 line-height 0)))
+;;;###autoload
+(defun jkroes/org-insert-subheading (arg)
+  (interactive "P")
+    (let ((org-blank-before-new-entry
+           (unless (org-at-heading-p)
+             org-blank-before-new-entry)))
+      (org-insert-subheading arg)))
 
-org-superstar ------------------------------------------------------------
+(defun jkroes/org-first-child-p ()
+  "Return non-nil if the current heading is the first child heading
+and is not preceded by content."
+  ;; Check that a heading was inserted, not e.g. a list item or table row
+  (when (org-at-heading-p)
+    (save-excursion
+      (org-back-to-heading t)
+      (let ((cur-pos (point)))
+        ;; Current heading is first child of parent
+        (org-backward-heading-same-level 1)
+        (when (= (point) cur-pos)
+          (previous-line)
+          ;; And is not separated by content, including blank lines
+          (when (org-at-heading-p) t))))))

@@ -1,13 +1,44 @@
-;;; init.el -*- lexical-binding: t; auto-fill-function: nil;  -*-
+;;; init.el -*- lexical-binding: t; -*-
+
+;;; Helpers -------------------------------------------------------------------
 
 ;; See the load order described by ~/.config/emacs/lisp/doom.el
 
-(defun load-doom-private (relpath)
-  (load (expand-file-name relpath doom-private-dir)))
+(defconst IS-WSL (and (string-match "-[Mm]icrosoft" operating-system-release)
+                      (eq system-type 'gnu/linux)))
 
-(load-doom-private "utility.el")
-;; TODO Uncomment this if you want to disable smartparens
-;;(load-doom-private "hackery.el")
+(defvar doom-user-cache-dir (file-name-concat doom-user-dir ".local/cache"))
+
+;; (defun unbind-command (keymap command)
+;;   (let ((all-bindings (where-is-internal command keymap)))
+;;     (mapc (lambda (binding) (unbind-key binding keymap))
+;;           all-bindings)))
+(defun unbind-command (command keymap)
+  (let ((all-bindings (where-is-internal command keymap)))
+    (mapc (lambda (binding)
+            (keymap-unset keymap (key-description binding) t))
+          all-bindings)))
+
+;;; Hacks ---------------------------------------------------------------------
+
+;; TODO Uncomment this if you want to disable smartparens, as well as removing
+;; the +smartparens flag from the default module
+
+;; Cancel out the use-package :config in ~/.config/emacs/lisp/doom-editor.el by
+;; calling use-package-hook! after it is defined and before the use-package! in
+;; that file.
+;; (with-eval-after-load (expand-file-name
+;;                        "modules/config/use-package/init.el"
+;;                        doom-emacs-dir)
+;;   (use-package-hook! smartparens :pre-config nil))
+
+;; (with-eval-after-load (expand-file-name
+;;                        "lisp/doom-editor.el"
+;;                        doom-emacs-dir)
+;;   ;; Disable smartparens-global-mode; I dislike smartparens
+;;   (remove-hook 'doom-first-buffer-hook #'smartparens-global-mode))
+
+;;; Modules -------------------------------------------------------------------
 
 ;; This file controls what Doom modules are enabled and what order they load
 ;; in. Remember to run 'doom sync' after modifying it!
@@ -30,46 +61,52 @@
        ;;layout            ; auie,ctsrnm is the superior home row
 
        :completion
-       ;;(company +childrame)           ; the ultimate code completion backend
+       ;;company           ; the ultimate code completion backend
+       (corfu +orderless +dabbrev)  ; complete with cap(f), cape and a flying feather!
        ;;helm              ; the *other* search engine for love and life
        ;;ido               ; the other *other* search engine...
        ;;ivy               ; a search engine for love and life
-       (vertico +icons)           ; the search engine of the future
+       vertico             ; the search engine of the future
 
        :ui
        ;;deft              ; notational velocity for Emacs
-       doom              ; what makes DOOM look the way it does
+       ;; doom              ; what makes DOOM look the way it does
        ;;doom-dashboard    ; a nifty splash screen for Emacs
        ;;doom-quit         ; DOOM quit-message prompts when you quit Emacs
        ;;(emoji +unicode)  ; 🙂
        hl-todo           ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
-       ;;hydra
+       ;; TODO The guide faces aren't visible with the modus theme.
+       ;; See https://github.com/protesilaos/modus-themes/issues/98. The
+       ;; project is no longer actively developed, so consider using
+       ;; https://github.com/jdtsmith/indent-bars instead
        ;;indent-guides     ; highlighted indent columns
        ;;ligatures         ; ligatures and symbols to make your code pretty again
        ;;minimap           ; show a map of the code on the side
        modeline          ; snazzy, Atom-inspired modeline, plus API
-       modus-themes
        ;;nav-flash         ; blink cursor line after big motions
        ;;neotree           ; a project drawer, like NERDTree for vim
-       ophints           ; highlight the region an operation acts on
+       ;; TODO Investigate evil-goggles and configure for your use cases
+       ;;ophints           ; highlight the region an operation acts on
        (popup +defaults)   ; tame sudden yet inevitable temporary windows
        ;;tabs              ; a tab bar for Emacs
        ;;treemacs          ; a project drawer, like neotree but cooler
        ;;unicode           ; extended unicode support for various languages
-       ;; NOTE Don't use +pretty with vc-gutter while using a
-       ;; modus theme:
-       ;; https://protesilaos.com/emacs/modus-themes#h:a195e37c-e58c-4148-b254-8ba1ed8a731a,
-       ;; https://protesilaos.com/codelog/2022-08-04-doom-git-gutter-modus-themes/,
-       ;; ~/.config/emacs/modules/ui/vc-gutter/README.org
-       vc-gutter         ; vcs diff in the fringe
-       vi-tilde-fringe   ; fringe tildes to mark beyond EOB
+       ;; TODO Why doesn't syntax highlighting always kick in when opening a
+       ;;   file? The issue only appears when the popup and vc-gutter modules
+       ;;   are both present e.g. when finding a file from one of the helpful
+       ;;   functions. Syntax highlighting does appear if you invoke it as the
+       ;;   very first command on launch, but fails a second time. I suspect
+       ;;   the diff-hl package used by vc-gutter doesn't play nice with
+       ;;   popups.
+       ;;vc-gutter ; vcs diff in the fringe
+       ;;vi-tilde-fringe   ; fringe tildes to mark beyond EOB
        window-select     ; visually switch windows
        ;;workspaces        ; tab emulation, persistence & separate workspaces
        ;;zen               ; distraction-free coding or writing
 
        :editor
        evil ; come to the dark side, we have cookies
-       file-templates    ; auto-snippets for empty files
+       ;;file-templates    ; auto-snippets for empty files
        ;;fold              ; (nigh) universal code folding
        ;;(format +onsave)  ; automated prettiness
        ;;god               ; run Emacs commands without modifier keys
@@ -78,22 +115,22 @@
        ;;objed             ; text object editing for the innocent
        ;;parinfer          ; turn lisp into python, sort of
        ;;rotate-text       ; cycle region at point between text candidates
-       snippets          ; my elves. They type so I don't have to
+       ;;snippets          ; my elves. They type so I don't have to
        ;; BUG 2/9/24 This module may be the cause of recent Emacs hangs
        ;;word-wrap         ; soft wrapping with language-aware indent
 
        :emacs
-       (dired +ranger +icons) ; making dired pretty [functional]
+       dired             ; making dired pretty [functional]
        electric          ; smarter, keyword-based electric-indent
        ;;ibuffer         ; interactive buffer management
        ;;undo              ; persistent, smarter undo for your inevitable mistakes
-       vc                ; version-control and Emacs, sitting in a tree
+       ;;vc                ; version-control and Emacs, sitting in a tree
 
        :term
        ;;eshell            ; the elisp shell that works everywhere
        ;;shell             ; simple shell REPL for Emacs
        ;;term              ; basic terminal emulator for Emacs
-       vterm             ; the best terminal emulation in Emacs
+       ;;vterm             ; the best terminal emulation in Emacs
 
        :checkers
        ;;syntax              ; tasing you for every semicolon you forget
@@ -102,7 +139,8 @@
 
        :tools
        ;;ansible
-       biblio            ; Writes a PhD for you (citation needed)
+       ;; TODO Uncomment this once you get it up and running
+       ;;biblio            ; Writes a PhD for you (citation needed)
        ;;collab            ; buffers with friends
        ;;debugger          ; FIXME stepping through code, to help you add bugs
        ;;direnv
@@ -110,23 +148,21 @@
        ;;editorconfig      ; let someone else argue about tabs vs spaces
        ;;ein               ; tame Jupyter notebooks with emacs
        ;;(eval +overlay)     ; run code, run (also, repls)
-       ;;gist              ; interacting with github gists
        lookup              ; navigate your code and its documentation
+       ;; TODO Configure this module and lsp for individual prog modes
        (lsp +eglot)                ; M-x vscode
-       magit             ; a git porcelain for Emacs
+       ;;magit             ; a git porcelain for Emacs
        ;;make              ; run make tasks from Emacs
        ;;pass              ; password manager for nerds
        ;;pdf               ; pdf enhancements
        ;;prodigy           ; FIXME managing external services & code builders
-       ;;rgb               ; creating color strings
-       ;;taskrunner        ; taskrunner for all your projects
        ;;terraform         ; infrastructure as code
        ;;tmux              ; an API for interacting with tmux
-       tree-sitter       ; syntax and parsing, sitting in a tree...
+       ;;tree-sitter       ; syntax and parsing, sitting in a tree...
        ;;upload            ; map local to remote projects via ssh/ftp
 
        :os
-       (:if IS-MAC macos)  ; improve compatibility with macOS
+       (:if (featurep :system 'macos) macos)  ; improve compatibility with macOS
        ;;tty               ; improve the terminal Emacs experience
 
        :lang
@@ -145,19 +181,19 @@
        ;;elm               ; care for a cup of TEA?
        emacs-lisp        ; drown in parentheses
        ;;erlang            ; an elegant language for a more civilized age
-       (ess +lsp)          ; emacs speaks statistics
+       (ess +lsp)               ; emacs speaks statistics
        ;;factor
        ;;faust             ; dsp, but you get to keep your soul
        ;;fortran           ; in FORTRAN, GOD is REAL (unless declared INTEGER)
        ;;fsharp            ; ML stands for Microsoft's Language
        ;;fstar             ; (dependent) types and (monadic) effects and Z3
        ;;gdscript          ; the language you waited for
-       ;; go         ; the hipster dialect
+       ;;(go +lsp)         ; the hipster dialect
        ;;(graphql +lsp)    ; Give queries a REST
        ;;(haskell +lsp)    ; a language that's lazier than I am
        ;;hy                ; readability of scheme w/ speed of python
        ;;idris             ; a language you can depend on
-       ;;json              ; At least it ain't XML
+       (json +lsp)              ; At least it ain't XML
        ;;(java +lsp)       ; the poster child for carpal tunnel syndrome
        ;;javascript        ; all(hope(abandon(ye(who(enter(here))))))
        ;;julia             ; a better, faster MATLAB
@@ -170,13 +206,13 @@
        ;;nim               ; python + lisp at the speed of c
        ;;nix               ; I hereby declare "nix geht mehr!"
        ;;ocaml             ; an objective camel
-       ;; TODO This module has some errors that need to be resolved due to
-       ;; incorporation of legacy doom code
-       ;;(org +roam2 +pretty +pandoc) ; organize your plain life in plain text
+       ;; TODO Enable the +pretty and +pandoc flags once you get them up and
+       ;; running
+       (org +roam2 +pretty) ; organize your plain life in plain text
        ;;php               ; perl's insecure younger brother
        ;;plantuml          ; diagrams for confusing people more
        ;;purescript        ; javascript, but functional
-       ;;python            ; beautiful is better than ugly
+       (python +lsp)            ; beautiful is better than ugly
        ;;qt                ; the 'cutest' gui framework ever
        ;;racket            ; a DSL for DSLs
        ;;raku              ; the artist formerly known as perl6
@@ -191,8 +227,8 @@
        ;;solidity          ; do you need a blockchain? No.
        ;;swift             ; who asked for emoji variables?
        ;;terra             ; Earth and Moon in alignment for performance.
-       web               ; the tubes
-       ;;yaml              ; JSON, but readable
+       ;;web               ; the tubes
+       (yaml +lsp)              ; JSON, but readable
        ;;zig               ; C, but simpler
 
        :email
@@ -206,8 +242,13 @@
        ;;everywhere        ; *leave* Emacs!? You must be joking
        ;;irc               ; how neckbeards socialize
        ;;(rss +org)        ; emacs as an RSS reader
-       ;;twitter           ; twitter client https://twitter.com/vnought
 
        :config
-       ;; literate
-       (default +bindings))
+       ;;literate
+       (default +bindings +smartparens)
+
+       :jkroes
+       theme
+       ediff
+       annotate
+       miscellaneous)

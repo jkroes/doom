@@ -2,6 +2,9 @@
 
 (defvar evil-collection-key-blacklist)
 
+;; must be set before evil/evil-collection is loaded
+(defvar evil-want-keybinding nil)
+
 ;; We load evil-collection ourselves for these reasons:
 ;;
 ;; 1. To truly lazy load it. Some of its modules, like
@@ -22,10 +25,15 @@
 (when (and (not noninteractive)
            (not (doom-context-p 'reload)))
 
-  (setq evil-collection-company-use-tng (modulep! :completion company +tng)
-        ;; must be set before evil/evil-collection is loaded
-        evil-want-keybinding nil)
+  (setq evil-collection-company-use-tng (modulep! :completion company +tng))
 
+  ;; HACK This list should contain at a minimum any individually loaded modes
+  ;; (see above `dolist') that you do not want to load. Doom also added a few
+  ;; other modes, possibly because it prefers the customization and keybindings
+  ;; in the relevant module (e.g., `anaconda-mode' in modules/lang/python).
+  ;; Each element of this list is the car of a mode listed in
+  ;; `evil-collection--supported-modes' (see evil-collection.el, not the
+  ;; definition in this file).
   (defvar +evil-collection-disabled-list
     '(anaconda-mode
       buff-menu
@@ -38,20 +46,20 @@
       ert
       free-keys
       helm
-      help
       image
       indent
+      kmacro
       kotlin-mode
       lispy
       outline
       replace
       shortdoc
-      simple
+      process-menu
+      shortdoc
       slime
-      tab-bar)
-    "A list of `evil-collection' modules to ignore. See the definition of this
-variable for an explanation of the defaults (in comments). See
-`evil-collection-mode-list' for a list of available options.")
+      tab-bar
+      tabulated-list)
+    "A list of `evil-collection' modules to ignore.")
 
   (defvar evil-collection-setup-minibuffer nil)
 
@@ -84,204 +92,209 @@ variable for an explanation of the defaults (in comments). See
   ;;         (message "diff: %s" diff)
   ;;         (kill-new (prin1-to-string list))))))
 
+
+  ;; NOTE This list seems to have been copied from the definition of
+  ;;`evil-collection--supported-modes', which is the default value of `evil-collection-mode-list'
+  ;;
+  ;; HACK This list should not contain any modes that are loaded individually
+  ;; above `dolist'. This allows us to use `+evil-collection-disabled-list' to
+  ;; disable loading of individual modes and modes listed here without worrying
+  ;; that +evil-collection-init will be invoked twice--once individually and
+  ;; the second within `dolist'--if they are removed from that list.
   (defvar evil-collection-mode-list
-    `(2048-game
-      ag
-      alchemist
-      anaconda-mode
-      apropos
-      arc-mode
-      atomic-chrome
-      auto-package-update
-      beginend
-      bluetooth
-      bm
-      bookmark
-      (buff-menu "buff-menu")
-      calc
-      calendar
-      cider
-      cmake-mode
-      color-rg
-      comint
-      company
-      compile
-      consult
-      corfu
-      crdt
-      (custom cus-edit)
-      cus-theme
-      daemons
-      dashboard
-      deadgrep
-      debbugs
-      debug
-      devdocs
-      dictionary
-      diff-hl
-      diff-mode
+    `(
+      ;; 2048-game
+      ;; ag
+      ;; alchemist
+      ;; anaconda-mode
+      ;; apropos
+      ;; arc-mode
+      ;; atomic-chrome
+      ;; auto-package-update
+      ;; beginend
+      ;; bluetooth
+      ;; bm
+      ;; bookmark
+      ;; bufler
+      ;; calendar
+      ;; cider
+      ;; cmake-mode
+      ;; color-rg
+      ;; company
+      ;; compile
+      ;; consult
+      ;; corfu
+      ;; crdt
+      ;; (csv "csv-mode")
+      ;; cus-theme
+      ;; dashboard
+      ;; daemons
+      ;; deadgrep
+      ;; debbugs
+      ;; debug
+      ;; devdocs
+      ;; dictionary
+      ;; diff-hl
+      ;; diff-mode
       dired
-      dired-sidebar
-      disk-usage
-      distel
-      doc-view
-      docker
-      ebib
-      ebuku
-      edbi
+      ;; dired-sidebar
+      ;; disk-usage
+      ;; distel
+      ;; doc-view
+      ;; docker
+      ;; eat
+      ;; ebib
+      ;; ebuku
+      ;; edbi
       edebug
       ediff
-      eglot
-      elpaca
-      ement
-      explain-pause-mode
-      eldoc
-      elfeed
-      elisp-mode
-      elisp-refs
-      elisp-slime-nav
-      embark
-      emms
-      ,@(if (> emacs-major-version 28) '(emoji))
-      epa
-      ert
-      eshell
-      eval-sexp-fu
-      evil-mc
-      eww
-      fanyi
-      finder
-      flycheck
-      flymake
-      forge
-      free-keys
-      geiser
-      ggtags
-      git-timemachine
-      gited
-      gnus
-      go-mode
-      grep
-      guix
-      hackernews
-      helm
-      help
+      ;; eglot
+      ;; elpaca
+      ;; ement
+      ;; explain-pause-mode
+      ;; eldoc
+      ;; elfeed
+      ;; elisp-refs
+      ;; elisp-slime-nav
+      ;; embark
+      ;; emms
+      ;; ,@(if (> emacs-major-version 28) '(emoji))
+      ;; epa
+      ;; ert
+      ;; eshell
+      ;; eval-sexp-fu
+      ;; evil-mc
+      ;; eww
+      ;; fanyi
+      ;; finder
+      ;; flycheck
+      ;; flymake
+      ;; forge
+      ;; free-keys
+      ;; geiser
+      ;; ggtags
+      ;; git-timemachine
+      ;; gited
+      ;; gnus
+      ;; go-mode
+      ;; grep
+      ;; guix
+      ;; hackernews
+      ;; helm
       helpful
-      hg-histedit
-      hungry-delete
-      ibuffer
-      (image image-mode)
-      image-dired
-      image+
-      imenu
-      imenu-list
-      (indent "indent")
-      indium
+      ;; hg-histedit
+      ;; hungry-delete
+      ;; ibuffer
+      ;; image-dired
+      ;; image+
+      ;; imenu
+      ;; imenu-list
+      ;; indium
       info
-      ivy
-      js2-mode
-      leetcode
-      lispy
-      lms
-      log-edit
-      log-view
-      lsp-ui-imenu
-      lua-mode
-      kotlin-mode
-      macrostep
-      man
-      (magit magit-repos magit-submodule)
-      magit-section
-      magit-todos
-      markdown-mode
-      monky
-      mpc
-      mu4e
-      mu4e-conversation
-      neotree
-      newsticker
-      notmuch
-      nov
-      omnisharp
-      org
-      org-present
-      org-roam
-      osx-dictionary
-      outline
-      p4
-      (package-menu package)
-      pass
-      (pdf pdf-tools)
-      popup
-      proced
-      prodigy
-      profiler
-      python
-      quickrun
-      racer
-      racket-describe
-      realgud
-      reftex
-      replace
-      restclient
-      rg
-      ripgrep
-      rjsx-mode
-      robe
-      rtags
-      ruby-mode
-      scheme
-      scroll-lock
-      selectrum
-      sh-script
-      ,@(if (> emacs-major-version 27) '(shortdoc))
-      simple
-      simple-mpc
-      slime
-      sly
-      snake
-      so-long
-      speedbar
-      tab-bar
-      tablist
-      tar-mode
-      telega
-      (term term ansi-term multi-term)
-      tetris
-      thread
-      tide
-      timer-list
-      transmission
-      trashed
-      tuareg
-      typescript-mode
-      vc-annotate
-      vc-dir
-      vc-git
-      vdiff
-      vertico
-      view
-      vlf
-      vterm
-      vundo
-      w3m
-      wdired
-      wgrep
-      which-key
-      woman
-      xref
-      xwidget
-      yaml-mode
-      youtube-dl
-      zmusic
-      (ztree ztree-diff)))
+      ;; ivy
+      ;; js2-mode
+      ;; leetcode
+      ;; lispy
+      ;; lms
+      ;; log-edit
+      ;; log-view
+      ;; lsp-ui-imenu
+      ;; lua-mode
+      ;; kotlin-mode
+      ;; macrostep
+      ;; man
+      ;; (magit magit-repos magit-submodule)
+      ;; magit-repos
+      ;; magit-section
+      ;; magit-todos
+      ;; markdown-mode
+      ;; monky
+      ;; mpc
+      ;; mpdel
+      ;; mu4e
+      ;; mu4e-conversation
+      ;; neotree
+      ;; newsticker
+      ;; notmuch
+      ;; nov
+      ;; omnisharp
+      ;; org
+      ;; org-present
+      ;; org-roam
+      ;; osx-dictionary
+      ;; outline
+      ;; p4
+      ;; (package-menu package)
+      ;; pass
+      ;; (pdf pdf-tools)
+      ;; popup
+      ;; proced
+      ;; prodigy
+      ;; profiler
+      ;; python
+      ;; quickrun
+      ;; racer
+      ;; racket-describe
+      ;; realgud
+      ;; reftex
+      ;; restclient
+      ;; rg
+      ;; ripgrep
+      ;; rjsx-mode
+      ;; robe
+      ;; rtags
+      ;; ruby-mode
+      ;; scheme
+      ;; scroll-lock
+      ;; selectrum
+      ;; sh-script
+      ;; simple-mpc
+      ;; slime
+      ;; sly
+      ;; snake
+      ;; so-long
+      ;; speedbar
+      ;; tablist
+      ;; tar-mode
+      ;; telega
+      ;; (term term ansi-term multi-term)
+      ;; tetris
+      ;; thread
+      ;; tide
+      ;; timer-list
+      ;; transmission
+      ;; trashed
+      ;; tuareg
+      ;; typescript-mode
+      ;; vc-annotate
+      ;; vc-dir
+      ;; vc-git
+      ;; vdiff
+      ;; vertico
+      ;; view
+      ;; vlf
+      ;; vterm
+      ;; vundo
+      ;; w3m
+      ;; wdired
+      ;; wgrep
+      ;; which-key
+      ;; woman
+      ;; xref
+      ;; xwidget
+      ;; yaml-mode
+      ;; youtube-dl
+      ;; zmusic
+      ;; (ztree ztree-diff)
+      ))
 
-  (defun +evil-collection-init (module &optional disabled-list)
+  ;; HACK Always check `+evil-collection-disabled-list'
+  (defun +evil-collection-init (module)
     "Initialize evil-collection-MODULE.
 
 Unlike `evil-collection-init', this respects `+evil-collection-disabled-list',
 and complains if a module is loaded too early (during startup)."
-    (unless (memq (or (car-safe module) module) disabled-list)
+    (unless (memq (or (car-safe module) module) +evil-collection-disabled-list)
       (doom-log "editor:evil: loading evil-collection-%s %s"
                 (or (car-safe module) module)
                 (if after-init-time "" "(too early!)"))
@@ -324,6 +337,7 @@ and complains if a module is loaded too early (during startup)."
       (+evil-collection-init '(buff-menu "buff-menu")))
     (add-transient-hook! 'calc-mode
       (+evil-collection-init 'calc))
+    ;; (image image-mode)
     (add-transient-hook! 'image-mode
       (+evil-collection-init 'image))
     (add-transient-hook! 'emacs-lisp-mode
@@ -332,6 +346,9 @@ and complains if a module is loaded too early (during startup)."
       (+evil-collection-init 'replace))
     (add-transient-hook! 'indent-rigidly
       (+evil-collection-init '(indent "indent")))
+    (when (>= emacs-major-version 30)
+      (add-transient-hook! 'kmacro-menu-mode
+        (+evil-collection-init 'kmacro)))
     (add-transient-hook! 'minibuffer-setup-hook
       (when evil-collection-setup-minibuffer
         (+evil-collection-init 'minibuffer)
@@ -352,4 +369,13 @@ and complains if a module is loaded too early (during startup)."
     (dolist (mode evil-collection-mode-list)
       (dolist (req (or (cdr-safe mode) (list mode)))
         (with-eval-after-load req
-          (+evil-collection-init mode +evil-collection-disabled-list))))))
+          (+evil-collection-init mode)))))
+
+  ;; HACK: The Diff options in `save-some-buffers's prompt should persist after
+  ;;   you quit view-mode, but evil-collection-view's bindings on q/Q break
+  ;;   this, so these are here to restore them.
+  ;; REVIEW: PR this upstream!
+  (map! :after (view evil-collection-view)
+        :map view-mode-map
+        :n "q" #'View-quit
+        :n "Q" #'View-quit-all))

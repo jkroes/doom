@@ -22,7 +22,8 @@
   (interactive)
   (unless (bound-and-true-p org-directory)
     (require 'org))
-  ;; HACK Show files within `org-directory' right away
+  ;; HACK Show files within `org-directory' right away, in case `org-directory'
+  ;; does not end in a path separator
   (doom-project-browse (file-name-as-directory org-directory)))
 ;;;###autoload
 (defun +default/find-in-notes ()
@@ -66,7 +67,4 @@ If prefix ARG is non-nil, prompt for a known project to open in dired."
   (apply #'dired
          (if arg
              (list (completing-read "Open dired in project: " projectile-known-projects))
-           ;; TODO This was in an older version of the module in
-           ;; lieu of dired-read-dir-and-switches
-           ;; (dired-jump)
            (dired-read-dir-and-switches ""))))

@@ -1,48 +1,97 @@
 ;;; config/default/+bindings.el -*- lexical-binding: t; -*-
 
-;; NOTE SPC u replaces C-u as the universal argument
-;; Easier to type than "M-SPC u"
-;; (when (or evil-want-C-u-delete evil-want-C-u-scroll)
-;;   (map! "M-u" #'universal-argument))
+(when (modulep! :editor evil)
+  (map! :map (evil-ex-completion-map evil-ex-search-keymap)
+        "C-a" #'evil-beginning-of-line
+        "C-e" #'evil-end-of-line
+        "C-b" #'evil-backward-char
+        "C-f" #'evil-forward-char)
 
-;; Minibuffer
-(map! :map (evil-ex-completion-map evil-ex-search-keymap)
-      "C-a" #'evil-beginning-of-line
-      "C-b" #'evil-backward-char
-      "C-f" #'evil-forward-char
-      :gi "C-j" #'next-complete-history-element
-      :gi "C-k" #'previous-complete-history-element)
+  (define-key! minibuffer-local-map
+    [escape] #'top-level
+    ;; Shadows doom/backward-to-bol-or-indent in global-map
+    "C-a"    #'move-beginning-of-line
+    ;; Shadows doom/forward-to-last-non-comment-or-eol in global-map
+    "C-e"    #'move-end-of-line
+    "C-u"    #'evil-delete-back-to-indentation
+    ;; Shadows kill-region in global-map
+    "C-w"    #'doom/delete-backward-word)
 
-(define-key! :keymaps +default-minibuffer-maps
-  [escape] #'abort-recursive-edit
-  "C-a"    #'move-beginning-of-line
-  "C-r"    #'evil-paste-from-register
-  "C-u"    #'evil-delete-back-to-indentation
-  "C-v"    #'yank
-  "C-w"    #'doom/delete-backward-word
-  "C-z"    (cmd! (ignore-errors (call-interactively #'undo))))
-
-(define-key! :keymaps +default-minibuffer-maps
-  "C-j"    #'next-line
-  "C-k"    #'previous-line
-  "C-S-j"  #'scroll-up-command
-  "C-S-k"  #'scroll-down-command)
-;; For folks with `evil-collection-setup-minibuffer' enabled
-(define-key! :states 'insert :keymaps +default-minibuffer-maps
-  "C-j"    #'next-line
-  "C-k"    #'previous-line)
-(define-key! read-expression-map
-  "C-j" #'next-line-or-history-element
-  "C-k" #'previous-line-or-history-element)
+  (define-key!
+   :keymaps '(minibuffer-local-map evil-ex-completion-map
+              evil-ex-search-keymap)
+    ;; Easier to remember than C-y and M-y
+    "C-v"    #'yank
+    "M-v"    #'yank-pop
+    ;; Shadows suspend-frame in global-map
+    "C-z"    (cmd! (ignore-errors (call-interactively #'undo)))))
 
 
 ;;
 ;;; Global keybindings
 
 ;; Smart tab, these will only work in GUI Emacs
-(map! :m [tab] (cmds! (and (featurep! :editor fold)
-                           (save-excursion (end-of-line) (invisible-p (point))))
-                      #'+fold/toggle)
+(map! :i [tab]
+      `(menu-item "Evil insert smart tab" nil :filter
+        (lambda (cmd)
+          (cond
+           ((or (doom-lookup-key [tab] overriding-terminal-local-map)
+                (doom-lookup-key (kbd "TAB") overriding-terminal-local-map))
+            cmd)
+           ,@(when (modulep! :editor snippets)
+               '(((memq (bound-and-true-p yas--active-field-overlay)
+                        (overlays-in (1- (point)) (1+ (point))))
+                  #'yas-next-field-or-maybe-expand)
+                 ((yas-maybe-expand-abbrev-key-filter 'yas-expand)
+                  #'yas-expand)))
+           ,@(when (modulep! :completion company +tng)
+               '(((bound-and-true-p company-mode)
+                  #'company-indent-or-complete-common)))
+           ,@(when (modulep! :completion corfu)
+               '(((bound-and-true-p corfu-mode)
+                  (if (derived-mode-p 'eshell-mode 'comint-mode)
+                      #'completion-at-point
+                    #'indent-for-tab-command)))))))
+      :m [tab]
+      `(menu-item "Evil motion smart tab" nil :filter
+        (lambda (cmd)
+          (cond
+           ((or (doom-lookup-key [tab] overriding-terminal-local-map)
+                (doom-lookup-key (kbd "TAB") overriding-terminal-local-map))
+            cmd)
+           ,@(when (modulep! :editor snippets)
+               '(((and (evil-visual-state-p)
+                       (or (eq evil-visual-selection 'line)
+                           (not (memq (char-after)
+                                      (list ?\( ?\[ ?\{ ?\} ?\] ?\))))))
+                  #'yas-insert-snippet)))
+           ,@(when (modulep! :editor fold)
+               '(((save-excursion (end-of-line) (invisible-p (point)))
+                  #'+fold/toggle)))
+           ;; Fixes #4548: without this, this tab keybind overrides
+           ;; mode-local ones for modes that don't have an evil
+           ;; keybinding scheme or users who don't have :editor (evil
+           ;; +everywhere) enabled.
+           ((or (doom-lookup-key
+                 [tab]
+                 (list (evil-get-auxiliary-keymap (current-local-map)
+                                                  evil-state)
+                       (current-local-map)))
+                (doom-lookup-key
+                 (kbd "TAB")
+                 (list (evil-get-auxiliary-keymap (current-local-map)
+                                                  evil-state)))
+                (doom-lookup-key (kbd "TAB") (list (current-local-map))))
+            cmd)
+           ((fboundp 'evil-jump-item)
+            #'evil-jump-item))))
+      ;; Extend smart tab for specific modes. This way, we process the entire
+      ;; smart tab logic and only fall back to these commands at the end.
+      (:when (modulep! :lang org)
+       (:after org :map org-mode-map
+        [remap indent-for-tab-command]
+        `(menu-item "Go to the next field" org-table-next-field
+          :filter ,(lambda (cmd) (when (org-at-table-p) cmd)))))
 
       (:after help :map help-mode-map
        :n "o"       #'link-hint-open-link)
@@ -63,9 +112,9 @@
        :n "o"    #'link-hint-open-link)
 
       (:unless (modulep! :input layout +bepo)
-        (:after (evil-org evil-easymotion)
-         :map evil-org-mode-map
-         :m "gsh" #'+org/goto-visible))
+       (:after (evil-org evil-easymotion)
+        :map evil-org-mode-map
+        :m "gsh" #'+org/goto-visible))
 
       (:when (modulep! :editor multiple-cursors)
        :prefix "gz"
@@ -97,21 +146,13 @@
       :n "C--"    #'text-scale-decrease
       ;; Frame-local font resizing
       :n "M-C-="  #'doom/increase-font-size
-      :n "M-C--"  #'doom/decrease-font-size
-
-      :n ">"
-      (cond ((modulep! :completion vertico)    #'vertico-repeat)
-            ((modulep! :completion ivy)        #'ivy-resume)
-            ((modulep! :completion helm)       #'helm-resume))
-      ;; See `vertico-repeat-filter' and `vertico-repeat-transformers' for configuration.
-      (:when (modulep! :completion vertico)
-        :n "<" #'vertico-repeat-select))
+      :n "M-C--"  #'doom/decrease-font-size)
 
 
 ;;
 ;;; Module keybinds
 
-;;; :completion
+;;; :completion (in-buffer)
 (map! (:when (modulep! :completion company)
        :i "C-@"    (cmds! (not (minibufferp)) #'company-complete-common)
        :i "C-SPC"  (cmds! (not (minibufferp)) #'company-complete-common)
@@ -140,7 +181,36 @@
          "C-s"     #'company-filter-candidates
          [escape]  #'company-search-abort)))
 
-      (:when (modulep! :completion ivy)
+      (:when (modulep! :completion corfu)
+       (:after corfu
+        (:map corfu-mode-map
+         :i "C-SPC" #'completion-at-point
+         :n "C-SPC" (cmd! (call-interactively #'evil-insert-state)
+                          (call-interactively #'completion-at-point))
+         :v "C-SPC" (cmd! (call-interactively #'evil-change)
+                          (call-interactively #'completion-at-point)))
+        (:map corfu-map
+         ;; Like M-TAB when vertico is enabled and corfu is disabled
+         :i "M-TAB" #'+corfu/move-to-minibuffer
+         :i "C-SPC" #'corfu-insert-separator
+         :i "C-k" #'corfu-previous
+         :i "C-j" #'corfu-next
+         :i "M-<" #'corfu-first
+         :i "M->" #'corfu-last
+         ;; Can be scrolled with either scroll-other-window or
+         ;; corfu-popinfo-scroll-up
+         :i "C-h" #'corfu-info-documentation
+         ;; Move to beginning/end of prompt then line
+         :i "C-a" #'corfu-prompt-beginning
+         :i "C-e" #'corfu-prompt-end
+         ;; Quit without inserting a candidate. Necessary when
+         ;; `corfu-preview-current' has the value `insert'
+         :i "C-g" #'corfu-quit
+         ;;"RET" nil
+         ))))
+
+;;; :completion (separate)
+(map! (:when (modulep! :completion ivy)
        (:after ivy
         :map ivy-minibuffer-map
         "C-SPC" #'ivy-call-and-recenter  ; preview file
@@ -153,7 +223,8 @@
         [C-return] #'+ivy/git-grep-other-window-action))
 
       (:when (modulep! :completion helm)
-       (:after helm :map helm-map
+       (:after helm
+        :map helm-map
         [remap next-line]     #'helm-next-line
         [remap previous-line] #'helm-previous-line
         [left]     #'left-char
@@ -212,7 +283,7 @@
        :g "M-8"   #'+workspace/switch-to-7
        :g "M-9"   #'+workspace/switch-to-8
        :g "M-0"   #'+workspace/switch-to-final
-       (:when IS-MAC
+       (:when (featurep :system 'macos)
         :g "s-t"   #'+workspace/new
         :g "s-T"   #'+workspace/display
         :n "s-1"   #'+workspace/switch-to-0
@@ -272,23 +343,23 @@
       :desc "help"                  "h"    help-map
 
       (:when (modulep! :ui popup)
-       :desc "Toggle last popup"     "~"    #'+popup/toggle)
-      :desc "Find file"             "."    #'find-file
+       :desc "Toggle last popup"     "`"    #'+popup/toggle)
+      :desc "Find file"             "."    #'+default/find-file-under-here
       :desc "Switch buffer"         ","    #'switch-to-buffer
       (:when (modulep! :ui workspaces)
        :desc "Switch workspace buffer" "," #'persp-switch-to-buffer
        :desc "Switch buffer"           "<" #'switch-to-buffer)
-      :desc "Switch to last buffer" "`"    #'evil-switch-to-windows-last-buffer
+      :desc "Resume last search"    "'"
+      (cond ((modulep! :completion vertico)    #'vertico-repeat)
+            ((modulep! :completion ivy)        #'ivy-resume)
+            ((modulep! :completion helm)       #'helm-resume))
 
       :desc "Search for symbol in project" "*" #'+default/search-project-for-symbol-at-point
       :desc "Search project"               "/" #'+default/search-project
 
-      :desc "Find file in project"  "SPC"  #'projectile-find-file
+      "DEL" #'evil-switch-to-windows-last-buffer
+      "SPC" #'ace-window
       :desc "Jump to bookmark"      "RET"  #'bookmark-jump
-      "<backspace>" #'ace-window
-      "TAB" #'ace-window
-      "<tab>" #'ace-window
-      ;;"<deletechar>" #'ace-window
 
       ;;; <leader> TAB --- workspace
       (:when (modulep! :ui workspaces)
@@ -300,8 +371,9 @@
         :desc "New named workspace"       "N"   #'+workspace/new-named
         :desc "Load workspace from file"  "l"   #'+workspace/load
         :desc "Save workspace to file"    "s"   #'+workspace/save
-        :desc "Delete session"            "x"   #'+workspace/kill-session
-        :desc "Delete this workspace"     "d"   #'+workspace/delete
+        :desc "Kill session"              "x"   #'+workspace/kill-session
+        :desc "Kill this workspace"       "d"   #'+workspace/kill
+        :desc "Delete saved workspace"    "D"   #'+workspace/delete
         :desc "Rename workspace"          "r"   #'+workspace/rename
         :desc "Restore last session"      "R"   #'+workspace/restore-last-session
         :desc "Next workspace"            "]"   #'+workspace/switch-right
@@ -339,6 +411,7 @@
        :desc "Delete bookmark"             "M"   #'bookmark-delete
        :desc "Next buffer"                 "n"   #'next-buffer
        :desc "New empty buffer"            "N"   #'evil-buffer-new
+                                           "o"   #'switch-to-buffer-other-windows
        :desc "Kill other buffers"          "O"   #'doom/kill-other-buffers
        :desc "Previous buffer"             "p"   #'previous-buffer
        :desc "Revert buffer"               "r"   #'revert-buffer
@@ -355,8 +428,11 @@
       ;;; <leader> c --- code
       (:prefix-map ("c" . "code")
        (:when (and (modulep! :tools lsp) (not (modulep! :tools lsp +eglot)))
-        :desc "LSP Execute code action" "a" #'lsp-execute-code-action
-        :desc "LSP Organize imports" "o" #'lsp-organize-imports
+        :desc "LSP Execute code action"              "a"   #'lsp-execute-code-action
+        :desc "LSP Organize imports"                 "o"   #'lsp-organize-imports
+        :desc "LSP"                                  "l"   #'+default/lsp-command-map
+        :desc "LSP Rename"                           "r"   #'lsp-rename
+        :desc "Symbols"                              "S"   #'lsp-treemacs-symbols
         (:when (modulep! :completion ivy)
          :desc "Jump to symbol in current workspace" "j"   #'lsp-ivy-workspace-symbol
          :desc "Jump to symbol in any workspace"     "J"   #'lsp-ivy-global-workspace-symbol)
@@ -370,10 +446,7 @@
          :desc "Errors list"                         "X"   #'lsp-treemacs-errors-list
          :desc "Incoming call hierarchy"             "y"   #'lsp-treemacs-call-hierarchy
          :desc "Outgoing call hierarchy"             "Y"   (cmd!! #'lsp-treemacs-call-hierarchy t)
-         :desc "References tree"                     "R"   (cmd!! #'lsp-treemacs-references t)
-         :desc "Symbols"                             "S"   #'lsp-treemacs-symbols)
-         :desc "LSP"                                 "l"   #'+default/lsp-command-map
-         :desc "LSP Rename"                          "r"   #'lsp-rename)
+         :desc "References tree"                     "R"   (cmd!! #'lsp-treemacs-references t)))
        (:when (modulep! :tools lsp +eglot)
         :desc "LSP Execute code action" "a" #'eglot-code-actions
         :desc "LSP Rename" "r" #'eglot-rename
@@ -382,7 +455,7 @@
          :desc "Jump to symbol in current workspace" "j"   #'consult-eglot-symbols))
        :desc "Compile"                               "c"   #'compile
        :desc "Recompile"                             "C"   #'recompile
-       :desc "Jump to definition"                    "d"   #'my/lookup-definition
+       :desc "Jump to definition"                    "d"   #'+lookup/definition
        :desc "Jump to references"                    "D"   #'+lookup/references
        :desc "Evaluate buffer/region"                "e"   #'+eval/buffer-or-region
        :desc "Evaluate & replace region"             "E"   #'+eval:replace-region
@@ -397,15 +470,19 @@
 
       ;;; <leader> f --- file
       (:prefix-map ("f" . "file")
+                                           "b"   #'file-bookmark
        :desc "Open project editorconfig"   "c"   #'editorconfig-find-current-editorconfig
        :desc "Copy this file"              "C"   #'doom/copy-this-file
        ;; Unlike +default/dired, this skips a prompt
-       :desc "Find directory"              "d"   #'dired-jump
-       :desc "Delete this file"            "D"   #'doom/delete-this-file
+       :desc "Find directory"              "d"   #'consult-dir
+       :desc "Delete this file"            "D"   #'dired-jump
        :desc "Find file in emacs.d"        "e"   #'doom/find-file-in-emacsd
        :desc "Browse emacs.d"              "E"   #'doom/browse-in-emacsd
        :desc "Find file"                   "f"   #'find-file
        :desc "Find file from here"         "F"   #'+default/find-file-under-here
+       (:when (modulep! :config literate)
+         :desc "Open heading in literate config" "h" #'+literate/find-heading)
+                                           "k"   #'doom/delete-this-file
        :desc "Locate file"                 "l"   #'locate
        :desc "Find file in private config" "p"   #'doom/find-file-in-private-config
        :desc "Browse private config"       "P"   #'doom/open-private-config
@@ -423,14 +500,12 @@
        :desc "Revert file"                 "R"   #'vc-revert
        :desc "Copy link to remote"         "y"   #'+vc/browse-at-remote-kill
        :desc "Copy link to homepage"       "Y"   #'+vc/browse-at-remote-kill-homepage
+       :desc "Git time machine"            "t"   #'git-timemachine-toggle
        (:when (modulep! :ui hydra)
         :desc "SMerge"                    "m"   #'+vc/smerge-hydra/body)
        (:when (modulep! :ui vc-gutter)
-        (:when (modulep! :ui hydra)
-         :desc "VCGutter"                "."   #'+vc/gutter-hydra/body)
         :desc "Revert hunk at point"      "r"   #'+vc-gutter/revert-hunk
         :desc "stage hunk at point"       "s"   #'+vc-gutter/stage-hunk
-        :desc "Git time machine"          "t"   #'git-timemachine-toggle
         :desc "Jump to next hunk"         "]"   #'+vc-gutter/next-hunk
         :desc "Jump to previous hunk"     "["   #'+vc-gutter/previous-hunk)
        (:when (modulep! :tools magit)
@@ -445,8 +520,8 @@
         :desc "Magit clone"               "C"   #'magit-clone
         :desc "Magit fetch"               "F"   #'magit-fetch
         :desc "Magit buffer log"          "L"   #'magit-log-buffer-file
-        :desc "Git stage file"            "S"   #'magit-stage-file
-        :desc "Git unstage file"          "U"   #'magit-unstage-file
+        :desc "Git stage this file"       "S"   #'magit-stage-buffer-file
+        :desc "Git unstage this file"     "U"   #'magit-unstage-buffer-file
         (:prefix ("f" . "find")
          :desc "Find file"                 "f"   #'magit-find-file
          :desc "Find gitconfig file"       "g"   #'magit-find-git-config-file
@@ -520,7 +595,7 @@
       ;;; <leader> n --- notes
       (:prefix-map ("n" . "notes")
        :desc "Search notes for symbol"      "*" #'+default/search-notes-for-symbol-at-point
-       ;;:desc "Org agenda"                   "a" #'org-agenda
+       :desc "Org agenda"                   "a" #'org-agenda
        (:when (modulep! :tools biblio)
         :desc "Bibliographic notes"        "b"
         (cond ((modulep! :completion vertico)  #'citar-open-notes)
@@ -535,17 +610,26 @@
        ;; TODO Conditional bindings for `featurep' dendroam
        (:when (modulep! :lang org +noter)
         :desc "Org noter"                  "e" #'org-noter)
-
-       :desc "Find node"               "f" #'dendroam-find
-       :desc "Find ref"                "F" #'org-roam-ref-find
-       :desc "Insert link to node"     "i" #'org-roam-node-insert
-       :desc "Toggle backlinks buffer" "l" #'org-roam-buffer-toggle
-       :desc "Find meeting node"       "m" #'dendroam-find-meeting
-       :desc "Find related nodes"      "n" #'dendroam-find-related
-       :desc "Find project node"       "p" #'dendroam-find-project
-       :desc "Switch to scratch"       "x" #'dendroam-find-master-scratch
-       :desc "Rename node"             "r" #'dendroam-rename-note
-       :desc "Refactor hierarchy"      "R" #'dendroam-refactor-hierarchy
+       ;; TODO I temporarily restored the bindings from here to the commented
+       ;; bindings. Once dendroam is up and running, restore the old bindings.
+       :desc "Find file in notes"           "f" #'+default/find-in-notes
+       :desc "Browse notes"                 "F" #'+default/browse-notes
+       :desc "Org store link"               "l" #'org-store-link
+       :desc "Tags search"                  "m" #'org-tags-view
+       :desc "Org capture"                  "n" #'org-capture
+       :desc "Goto capture"                 "N" #'org-capture-goto-target
+       :desc "Active org-clock"             "o" #'org-clock-goto
+       :desc "Todo list"                    "t" #'org-todo-list
+       ;; :desc "Find node"               "f" #'dendroam-find
+       ;; :desc "Find ref"                "F" #'org-roam-ref-find
+       ;; :desc "Insert link to node"     "i" #'org-roam-node-insert
+       ;; :desc "Toggle backlinks buffer" "l" #'org-roam-buffer-toggle
+       ;; :desc "Find meeting node"       "m" #'dendroam-find-meeting
+       ;; :desc "Find related nodes"      "n" #'dendroam-find-related
+       ;; :desc "Find project node"       "p" #'dendroam-find-project
+       ;; :desc "Switch to scratch"       "x" #'dendroam-find-master-scratch
+       ;; :desc "Rename node"             "r" #'dendroam-rename-note
+       ;; :desc "Refactor hierarchy"      "R" #'dendroam-refactor-hierarchy
        :desc "Search notes"                 "s" #'+default/org-notes-search
        :desc "Search org agenda headlines"  "S" #'+default/org-notes-headlines
        :desc "Find scratch node"       "X" #'dendroam-find-scratch
@@ -625,12 +709,11 @@
        :desc "Configure project"            "g" #'projectile-configure-project
        :desc "Invalidate project cache"     "i" #'projectile-invalidate-cache
        :desc "Kill project buffers"         "k" #'projectile-kill-buffers
-       :desc "Find other file"              "o" #'projectile-find-other-file
+       :desc "Find sibling file"            "o" #'find-sibling-file
        :desc "Switch project"               "p" #'projectile-switch-project
        :desc "Find recent project files"    "r" #'projectile-recentf
        :desc "Run project"                  "R" #'projectile-run-project
        :desc "Save project files"           "s" #'projectile-save-project-buffers
-       :desc "List project todos"           "t" #'magit-todos-list
        :desc "Test project"                 "T" #'projectile-test-project
        :desc "Pop up scratch buffer"        "x" #'doom/open-project-scratch-buffer
        :desc "Switch to scratch buffer"     "X" #'doom/switch-to-project-scratch-buffer
@@ -696,7 +779,8 @@
        :desc "Jump to bookmark"             "m" #'bookmark-jump
        :desc "Look up online"               "o" #'+lookup/online
        :desc "Look up online (w/ prompt)"   "O" #'+lookup/online-select
-       :desc "Look up in local docsets"     "k" #'devdocs-peruse
+       :desc "Look up in local docsets"     "k" #'+lookup/in-docsets
+       :desc "Look up in all docsets"       "K" #'+lookup/in-all-docsets
        :desc "Search project"               "p" #'+default/search-project
        :desc "Search other project"         "P" #'+default/search-other-project
        :desc "Jump to mark"                 "r" #'evil-show-marks
@@ -715,6 +799,7 @@
       (:prefix-map ("t" . "toggle")
        :desc "Big mode"                     "b" #'doom-big-font-mode
        :desc "Fill Column Indicator"        "c" #'global-display-fill-column-indicator-mode
+       :desc "Diff Highlights (Git Gutter)" "d" #'diff-hl-mode
        :desc "Flymake"                      "f" #'flymake-mode
        (:when (and (modulep! :checkers syntax)
                    (not (modulep! :checkers syntax +flymake)))
@@ -724,7 +809,7 @@
        (:when (modulep! :ui indent-guides)
         :desc "Indent guides"              "i" #'highlight-indent-guides-mode)
        :desc "Indent style"                 "I" #'doom/toggle-indent-style
-       :desc "Line numbers"                 "l" #'doom/toggle-line-numbers
+       :desc "Line numbers"                 "l" #'jkroes/toggle-line-numbers
        (:when (modulep! :ui minimap)
         :desc "Minimap"                      "m" #'minimap-mode)
        (:when (modulep! :lang org +present)

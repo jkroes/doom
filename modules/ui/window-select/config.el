@@ -14,14 +14,21 @@
   :defer t
   :init
   (global-set-key [remap other-window] #'ace-window)
+  ;; NOTE If we bind `other-window' directly, it will remap to `ace-window' when
+  ;; the window-select module is active. If we want to circumvent remapping, wrap
+  ;; the remapped command in a function call.
+  (map! "M-o" (cmd! (call-interactively #'other-window)))
   :config
+  ;; BUG When the top line of a window's buffer is blank, the background extends
+  ;; to the entire line, or else the letter is invisible.
+  ;; https://emacs.stackexchange.com/questions/45895/changing-faces-one-at-a-time-outside-customize
+  (custom-set-faces!
+    '(aw-leading-char-face
+      :foreground "white" :background "red" :height 500))
   (unless (modulep! +numbers)
     (setq aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l)))
   (setq aw-scope 'frame
-        aw-background t)
-  (custom-set-faces!
-    '(aw-leading-char-face
-      :foreground "white" :background "red" :height 500)))
+        aw-background t))
 
 
 (use-package! winum

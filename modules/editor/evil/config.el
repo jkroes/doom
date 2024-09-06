@@ -8,9 +8,12 @@ whose CDR is for repeating backward. They should both be `kbd'-able strings.
 
 Set this to `nil' to disable universal-repeating on these keys.")
 
-(defvar +evil-want-o/O-to-continue-comments t
+(defvar +evil-want-o/O-to-continue-comments nil
   "If non-nil, the o/O keys will continue comment lines if the point is on a
 line with a linewise comment.")
+
+(defvar +evil-want-move-window-to-wrap-around t
+  "If non-nil, `+evil/window-move-*' commands will wrap around.")
 
 (defvar +evil-preprocessor-regexp "^\\s-*#[a-zA-Z0-9_]"
   "The regexp used by `+evil/next-preproc-directive' and
@@ -22,11 +25,11 @@ directives. By default, this only recognizes C directives.")
 (defvar evil-want-C-g-bindings t)
 (defvar evil-want-C-i-jump nil)  ; we do this ourselves
 (defvar evil-want-C-u-scroll t)  ; moved the universal arg to <leader> u
-(defvar evil-want-C-u-delete t)
+(defvar evil-want-C-u-delete t)  ; moved the universal arg to M-u
 (defvar evil-want-C-w-delete t)
 (defvar evil-want-Y-yank-to-eol t)
 (defvar evil-want-abbrev-expand-on-insert-exit nil)
-(defvar evil-respect-visual-line-mode nil)
+(defvar evil-respect-visual-line-mode t)
 
 (use-package! evil
   :hook (doom-after-modules-config . evil-mode)
@@ -54,12 +57,10 @@ directives. By default, this only recognizes C directives.")
         evil-undo-system
         (cond ((modulep! :emacs undo +tree) 'undo-tree)
               ((modulep! :emacs undo) 'undo-fu)
-              ((> emacs-major-version 27) 'undo-redo))
-        evil-split-window-below t
+              ((> emacs-major-version 27) 'undo-redo)))
+
+  (setq evil-split-window-below t
         evil-vsplit-window-right t
-        ;; Allow the cursor to move beyond the end of the line so that you can enter
-        ;; insert mode at the end of the line using "i" instead of "a". Also
-        ;; fixes a lot of stuctural editing commands for lisp code.
         evil-move-beyond-eol t)
 
   ;; Fix #7141
@@ -76,9 +77,6 @@ directives. By default, this only recognizes C directives.")
     evil-ex-hl-update-delay 0.25)
 
   :config
-  ;; TODO Per v9.6 (https://orgmode.org/Changes.html), isearch can search
-  ;; invisible portions of links (see `org-link-descriptive'); however,
-  ;; evil-search cannot. Consider changing `evil-search-module'.
   (evil-select-search-module 'evil-search-module 'evil-search)
 
   ;; PERF: Stop copying the selection to the clipboard each time the cursor
@@ -117,10 +115,6 @@ directives. By default, this only recognizes C directives.")
   ;; this itself, so we must.
   (setq-hook! 'after-change-major-mode-hook evil-shift-width tab-width)
 
-  ;; NOTE This might not work on every terminal
-  (unless (display-graphic-p)
-    (add-hook 'evil-insert-state-entry-hook (lambda () (send-string-to-terminal "\033[5 q")))
-    (add-hook 'evil-insert-state-exit-hook  (lambda () (send-string-to-terminal "\033[2 q"))))
 
   ;; --- keybind fixes ----------------------
   (after! wgrep
@@ -169,14 +163,6 @@ directives. By default, this only recognizes C directives.")
     :after-until #'evil-global-marker-p
     (and (>= char ?2) (<= char ?9)))
 
-  ;; REVIEW Fix #2493: dir-locals cannot target fundamental-mode when evil-mode
-  ;;        is active. See hlissner/doom-emacs#2493. Revert this if
-  ;;        emacs-evil/evil#1268 is resolved upstream.
-  (defadvice! +evil--fix-local-vars-a (&rest _)
-    :before #'turn-on-evil-mode
-    (when (eq major-mode 'fundamental-mode)
-      (hack-local-variables)))
-
   ;; HACK Invoking helpful from evil-ex throws a "No recursive edit is in
   ;;      progress" error because, between evil-ex and helpful,
   ;;      `abort-recursive-edit' gets called one time too many.
@@ -224,9 +210,6 @@ directives. By default, this only recognizes C directives.")
 
 ;;
 ;;; Packages
-
-(use-package! evil-tutor
-  :defer t)
 
 (use-package! evil-easymotion
   :after-call doom-first-input-hook
@@ -311,13 +294,10 @@ directives. By default, this only recognizes C directives.")
   :commands evil-escape
   :hook (doom-first-input . evil-escape-mode)
   :init
-  ;; One example of where this is useful: In visual state, holding down "k" to
-  ;; expand the region followed by "j" to correct overexpansion. Without exclusion,
-  ;; the visual region is lost.
   (setq evil-escape-excluded-states '(normal visual multiedit emacs motion)
         evil-escape-excluded-major-modes '(neotree-mode treemacs-mode vterm-mode)
-        evil-escape-key-sequence "kj"
-        evil-escape-delay 0.15)
+        evil-escape-key-sequence "jj"
+        evil-escape-delay 0.5)
   (evil-define-key* '(insert replace visual operator) 'global "\C-g" #'evil-escape)
   :config
   ;; `evil-escape' in the minibuffer is more disruptive than helpful. That is,
@@ -353,7 +333,6 @@ directives. By default, this only recognizes C directives.")
 
 (use-package! evil-snipe
   :commands evil-snipe-local-mode evil-snipe-override-local-mode
-  ;; Frees up e.g. "s" in devdocs buffers when using it with evil-collection
   :hook (prog-mode . evil-snipe-override-local-mode)
   :hook (prog-mode . evil-snipe-local-mode)
   :init
@@ -415,13 +394,18 @@ directives. By default, this only recognizes C directives.")
 ;; Keybinds that have no Emacs+evil analogues (i.e. don't exist):
 ;;   zu{q,w} - undo last marking
 
+;; Declutter the bindings on SPC-w
+(undefine-key! evil-window-map "0" "1" "2" "3" "4" "5" "6" "7" " 8" "9" "+"
+  "-" ":" "<" ">" "_" "|" "<down>" "<left>" "<right>" " <up>" "b" "c" "f" "g"
+  "m" "n" "p" "w" "q" "x" "R" "T" "V" "W"
+  "C-<down>" "C-<left>" "C-<right>" "C-<up>" "C-=" "C-_" "C-b" "C-c"
+  "C-f" "C-h" "C-j" "C-k" "C-l" "C-n" "C-o" "C-p" "C-q" "C-r" "C-s" "C-t" "C-u" "C-v"
+  "C-w" "C-x" "C-S-h" "C-S-j" "C-S-k" "C-S-l" "C-S-r" "C-S-s" "C-S-w")
+
 (map! :v  "@"     #'+evil:apply-macro
       :m  [C-i]   #'evil-jump-forward
-
-      ;; TODO Bind `evil-record-macro' to leader when you're ready to start
-      ;; recording your own macros
-      ;; Free up "q" in lots of modes
       :n "q"      nil
+      "M-u"       #'universal-argument
 
       ;; implement dictionary keybinds
       ;; evil already defines 'z=' to `ispell-word' = correct word at point
@@ -493,11 +477,10 @@ directives. By default, this only recognizes C directives.")
       :v  "g+"    #'evil-numbers/inc-at-pt
       (:when (modulep! :tools lookup)
        :nv "K"   #'+lookup/documentation
-       :nv "gd"  #'my/lookup-definition
+       :nv "gd"  #'+lookup/definition
        :nv "gD"  #'+lookup/references
        :nv "gf"  #'+lookup/file
-       :nv "gI"  #'+lookup/implementations
-       :nv "gA"  #'+lookup/assignments)
+       :nv "gI"  #'+lookup/implementations)
       (:when (modulep! :tools eval)
        :nv "gr"  #'+eval:region
        :n  "gR"  #'+eval/buffer
@@ -523,7 +506,7 @@ directives. By default, this only recognizes C directives.")
         :n "gR" #'elfeed-search-fetch)
        (:after eglot
         :map eglot-mode-map
-        :nv "gd" #'my/lookup-definition
+        :nv "gd" #'+lookup/definition
         :nv "gD" #'+lookup/references))
 
       ;; custom evil keybinds
@@ -537,34 +520,24 @@ directives. By default, this only recognizes C directives.")
 
       ;; window management (prefix "C-w")
       (:map evil-window-map
-       ;; Navigation
-       "C-h"     #'evil-window-left
-       "C-j"     #'evil-window-down
-       "C-k"     #'evil-window-up
-       "C-l"     #'evil-window-right
-       "C-w"     #'other-window
-       ;; Extra split commands
-       "S"       #'+evil/window-split-and-follow
-       "V"       #'+evil/window-vsplit-and-follow
        ;; Swapping windows
        "H"       #'+evil/window-move-left
        "J"       #'+evil/window-move-down
        "K"       #'+evil/window-move-up
        "L"       #'+evil/window-move-right
-       "C-S-w"   #'ace-swap-window
+       "S"       #'ace-swap-window
        ;; Window undo/redo
-       (:prefix "m"
-        "m"       #'doom/window-maximize-buffer
-        "v"       #'doom/window-maximize-vertically
-        "s"       #'doom/window-maximize-horizontally)
+       "r"       #'winner-redo
        "u"       #'winner-undo
-       "C-u"     #'winner-undo
-       "C-r"     #'winner-redo
-       "o"       #'doom/window-enlargen
+
+       ;; BUG When one of the minimized windows is an org buffer with
+       ;; `org-modern-mode' enabled, Emacs hangs
+       "e"       #'doom/window-enlargen
        ;; Delete window
        "d"       #'evil-window-delete
-       "C-C"     #'ace-delete-window
-       "T"       #'tear-off-window)
+       "D"       #'ace-delete-window
+       "O"       #'delete-other-windows
+       "t"       #'tear-off-window)
 
       ;; text objects
       :textobj "a" #'evil-inner-arg                    #'evil-outer-arg
@@ -602,8 +575,6 @@ directives. By default, this only recognizes C directives.")
       ;; evil-surround
       :v "S" #'evil-surround-region
       :o "s" #'evil-surround-edit
-      ;; NOTE: This explicitly does not work with delete or change, so I only
-      ;; know of yS. What other operators are there?
       :o "S" #'evil-Surround-edit
 
       ;; TODO Currently overrides org-down-element mapping to gl.
@@ -614,15 +585,25 @@ directives. By default, this only recognizes C directives.")
       ;; :v "gl" #'evil-lion-left
       ;; :v "gL" #'evil-lion-right
 
-      ;; Omni-completion
-      (:when (modulep! :completion company)
-       (:prefix "C-x"
-        :i "C-l"    #'+company/whole-lines
-        :i "C-k"    #'+company/dict-or-keywords
-        :i "C-f"    #'company-files
-        :i "C-]"    #'company-etags
-        :i "s"      #'company-ispell
-        :i "C-s"    #'company-yasnippet
-        :i "C-o"    #'company-capf
-        :i "C-n"    #'+company/dabbrev
-        :i "C-p"    #'+company/dabbrev-code-previous)))
+      ;; Emulation of Vim's omni-completion keybinds
+      (:prefix "C-x"
+        (:when (modulep! :completion company)
+         :i "C-l"  #'+company/whole-lines
+         :i "C-k"  #'+company/dict-or-keywords
+         :i "C-f"  #'company-files
+         :i "C-]"  #'company-etags
+         :i "s"    #'company-ispell
+         :i "C-s"  #'company-yasnippet
+         :i "C-o"  #'company-capf
+         :i "C-n"  #'+company/dabbrev
+         :i "C-p"  #'+company/dabbrev-code-previous)
+        (:when (modulep! :completion corfu)
+         :i "C-l"  #'cape-line
+         :i "C-k"  #'cape-keyword
+         :i "C-f"  #'cape-file
+         :i "C-]"  #'complete-tag
+         :i "s"    #'cape-dict
+         :i "C-s"  #'yasnippet-capf
+         :i "C-o"  #'completion-at-point
+         :i "C-n"  #'cape-dabbrev
+         :i "C-p"  #'+corfu/dabbrev-this-buffer)))

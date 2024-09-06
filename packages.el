@@ -49,61 +49,42 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;; (unpin! t)
 
-;;; My code and notes ---------------------------------------------------------
-
-(package! benchmark-init)
-
-;; TODO Unless otherwise noted below, continuously update package
-;; versions as the corresponding package! statement in Doom Emacs
-;; changes.
-
-(package! vundo)
-
-;; Install these packages even if not using evil +everywhere
-(package! evil-collection :pin "8be4b75c86bc637dbcd14be7522d6da06df1747e")
-(package! evil-org
-  :recipe (:host github :repo "hlissner/evil-org-mode")
-  :pin "a9706da260c45b98601bcd72b1d2c0a24a017700")
-
-(package! consult-org-roam
-  :recipe (:host github :repo "jgru/consult-org-roam"))
-
-;; Alternative to company completion module
-(package! corfu
-  :recipe (:host github :repo "minad/corfu"
-           :files ("*.el" "extensions/*.el"))
-  ;; BUG https://github.com/minad/corfu/issues/290
-  ;;:pin "b5458a132c678b5fe97b4a7819b9bb1dba31aee2"
-  )
-;; TODO See the corfu repo for more "complementary" packages
-(package! cape)
-(package! kind-icon)
-
-;; Windows issue:
-;; https://github.com/org-roam/org-roam/issues/2384
-(package! org :pin "ca873f7fe47546bca19")
-
-(package! vertico-truncate
-  :recipe (:host github :repo "jdtsmith/vertico-truncate"))
+;;; 8/20/24
 
 (package! titlecase)
-
-;; TODO Get rid of this once doom catches up to inf-ruby commit 74c8be8e270b8.
-;; This commit massively improved inf-ruby output from ruby-send-region.
-(unpin! inf-ruby)
-
-;; BUG 01/14/23 https://github.com/seagle0128/doom-modeline/issues/689
-(unpin! doom-modeline)
 
 ;; BUG https://github.com/doomemacs/doomemacs/issues/7039
 ;; Don't download any snippets until the bug is fixed
 (package! doom-snippets :ignore t)
 
-(package! devdocs)
+;;; Pre-8/20/24
 
-(package! yaml-mode)
+;; (package! benchmark-init)
 
-(package! evil-tutor)
+;; (package! vundo)
+
+;; (package! consult-org-roam
+;;   :recipe (:host github :repo "jgru/consult-org-roam"))
+
+;; Windows issue:
+;; https://github.com/org-roam/org-roam/issues/2384
+;; (package! org :pin "ca873f7fe47546bca19")
+
+;; (package! vertico-truncate
+;;   :recipe (:host github :repo "jdtsmith/vertico-truncate"))
+
+;; TODO Get rid of this once doom catches up to inf-ruby commit 74c8be8e270b8.
+;; This commit massively improved inf-ruby output from ruby-send-region.
+;; (unpin! inf-ruby)
+
+;; BUG 01/14/23 https://github.com/seagle0128/doom-modeline/issues/689
+;; (unpin! doom-modeline)
+
+;; (package! devdocs)
+
+;; (package! yaml-mode)
+
+;; (package! evil-tutor)
 
 ;; NOTE This demonstrates how to include a custom user package;
 ;; however, I have since deleted this package and moved it to

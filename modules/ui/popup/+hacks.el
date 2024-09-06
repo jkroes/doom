@@ -50,14 +50,6 @@ to this commmand."
       (+popup/close nil 'force))))
 (global-set-key [remap quit-window] #'+popup/quit-window)
 
-(defadvice! +popup-override-display-buffer-alist-a (fn &rest args)
-  "When `pop-to-buffer' is called with non-nil ACTION, that ACTION should
-override `display-buffer-alist'."
-  :around #'switch-to-buffer-other-tab
-  :around #'switch-to-buffer-other-window
-  :around #'switch-to-buffer-other-frame
-  (let ((display-buffer-alist nil))
-    (apply fn args)))
 
 
 ;;
@@ -72,13 +64,6 @@ override `display-buffer-alist'."
   :around #'company-show-doc-buffer
   (let ((+popup--inhibit-select t))
     (apply fn args)))
-
-;; Copied from previous doom configuration. Haven't tested.
-;;;###package company
-;; (defadvice! +popup--dont-select-me-a (fn &rest args)
-;;   :around #'my/company-show-doc-buffer
-;;   (let ((+popup--inhibit-select t))
-;;     (apply fn args)))
 
 
 ;;;###package compile
@@ -109,26 +94,6 @@ were followed."
 
 ;;;###package evil
 (progn
-  ;; Make evil-mode cooperate with popups
-  (defadvice! +popup--evil-command-window-a (hist cmd-key execute-fn)
-    "Monkey patch the evil command window to use `pop-to-buffer' instead of
-`switch-to-buffer', allowing the popup manager to handle it."
-    :override #'evil-command-window
-    (when (eq major-mode 'evil-command-window-mode)
-      (user-error "Cannot recursively open command line window"))
-    (dolist (win (window-list))
-      (when (equal (buffer-name (window-buffer win))
-                   "*Command Line*")
-        (kill-buffer (window-buffer win))
-        (delete-window win)))
-    (setq evil-command-window-current-buffer (current-buffer))
-    (ignore-errors (kill-buffer "*Command Line*"))
-    (with-current-buffer (pop-to-buffer "*Command Line*")
-      (setq-local evil-command-window-execute-fn execute-fn)
-      (setq-local evil-command-window-cmd-key cmd-key)
-      (evil-command-window-mode)
-      (evil--command-window-insert-commands hist)))
-
   (defadvice! +popup--evil-command-window-execute-a ()
     "Execute the command under the cursor in the appropriate buffer, rather than
 the command buffer."
@@ -155,7 +120,6 @@ the command buffer."
   (advice-add #'evil-window-move-far-right   :around #'+popup-save-a))
 
 
-;;;###package help-mode
 (after! help-mode
   (defun +popup--switch-from-popup (location)
     (let (origin enable-local-variables)
@@ -261,7 +225,6 @@ the command buffer."
     (apply fn args)))
 
 
-;;;###package org
 (after! org
   (defadvice! +popup--suppress-delete-other-windows-a (fn &rest args)
     "Org has a scorched-earth window management policy I'm not fond of. i.e. it
@@ -315,20 +278,11 @@ Ugh, such an ugly hack."
                            (window-height window))
                     (fit-window-to-buffer window (window-buffer-height window)))))
           (apply fn args))
-      (apply fn args)))
-
-  ;; Ensure todo, agenda, and other minor popups are delegated to the popup system.
-  (defadvice! +popup--org-pop-to-buffer-a (fn buf &optional norecord)
-    "Use `pop-to-buffer' instead of `switch-to-buffer' to open buffer.'"
-    :around #'org-switch-to-buffer-other-window
-    (if +popup-mode
-        (pop-to-buffer buf nil norecord)
-      (funcall fn buf norecord))))
-
+      (apply fn args))))
 
 ;;;###package org-journal
 (defadvice! +popup--use-popup-window-a (fn &rest args)
-  :around #'org-journal-search-by-string
+  :around #'org-journal--search-by-string
   (letf! ((#'switch-to-buffer #'pop-to-buffer))
     (apply fn args)))
 
@@ -342,7 +296,6 @@ Ugh, such an ugly hack."
       (+popup--init window nil))))
 
 
-;;;###package pdf-tools
 (after! pdf-tools
   (setq tablist-context-window-display-action
         '((+popup-display-buffer-stacked-side-window-fn)
@@ -386,7 +339,6 @@ Ugh, such an ugly hack."
   (advice-add #'wgrep-finish-edit :after #'+popup-close-a))
 
 
-;;;###package which-key
 (after! which-key
   (when (eq which-key-popup-type 'side-window)
     (setq which-key-popup-type 'custom
