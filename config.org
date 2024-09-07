@@ -174,6 +174,7 @@ brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-n
 
 ;;(set-evil-initial-state! '(dired-mode) 'emacs)
 
+;; TODO Binding is overriden in org-mode. Need to find an alternative binding sequence
 ;; Easier scrolling
 (map! "M-h" (lambda () (interactive) (evil-scroll-column-left 40))
       "M-l" (lambda () (interactive) (evil-scroll-column-right 40)))
@@ -341,6 +342,13 @@ Toggle line numbers type to match ~visual-line-mode~.
 
 (map! :when (modulep! :editor evil)
       :map vertico-map
+      ;; For files, `+vertico/embark-preview' emulates consult's preview
+      ;; capabilities for non-consult commands. A key difference e.g. is that
+      ;; buffers will be opened permanently. What this actually does is call
+      ;; `embark-dwim' with `embark-quit-after-action' disabled to keep the
+      ;; minibuffer alive. A better solution is to bind interactively toggle
+      ;; this variable via `universal-argument'.
+      ;;
       ;; "C-SPC" #'+vertico/embark-preview
       "C-j"   #'vertico-next
       "M-j" #'vertico-next-group
@@ -348,6 +356,129 @@ Toggle line numbers type to match ~visual-line-mode~.
       ;; available
       "C-k"   #'vertico-previous
       "M-k" #'vertico-previous-group)
+
+;; Use Spotlight as the backend for locate on macOS
+(when (featurep :system 'macos)
+  (setq consult-locate-args "mdfind"))
+
+;; When selecting a directory with consult-dir, replace the
+;; original directory in the minibuffer prompt rather than
+;; shadowing it. This is cleaner but does prevent the user from
+;; deleting the new dir to recover the original dir
+(setq consult-dir-shadow-filenames nil)
+
+;; Use `+default/find-file-under-here' instead of `consult-find'
+;; as the back-end for `consult-dir-jump-file'
+(setq consult-dir-jump-file-command
+      (cmd! (call-interactively #'+default/find-file-under-here)))
+
+;; Map completion categories to completion styles. The partial-completion style
+;; is important if you want to: (1) Complete doom/move-this-file as d/m-t-f or
+;; /usr/local/bin as /u/l/b, or (2) Open multiple files at once with find-file
+;; using wildcards. In order to open multiple files with a wildcard at once,
+;; you have to submit the prompt with M-RET. Note that opening buffers does not
+;; mean every file will be visible in its own window.
+(after! orderless
+  (add-to-list
+   'completion-category-overrides
+   '(project-file (styles
+                   +vertico-basic-remote
+                   orderless
+                   partial-completion)))
+
+  (setq orderless-style-dispatchers '(jkroes/orderless-dispatch)))
+
+(defun jkroes/orderless-dispatch (pattern _index _total)
+  "Like `+vertico-orderless-dispatch', this alters the orderless matching style for match
+sub-components using prefix or suffix characters. Matches
+initials with a comma instead of a backtick prefix."
+  (cond
+   ;; Ensure $ works with Consult commands, which add disambiguation suffixes
+   ((string-suffix-p "$" pattern)
+    `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))
+   ;; Ignore single !
+   ((string= "!" pattern) `(orderless-literal . ""))
+   ;; Without literal
+   ((string-prefix-p "!" pattern) `(orderless-without-literal . ,(substring pattern 1)))
+   ;; Annotation
+   ((string-prefix-p "&" pattern) `(orderless-annotation . ,(substring pattern 1)))
+   ((string-suffix-p "&" pattern) `(orderless-annotation . ,(substring pattern 0 -1)))
+   ;; Character folding
+   ((string-prefix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 1)))
+   ((string-suffix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 0 -1)))
+   ;; Initialism matching
+   ((string-prefix-p "," pattern) `(orderless-initialism . ,(substring pattern 1)))
+   ((string-suffix-p "," pattern) `(orderless-initialism . ,(substring pattern 0 -1)))
+   ;; Literal matching
+   ((string-prefix-p "=" pattern) `(orderless-literal . ,(substring pattern 1)))
+   ((string-suffix-p "=" pattern) `(orderless-literal . ,(substring pattern 0 -1)))
+   ;; Flex matching
+   ((string-prefix-p "~" pattern) `(orderless-flex . ,(substring pattern 1)))
+   ((string-suffix-p "~" pattern) `(orderless-flex . ,(substring pattern 0 -1)))))
+
+(defun jkroes/embark-prefix-help-command (&optional _)
+  (interactive)
+  (let (keys)
+    (if (which-key--popup-showing-p)
+        (progn
+          (setq keys (which-key--current-prefix))
+          (which-key--hide-popup-ignore-command))
+      (setq keys (this-command-keys-vector))
+      (setq keys (seq-take keys (1- (length keys)))))
+    (my/embark-prefix-bindings keys)))
+
+(autoload #'embark-completing-read-prompter "embark")
+;; HACK Later versions of embark altered this function so that it no
+;; longer filters bindings by the current key prefix. This is the
+;; original definition from commit 35f3961cd1e6
+(defun my/embark-prefix-bindings (&optional prefix)
+  "Explore all current keybindings and commands with `completing-read'.
+The selected command will be executed. The set keybindings can be restricted
+by passing a PREFIX key."
+  (interactive)
+  (let ((keymap (if prefix
+                    (key-binding prefix)
+                  (make-composed-keymap (current-active-maps t)))))
+    (unless (keymapp keymap)
+      (user-error "No keybindings found"))
+    (when-let (command (embark-completing-read-prompter keymap 'no-default))
+      (call-interactively command))))
+
+(defun my/marginalia-annotate-binding (cand)
+  "Annotate command CAND with keybinding. If CAND is remapped to
+  OTHER-COMMAND, return [remap OTHER-COMMAND]."
+  (when-let* ((sym (intern-soft cand))
+              (key (and (commandp sym) (where-is-internal sym nil 'first-only))))
+    (let ((remap (command-remapping sym)))
+      (propertize (format " (%s)" (if remap remap (key-description key)))
+                  'face 'marginalia-key))))
+
+(defun my/marginalia-annotate-symbol (cand)
+  (when-let (sym (intern-soft cand))
+    (marginalia--fields
+     (:left (marginalia-annotate-binding cand))
+     ((marginalia--symbol-class sym) :face 'marginalia-type)
+     ((cond
+       ((fboundp sym) (marginalia--function-doc sym))
+       ((facep sym) (documentation-property sym 'face-documentation))
+       (t (documentation-property sym 'variable-documentation)))
+      :truncate 1.0 :face 'marginalia-documentation)
+     ;; ((abbreviate-file-name (or (symbol-file sym) ""))
+     ;;  :truncate -0.5 :face 'marginalia-file-name)
+     )))
+
+(defun marginalia-annotate-attachment (cand)
+  (marginalia-annotate-file (cdr (embark--expand-attachment nil cand))))
+
+(defun embark--expand-attachment (_ target)
+  "Transform marginalia category from `attach' to `file' and
+ convert target to filepath. `org-attach-open' does not use the
+ path returned by `org-attach-dir' as minibuffer input.
+ `embark--vertico-selected' constructs embark targets from the
+ candidate and the minibuffer input, so the target is not the
+ full path."
+  (with-current-buffer (window-buffer (minibuffer-selected-window))
+    (cons 'file (expand-file-name target (org-attach-dir)))))
 #+end_src
 ** List of minibuffer keys
 - consult-history =C-s=::
@@ -690,18 +821,18 @@ keymap associated with an evil `state' symbol. If no predicate in
 `predlist' succeeds, execute `fallback' if non-nil or else look
 up the binding in the active keymaps."
   (declare (indent 4))
-  (let ((map (or keymap (intern (format "evil-%s-state-map" state)))))
+  (let* ((map (or keymap (intern (format "evil-%s-state-map" state))))
+         ;; If no predicate matches, fall back to the fallback argument or to
+         ;; the previous binding in map
+         (command (or fallback
+                      (lookup-key (symbol-value map)
+                                  (kbd binding)))))
     `(general-def
        ,@(when keymap (list keymap))
        ;; TODO Can I just bind to the evil keymap instead of using state?
        ,@(when state `(:states ',state))
        ,binding
-       (general-predicate-dispatch
-           ;;,@(list fallback)
-           ;; Fallback to the original binding if one exists
-           (quote ,(or (lookup-key (symbol-value map) (kbd binding))
-                       ;; Or else to the current global map
-                       (lookup-key (current-global-map) (kbd binding))))
+       (general-predicate-dispatch #',command
          ,@predlist))))
 
 (jkroes/dispatch-scroll-commands nil insert "C-n" nil
@@ -712,15 +843,6 @@ up the binding in the active keymaps."
   (jkroes/embark-actions-buffer-visible)
   #'scroll-other-window)
 
-;; (general-def :states 'insert "C-n"
-;;   (general-predicate-dispatch nil
-;;     (corfu-popupinfo--visible-p)
-;;     #'corfu-popupinfo-scroll-up-5
-;;     (jkroes/corfu-visible-p)
-;;     #'corfu-scroll-up
-;;     (jkroes/embark-actions-buffer-visible)
-;;     #'scroll-other-window))
-
 (jkroes/dispatch-scroll-commands nil insert "C-p" nil
   (corfu-popupinfo--visible-p)
   #'corfu-popupinfo-scroll-down-5
@@ -729,48 +851,19 @@ up the binding in the active keymaps."
   (jkroes/embark-actions-buffer-visible)
   #'scroll-other-window-down)
 
-;; (general-def :states 'insert "C-p"
-;;   (general-predicate-dispatch nil
-;;     (corfu-popupinfo--visible-p)
-;;     #'corfu-popupinfo-scroll-down-5
-;;     (jkroes/corfu-visible-p)
-;;     #'corfu-scroll-down
-;;     (jkroes/embark-actions-buffer-visible)
-;;     #'scroll-other-window-down))
-
 (jkroes/dispatch-scroll-commands nil normal "C-n" nil
   (jkroes/embark-actions-buffer-visible)
   #'scroll-other-window)
-
-;; (general-def :states 'normal "C-n"
-;;   (general-predicate-dispatch nil
-;;     (jkroes/embark-actions-buffer-visible)
-;;     #'scroll-other-window))
 
 (jkroes/dispatch-scroll-commands nil normal "C-p" nil
   (jkroes/embark-actions-buffer-visible)
   #'scroll-other-window-down)
 
-;; (general-def :states 'normal "C-p"
-;;   (general-predicate-dispatch nil
-;;     (jkroes/embark-actions-buffer-visible)
-;;     #'scroll-other-window-down))
-
-(jkroes/dispatch-scroll-commands minibuffer-local-map nil "C-n" #'scroll-up-command
+(jkroes/dispatch-scroll-commands minibuffer-local-map nil "C-n" scroll-up-command
   (jkroes/embark-actions-buffer-visible)
   #'scroll-other-window)
 
-;; (general-def minibuffer-local-map "C-n"
-;;   (general-predicate-dispatch #'scroll-up-command
-;;     (jkroes/embark-actions-buffer-visible)
-;;     #'scroll-other-window))
-
-(jkroes/dispatch-scroll-commands minibuffer-local-map nil "C-p" #'scroll-down-command
+(jkroes/dispatch-scroll-commands minibuffer-local-map nil "C-p" scroll-down-command
   (jkroes/embark-actions-buffer-visible)
   #'scroll-other-window-down)
-
-;; (general-def minibuffer-local-map "C-p"
-;;   (general-predicate-dispatch #'scroll-down-command
-;;     (jkroes/embark-actions-buffer-visible)
-;;     #'scroll-other-window-down))
 #+end_src

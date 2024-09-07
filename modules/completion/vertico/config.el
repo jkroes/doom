@@ -74,6 +74,30 @@ orderless."
           (completion-styles +vertico-company-completion-styles))
       (apply fn args)))
 
+  (defun +vertico-orderless-dispatch (pattern _index _total)
+    (cond
+     ;; Ensure $ works with Consult commands, which add disambiguation suffixes
+     ((string-suffix-p "$" pattern)
+      `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))
+     ;; Ignore single !
+     ((string= "!" pattern) `(orderless-literal . ""))
+     ;; Without literal
+     ((string-prefix-p "!" pattern) `(orderless-without-literal . ,(substring pattern 1)))
+     ;; Annotation
+     ((string-prefix-p "&" pattern) `(orderless-annotation . ,(substring pattern 1)))
+     ((string-suffix-p "&" pattern) `(orderless-annotation . ,(substring pattern 0 -1)))
+     ;; Character folding
+     ((string-prefix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 1)))
+     ((string-suffix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 0 -1)))
+     ;; Initialism matching
+     ((string-prefix-p "`" pattern) `(orderless-initialism . ,(substring pattern 1)))
+     ((string-suffix-p "`" pattern) `(orderless-initialism . ,(substring pattern 0 -1)))
+     ;; Literal matching
+     ((string-prefix-p "=" pattern) `(orderless-literal . ,(substring pattern 1)))
+     ((string-suffix-p "=" pattern) `(orderless-literal . ,(substring pattern 0 -1)))
+     ;; Flex matching
+     ((string-prefix-p "~" pattern) `(orderless-flex . ,(substring pattern 1)))
+     ((string-suffix-p "~" pattern) `(orderless-flex . ,(substring pattern 0 -1)))))
   (add-to-list
    'completion-styles-alist
    '(+vertico-basic-remote
@@ -84,9 +108,8 @@ orderless."
         completion-category-defaults nil
         ;; note that despite override in the name orderless can still be used in
         ;; find-file etc.
-        completion-category-overrides '((file (styles +vertico-basic-remote orderless partial-completion))
-                                        (project-file (styles +vertico-basic-remote orderless partial-completion)))
-        orderless-style-dispatchers '(jkroes/orderless-dispatch)
+        completion-category-overrides '((file (styles +vertico-basic-remote orderless partial-completion)))
+        orderless-style-dispatchers '(+vertico-orderless-dispatch)
         orderless-component-separator #'orderless-escapable-split-on-space)
   ;; ...otherwise find-file gets different highlighting than other commands
   (set-face-attribute 'completions-first-difference nil :inherit nil))
@@ -133,9 +156,6 @@ orderless."
           "--full-path --absolute-path"
           "--hidden --exclude .git"
           (if (featurep :system 'windows) "--path-separator=/")))
-
-  ;; Use Spotlight as the backend for locate on macOS
-  (when (featurep :system 'macos) (setq consult-locate-args "mdfind"))
 
   (consult-customize
    consult-ripgrep consult-git-grep consult-grep
@@ -189,16 +209,6 @@ orderless."
          "C-x C-d" #'consult-dir
          "C-x C-j" #'consult-dir-jump-file))
   :config
-  ;; When selecting a directory with consult-dir, replace the
-  ;; original directory in the minibuffer prompt rather than
-  ;; shadowing it. This is cleaner but does prevent the user from
-  ;; deleting the new dir to recover the original dir
-  (setq consult-dir-shadow-filenames nil)
-
-  ;; Use `+default/find-file-under-here' instead of `consult-find'
-  ;; as the back-end for `consult-dir-jump-file'
-  (setq consult-dir-jump-file-command (cmd! (call-interactively #'+default/find-file-under-here)))
-
   ;; DEPRECATED: Remove when projectile is replaced with project.el
   (setq consult-dir-project-list-function #'consult-dir-projectile-dirs)
 

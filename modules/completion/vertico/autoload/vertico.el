@@ -215,35 +215,6 @@ See minad/consult#770."
        (completion-basic-all-completions string table pred point)))
 
 ;;;###autoload
-(defun jkroes/orderless-dispatch (pattern _index _total)
-  "Like `+vertico-orderless-dispatch' but match initials with a
-comma. Alter Doom's orderless matching style for match
-sub-components using prefix or suffix characters"
-  (cond
-   ;; Ensure $ works with Consult commands, which add disambiguation suffixes
-   ((string-suffix-p "$" pattern)
-    `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))
-   ;; Ignore single !
-   ((string= "!" pattern) `(orderless-literal . ""))
-   ;; Without literal
-   ((string-prefix-p "!" pattern) `(orderless-without-literal . ,(substring pattern 1)))
-   ;; Annotation
-   ((string-prefix-p "&" pattern) `(orderless-annotation . ,(substring pattern 1)))
-   ((string-suffix-p "&" pattern) `(orderless-annotation . ,(substring pattern 0 -1)))
-   ;; Character folding
-   ((string-prefix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 1)))
-   ((string-suffix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 0 -1)))
-   ;; Initialism matching
-   ((string-prefix-p "," pattern) `(orderless-initialism . ,(substring pattern 1)))
-   ((string-suffix-p "," pattern) `(orderless-initialism . ,(substring pattern 0 -1)))
-   ;; Literal matching
-   ((string-prefix-p "=" pattern) `(orderless-literal . ,(substring pattern 1)))
-   ((string-suffix-p "=" pattern) `(orderless-literal . ,(substring pattern 0 -1)))
-   ;; Flex matching
-   ((string-prefix-p "~" pattern) `(orderless-flex . ,(substring pattern 1)))
-   ((string-suffix-p "~" pattern) `(orderless-flex . ,(substring pattern 0 -1)))))
-
-;;;###autoload
 (defun jkroes/embark-prefix-help-command (&optional _)
   (interactive)
   (let (keys)
