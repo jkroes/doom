@@ -189,14 +189,6 @@
 ;; Consider also M-n and M-p, which are only used to scan history in the
 ;; minibuffer.
 
-;; TODO This is a temporary keybinding and workaround to find a definition via
-;; completing-read, until I can investigate the lookup module and whether it's
-;; possible to incorporate completing read into its commands.
-(setq xref-show-definitions-function #'xref-show-definitions-completing-read)
-;; xref-find-definitions searches by thing at point, or with a prefix by
-;; completing read. In the latter case, the first candidate is the thing at point.
-(map! :leader "cd"  (cmd! (let ((current-prefix-arg '(4))) (call-interactively #'xref-find-definitions))))
-
 (setq doom-theme 'modus-vivendi)
 (setq doom-font (font-spec :family "JuliaMono"
                            :size (jkroes/startup-font-size)))
@@ -246,6 +238,19 @@
 (setq eval-expression-print-length nil
       eval-expression-print-level  nil
       edebug-print-length 1000)
+
+;; Hide commands in M-x which do not work in the current mode
+(setq read-extended-command-predicate #'command-completion-default-include-p)
+
+(map! :when (modulep! :editor evil)
+      :map vertico-map
+      ;; "C-SPC" #'+vertico/embark-preview
+      "C-j"   #'vertico-next
+      "M-j" #'vertico-next-group
+      ;; Shadows `kill-line', but S-<backspace> and C-S-<backspace> are still
+      ;; available
+      "C-k"   #'vertico-previous
+      "M-k" #'vertico-previous-group)
 
 ;; Where my org notes live
 (setq org-directory (expand-file-name "~/org"))
@@ -446,6 +451,16 @@ heading"
               (apply orig-fun args)
               (advice-remove 'org-update-checkbox-count-maybe #'ignore)))
 
+;; TODO This is a temporary keybinding and workaround to find a definition via
+;; completing-read, until I can investigate the lookup module and whether it's
+;; possible to incorporate completing read into its commands.
+
+;; Search by completing read. If a thing is at point, it will be the first candidate
+(setq xref-show-definitions-function #'xref-show-definitions-completing-read)
+(map! :leader "cd"
+      (cmd! (let ((current-prefix-arg '(4)))
+              (call-interactively #'xref-find-definitions))))
+
 ;; Disable popup management of org-src buffer windows
 (after! org
   (advice-remove #'org-edit-src-exit #'+popup--org-edit-src-exit-a)
@@ -456,6 +471,19 @@ heading"
 ;; Investigate the modeline rules for popups. In the meantime, disable modeline
 ;; hiding for popups.
 (remove-hook '+popup-buffer-mode-hook #'+popup-set-modeline-on-enable-h)
+
+;; If we bind `other-window' directly, it will remap to `ace-window' when
+;; the window-select module is active. If we want to circumvent remapping, wrap
+;; the remapped command in a function call.
+(map! "M-o" (cmd! (call-interactively #'other-window)))
+
+;; BUG When the top line of a window's buffer is blank, the background extends
+;; to the entire line, or else the letter is invisible.
+;; https://emacs.stackexchange.com/questions/45895/changing-faces-one-at-a-time-outside-customize
+(after! ace-window
+  (custom-set-faces!
+    '(aw-leading-char-face
+      :foreground "white" :background "red" :height 500)))
 
 ;; TODO Can't pass cmd! or cmd!! forms as part of `predlist'. Must be a defined
 ;; function, because those forms are not evaluated to yield a lambda.

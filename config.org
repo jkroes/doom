@@ -253,14 +253,6 @@ brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-n
 ;; well as for binding in vertico-map and corfu-map for scrolling
 ;; Consider also M-n and M-p, which are only used to scan history in the
 ;; minibuffer.
-
-;; TODO This is a temporary keybinding and workaround to find a definition via
-;; completing-read, until I can investigate the lookup module and whether it's
-;; possible to incorporate completing read into its commands.
-(setq xref-show-definitions-function #'xref-show-definitions-completing-read)
-;; xref-find-definitions searches by thing at point, or with a prefix by
-;; completing read. In the latter case, the first candidate is the thing at point.
-(map! :leader "cd"  (cmd! (let ((current-prefix-arg '(4))) (call-interactively #'xref-find-definitions))))
 #+end_src
 * Appearance
 ** Theme and font
@@ -342,6 +334,50 @@ Toggle line numbers type to match ~visual-line-mode~.
       eval-expression-print-level  nil
       edebug-print-length 1000)
 #+end_src
+* modules/completion/vertico
+#+begin_src emacs-lisp
+;; Hide commands in M-x which do not work in the current mode
+(setq read-extended-command-predicate #'command-completion-default-include-p)
+
+(map! :when (modulep! :editor evil)
+      :map vertico-map
+      ;; "C-SPC" #'+vertico/embark-preview
+      "C-j"   #'vertico-next
+      "M-j" #'vertico-next-group
+      ;; Shadows `kill-line', but S-<backspace> and C-S-<backspace> are still
+      ;; available
+      "C-k"   #'vertico-previous
+      "M-k" #'vertico-previous-group)
+#+end_src
+** List of minibuffer keys
+- consult-history =C-s=::
+  Insert candidate from history
+- yank =C-y=
+- yank-pop =M-y=
+- move-end-of-line =C-e=
+- move-beginning-of-line =C-a=
+- delete-char/delete-forward-char =C-d / <deletechar> or <kp-delete>=
+- evil-delete-back-to-indentation =C-u=
+- universal-argument =M-u=
+- vertico-directory-delete-char =DEL=
+- undo =C-z=
+- vertico-last =M->=::
+  Jump to last candidate
+- vertico-first =M-<=
+- vertico-next =C-j=
+- vertico-previous =C-k=
+- vertico-scroll-up =C-n=
+- vertico-scroll-down =C-p=
+- vertico-next-group =M-}, M-j=
+- vertico-previous-group =M-{, M-k=
+- vertico-exit =RET=::
+  Select candidate and exit
+- vertico-save =M-w=::
+  Copy the selected candidate
+- vertico-exit-input =M-RET=::
+  Exit with minibuffer text selected
+- vertico-insert =TAB=::
+  Insert selected candidate into minibuffer.
 * modules/lang/org
 #+begin_src emacs-lisp
 ;; Where my org notes live
@@ -603,6 +639,18 @@ For radio lists, ~org-toggle-checkbox~ calls ~org-toggle-radio-button~, which bo
               (apply orig-fun args)
               (advice-remove 'org-update-checkbox-count-maybe #'ignore)))
 #+end_src
+* modules/tools/lookup
+#+begin_src emacs-lisp
+;; TODO This is a temporary keybinding and workaround to find a definition via
+;; completing-read, until I can investigate the lookup module and whether it's
+;; possible to incorporate completing read into its commands.
+
+;; Search by completing read. If a thing is at point, it will be the first candidate
+(setq xref-show-definitions-function #'xref-show-definitions-completing-read)
+(map! :leader "cd"
+      (cmd! (let ((current-prefix-arg '(4)))
+              (call-interactively #'xref-find-definitions))))
+#+end_src
 * modules/ui/popup
 #+begin_src emacs-lisp
 ;; Disable popup management of org-src buffer windows
@@ -615,6 +663,21 @@ For radio lists, ~org-toggle-checkbox~ calls ~org-toggle-radio-button~, which bo
 ;; Investigate the modeline rules for popups. In the meantime, disable modeline
 ;; hiding for popups.
 (remove-hook '+popup-buffer-mode-hook #'+popup-set-modeline-on-enable-h)
+#+end_src
+* modules/ui/window-select
+#+begin_src emacs-lisp
+;; If we bind `other-window' directly, it will remap to `ace-window' when
+;; the window-select module is active. If we want to circumvent remapping, wrap
+;; the remapped command in a function call.
+(map! "M-o" (cmd! (call-interactively #'other-window)))
+
+;; BUG When the top line of a window's buffer is blank, the background extends
+;; to the entire line, or else the letter is invisible.
+;; https://emacs.stackexchange.com/questions/45895/changing-faces-one-at-a-time-outside-customize
+(after! ace-window
+  (custom-set-faces!
+    '(aw-leading-char-face
+      :foreground "white" :background "red" :height 500)))
 #+end_src
 * Keybindings
 ** Easily scroll popups and the minibuffer with C-n and C-p

@@ -285,8 +285,9 @@ Continues comments if executed from a commented line."
   ;; Fix MacOS shift+tab
   (define-key key-translation-map [S-iso-lefttab] [backtab])
   ;; On macOS, see System > Settings > Keyboard > Keyboard Shortcuts > Keyboard >
-  ;; Move focus to next window. Can't use C-SPC when bound in corfu-mode-map
-  (map! "C-M-SPC" #'other-frame))
+  ;; Move focus to next window. Can't use C-SPC when bound in corfu-mode-map.
+  ;; This is useful when running ediff in another frame.
+  (map! "C-SPC" #'other-frame))
 
 ;; Potential replacement for `evil-delete-back-to-indentation' if you want to
 ;; keep C-u bound to universal-argument. See also C-S-<backspace>. Note that it

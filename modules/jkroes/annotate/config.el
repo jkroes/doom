@@ -11,5 +11,6 @@
  (setq annotate-annotation-confirm-deletion t)
  ;; Disable annotate-mode in buffers where it is active, then re-enable it
  ;; after quitting ediff
- (add-hook 'ediff-prepare-buffer-hook #'jkroes/ediff-disable-annotate-mode)
- (add-hook! 'ediff-cleanup-hook #'jkroes/ediff-reenable-annotate-mode))
+ ;; (add-hook 'ediff-prepare-buffer-hook #'jkroes/ediff-disable-annotate-mode)
+ ;; (add-hook! 'ediff-cleanup-hook #'jkroes/ediff-reenable-annotate-mode)
+ )

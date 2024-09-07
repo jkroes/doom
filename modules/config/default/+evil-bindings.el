@@ -183,12 +183,13 @@
 
       (:when (modulep! :completion corfu)
        (:after corfu
-        (:map corfu-mode-map
-         :i "C-SPC" #'completion-at-point
-         :n "C-SPC" (cmd! (call-interactively #'evil-insert-state)
-                          (call-interactively #'completion-at-point))
-         :v "C-SPC" (cmd! (call-interactively #'evil-change)
-                          (call-interactively #'completion-at-point)))
+        ;; Currently bound to other-frame
+        ;; (:map corfu-mode-map
+        ;;  :i "C-SPC" #'completion-at-point
+        ;;  :n "C-SPC" (cmd! (call-interactively #'evil-insert-state)
+        ;;                   (call-interactively #'completion-at-point))
+        ;;  :v "C-SPC" (cmd! (call-interactively #'evil-change)
+        ;;                   (call-interactively #'completion-at-point)))
         (:map corfu-map
          ;; Like M-TAB when vertico is enabled and corfu is disabled
          :i "M-TAB" #'+corfu/move-to-minibuffer

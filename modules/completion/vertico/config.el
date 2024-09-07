@@ -16,31 +16,6 @@ overrides `completion-styles' during company completion sessions.")
 ;;
 ;;; Packages
 
-;; List of minibuffer keys:
-;;
-;;   consult-history (C-s): Insert candidate from history
-;;   yank (C-y)
-;;   yank-pop (M-y)
-;;   move-end-of-line (C-e)
-;;   move-beginning-of-line (C-a)
-;;   delete-char/delete-forward-char (C-d / <deletechar> or <kp-delete>)
-;;   evil-delete-back-to-indentation (C-u)
-;;   universal-argument (M-u)
-;;   vertico-directory-delete-char (DEL)
-;;   undo (C-z)
-;;   vertico-last (M->): Jump to last candidate
-;;   vertico-first (M-<)
-;;   vertico-next (C-j)
-;;   vertico-previous (C-k)
-;;   vertico-scroll-up (C-n)
-;;   vertico-scroll-down (C-p)
-;;   vertico-next-group (M-}, M-j)
-;;   vertico-previous-group (M-{, M-k)
-;;   vertico-exit (RET): Select candidate and exit
-;;   vertico-save (M-w): Copy the selected candidate
-;;   vertico-exit-input (M-RET): Exit with minibuffer text selected
-;;   vertico-insert (TAB): Insert selected candidate into minibuffer. Compare to `embark-select'
-
 (use-package! vertico
   :hook (doom-first-input . vertico-mode)
   :init
@@ -56,10 +31,6 @@ overrides `completion-styles' during company completion sessions.")
   (setq vertico-resize nil
         vertico-count 17
         vertico-cycle t)
-
-  ;; Hide commands in M-x which do not work in the current mode
-  (setq read-extended-command-predicate #'command-completion-default-include-p)
-
   (setq-default completion-in-region-function
                 (lambda (&rest args)
                   (apply (if vertico-mode
@@ -67,14 +38,16 @@ overrides `completion-styles' during company completion sessions.")
                            #'completion--in-region)
                          args)))
 
-  (map! :when (modulep! :editor evil)
+  (map! :when (modulep! :editor evil +everywhere)
         :map vertico-map
-        ;; "C-SPC" #'+vertico/embark-preview
+        "M-RET" #'vertico-exit-input
+        "C-SPC" #'+vertico/embark-preview
         "C-j"   #'vertico-next
-        "M-j" #'vertico-next-group
-        ;; Shadows `kill-line', but S-<backspace> and C-S-<backspace> are still available
+        "C-M-j" #'vertico-next-group
         "C-k"   #'vertico-previous
-        "M-k" #'vertico-previous-group)
+        "C-M-k" #'vertico-previous-group
+        "C-h" (cmds! (eq 'file (vertico--metadata-get 'category)) #'vertico-directory-up)
+        "C-l" (cmds! (eq 'file (vertico--metadata-get 'category)) #'+vertico/enter-or-preview))
 
   ;; Cleans up path when moving directories with shadowed paths syntax, e.g.
   ;; cleans ~/foo/bar/// to /, and ~/foo/bar/~/ to ~/.
