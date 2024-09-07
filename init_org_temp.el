@@ -1,9 +1,3 @@
-;; Footnotes
-(setq org-footnote-define-inline nil
-      org-footnote-auto-label t
-      org-footnote-auto-adjust t ; Like org-footnote-normalize
-      org-footnote-section "Footnotes")
-
 ;; Shrink tables on startup and show shrunk text in the echo area automatically
 ;; when cursor is over the ellipses that represent the shrunk text
 (setq org-startup-shrink-all-tables t
@@ -32,36 +26,6 @@ point."
                  (not (org-entry-get nil col)))
         (org-set-property col "")))))
 
-;;;; org-cycle / org-fold -----------------------------------------------------
-
-;; Keep drawers open
-(setq org-cycle-hide-drawer-startup nil)
-
-;; Don't fold file-level drawer when cycling. Despite the changelog for org
-;; v9.6, drawer folding state is not preserved for the file-level drawer.
-(after! org-fold (fset 'org-fold-hide-drawer-all #'ignore))
-
-(defun my/org-cycle ()
-  "Adapt org-cycle to fold the current code block if point is within
-one. Useful for finding one's place within a large code block
-without folding any headings."
-  (interactive)
-  (let* ((element (org-element-at-point))
-         (type (org-element-type element)))
-    (cond ((eq type 'src-block)
-           (let* ((post (org-element-property :post-affiliated element))
-                  (start (save-excursion
-                           (goto-char post)
-                           (line-end-position)))
-                  (end (save-excursion
-                         (goto-char (org-element-property :end element))
-                         (skip-chars-backward " \t\n")
-                         (line-end-position))))
-             (when (let ((eol (line-end-position)))
-                       (and (/= eol start) (/= eol end)))
-               (call-interactively #'org-previous-block)))))
-    (call-interactively #'org-cycle)))
-
 ;;;; org-element --------------------------------------------------------------
 
 ;; TODO Prior to org v9.6, org-element threw a lot of errors about invalidated
@@ -71,7 +35,6 @@ without folding any headings."
 
 ;; (setq org-element-use-cache nil
 ;;       org-element--cache-self-verify 'backtrace)
-
 
 ;;;; org-attach ---------------------------------------------------------------
 

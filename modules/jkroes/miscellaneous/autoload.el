@@ -125,34 +125,6 @@ Return nil otherwise."
 ;; between calls using a global variable. This makes the effect of toggling in
 ;; a given buffer unpredictable when you have toggled other buffers previously.
 
-;;;###autoload
-(defun jkroes/toggle-line-numbers ()
-  "Cycles the current buffer through absolute, relative/visual and no
- line numbers. If line numbers are relative or visual, calling
- this command after toggling visual-line-mode will toggle to the other type."
-  (interactive)
-  (let* ((evil-not-visual
-          (and (bound-and-true-p evil-mode)
-               (not (bound-and-true-p
-                     evil-respect-visual-line-mode))))
-         (types
-          `(t
-            ,(if (and visual-line-mode
-                      (or (not evil-not-visual)
-                          (eq major-mode 'org-mode)))
-                 'visual
-               'relative)
-            nil))
-         (head (memq display-line-numbers types))
-         (tail (seq-difference types head))
-         (next (cadr (append head tail))))
-    (setq display-line-numbers next)
-    (message "Switched to %s line numbers"
-             (pcase next
-               (`t "normal")
-               (`nil "disabled")
-               (_ (symbol-name next))))))
-
 ;; TODO Add more commands below as you discover more commands that open links
 ;; within org-mode
 (defvar jkroes/org-open-file-link-commands

@@ -1,5 +1,68 @@
-;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+:PROPERTIES:
+:LOGGING:  nil
+:END:
+#+title: config.org
 
+* Installation
+The current Doom commit is =bf330b405d73757b314cc70e16ce991d2bbd9cc5=.
+
+Place the following in =~/.config/emacs/early-init.el= to echo file loading on startup:
+#+begin_src emacs-lisp :tangle no
+(setq force-load-messages t)
+#+end_src
+** MacOS
+#+begin_src sh
+brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-native-comp
+#+end_src
+** TODO WSL (Ubuntu 20.04)
+* File local variables
+#+begin_src emacs-lisp
+;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+#+end_src
+* Todo list [0/4]
+** TODO Move this list to a project-level todos file?
+** TODO Command bindings [0/14]
+- [ ] consult-yank-pop (M-y in normal state)
+- [ ] doom/copy-module-to-private
+- [ ] my/ediff-doom-private-module
+- [ ] comment-pad-with-dashes-right
+- [ ] quit-window-kill-buffer (in modes like helpful-mode, assuming "q" doesn't already do something similar e.g. in a popup mode)
+- [ ] org-open-at-point-global (for opening org links in emacs lisp comments)
+- [ ] vertico-repeat and vertico-repeat-select (< and > ?)
+- [ ] pp-macroexpand-last-sexp
+- [ ] annotate-toggle-all-annotations-text and other annotation functions
+- [ ] evil-record-macro (on leader)
+- [ ] commands from titlecase pkg
+- [ ] insert-org-entity
+- [ ] org-toggle-ordered-property
+- [ ] org-update-statistics-cookies
+** TODO Code reorganization [0/13]
+- [ ] Finish configuring evil module, org-modern
+- [ ] Uncomment and test modifications to embark and marginalia related to org-attach (see marginalia's use-package form)
+- [ ] Process and delete
+  - [ ] =init_org_temp.el=
+  - [ ] =init_temp.el=
+  - [ ] =vanilla-init.el=
+  - [ ] =~backup/=
+  - [ ] =modules/backup/=
+- [ ] Move configuration that extends modules into this file
+- [ ] Annotate configuration that alters modules with annotate.el
+- [ ] Ensure only autoloads are present in miscellaneous/autoload.el and other =jkroes= modules
+  - [ ] Functions that are called right away should be part of this file or the module's non-autoload files
+- [ ] Rename user functions/commands
+** TODO Bugs/Features [0/10]
+- [ ] Why do README.org files render when viewing the default module but not the same version of the file in the private modules dir? See ~/.config/emacs/lisp/lib/docs.el and that project's .dir-locals.el
+- [ ] Set up ediff so that it doesn't display a command window at the bottom and find a way to bind the available commands in that window to localleader (such that they work regardless of which buffer the cursor is in)
+- [ ] Why does typing gd sometimes jump to ~/.config/emacs/.local/etc/@/init.29.el? E.g. when invoked on set-popup-rules!
+  - [ ] This has been fixed in recent Doom commits
+- [ ] Configure how annotation.el displays annotations to make annotation highlighting less intrusive.
+- [ ] Open a Doom popup window (e.g., via helpful-variable). Then embark-act. C-g exits embark-act AND the popup window.
+- [ ] my/marginalia-annotate-function affects describe-function but not helpful-callable. Instead, my/marginalia-annotate-symbol applies. See also helpful-function. Maybe because callable includes macros?
+- [ ] Look into kind-icon for corfu or nerd-icons-corfu
+- [ ] Test built-in corfu + lsp integration
+- [ ] Syntax highlighting still not rendering when you visit e.g. config.org if point was over a src block when you last exited the buffer or emacs. See https://github.com/minad/org-modern/discussions/218. See if it goes away when you scroll far enough.
+* Operating system [0/0]
+#+begin_src emacs-lisp
 ;; Treat command key like control
 (setq ns-command-modifier 'control
       mac-command-modifier 'control)
@@ -8,7 +71,9 @@
   (setq browse-url-generic-program "/mnt/c/Windows/System32/cmd.exe"
         browse-url-generic-args '("/c" "start" "")
         browse-url-browser-function 'browse-url-generic))
-
+#+end_src
+* Miscellaneous
+#+begin_src emacs-lisp
 ;; Center and focus Emacs frame on launch
 (select-frame-set-input-focus (selected-frame))
 
@@ -196,21 +261,47 @@
 ;; xref-find-definitions searches by thing at point, or with a prefix by
 ;; completing read. In the latter case, the first candidate is the thing at point.
 (map! :leader "cd"  (cmd! (let ((current-prefix-arg '(4))) (call-interactively #'xref-find-definitions))))
+#+end_src
+* Appearance
+** Theme and font
+See [[file:modules/jkroes/theme/]].
 
+#+begin_src emacs-lisp
 (setq doom-theme 'modus-vivendi)
 (setq doom-font (font-spec :family "JuliaMono"
                            :size (jkroes/startup-font-size)))
+#+end_src
+** Line numbers
+Configure display-line-numbers-mode for modes where it is enabled.
+Individual buffers can toggle between different types of line numbers via
+~jkroes/toggle-line-numbers~. Commands like ~consult-line~ always show
+absolute line numbers regardless of this setting.
 
+#+begin_src emacs-lisp
 (setq display-line-numbers-type 'relative)
+#+end_src
 
+Disable line numbers for text buffers, since ~org-mode~ is derived from it, and navigation works differently for these buffers. E.g., numeric prefixes for movement commands across a collapsed subtree moves by that number of headings regardless of line number.
+
+The display of line numbers for collapsed org-mode headings can be fixed by setting ~display-line-numbers-type~ to ~'visual~; however, prefixed motions will not jump to the expected line when ~visual-line-mode~ is enabled and you are jumping to or across wrapped lines--unless ~evil-respect-visual-line-mode~ was enabled prior to loading evil.
+
+Note that ~jkroes/toggle-line-numbers~ still seems to work in modes where ~display-line-numbers-mode~ is disabled.
+
+#+begin_src emacs-lisp
 (remove-hook! 'text-mode-hook #'display-line-numbers-mode)
+#+end_src
 
+Toggle line numbers type to match ~visual-line-mode~.
+
+#+begin_src emacs-lisp
 (defadvice! jkroes/match-display-line-to-visual-line-a (&rest _)
   :after #'visual-line-mode
   (when (or (and visual-line-mode (eq display-line-numbers 'relative))
             (and (null visual-line-mode) (eq display-line-numbers 'visual)))
   (jkroes/toggle-line-numbers)))
-
+#+end_src
+*** Commands
+#+begin_src emacs-lisp
 (defun jkroes/toggle-line-numbers ()
   "Cycles the current buffer through absolute, relative/visual and no
  line numbers. If line numbers are relative or visual, calling
@@ -237,28 +328,38 @@
                (`t "normal")
                (`nil "disabled")
                (_ (symbol-name next))))))
-
+#+end_src
+* Minibuffer
+#+begin_src emacs-lisp
 ;; Useful in conjunction with `enable-recursive-minibuffers'
 (minibuffer-depth-indicate-mode)
-
+#+end_src
+* Evaluation
+#+begin_src emacs-lisp
 ;; Print full or long results to the messages buffer when evaluating
 ;; expressions
 (setq eval-expression-print-length nil
       eval-expression-print-level  nil
       edebug-print-length 1000)
-
+#+end_src
+* modules/lang/org
+#+begin_src emacs-lisp
 ;; Where my org notes live
 (setq org-directory (expand-file-name "~/org"))
 
 ;; All of my org files are org-roam files
 (setq org-roam-directory org-directory)
-
+#+end_src
+** Folding
+#+begin_src emacs-lisp
 ;; Don't fold drawers when cycling.
 (after! org-fold (fset 'org-fold-hide-drawer-all #'ignore))
 
 ;; Keep drawers open on startup
 ;; (setq org-cycle-hide-drawer-startup nil)
-
+#+end_src
+*** Commands
+#+begin_src emacs-lisp
 (defun my/org-cycle ()
   "Adapt org-cycle to fold the current code block if point is within
 one. Useful for finding one's place within a large code block
@@ -279,21 +380,43 @@ without folding any headings."
                      (and (/= eol start) (/= eol end)))
                (call-interactively #'org-previous-block)))))
     (call-interactively #'org-cycle)))
-
+#+end_src
+** Footnotes
+#+begin_src emacs-lisp
 (setq org-footnote-define-inline nil
       org-footnote-section "Footnotes"
       org-footnote-auto-adjust t ; Like org-footnote-normalize
       org-footnote-auto-label t)
+#+end_src
+** Tasks
+*** Priorities
+Execute ~org-priority~ or press =S-<up>= and =S-<down>= to assign a priority
+between =1= (highest) and =5= (lowest).
 
+#+begin_src emacs-lisp
 (setq org-priority-lowest 5
       org-priority-highest 1
       org-priority-default 3)
+#+end_src
+*** Logging and todo keywords
+Per-keyword logging behavior is specified in ~org-todo-keywords~.
 
+#+begin_src emacs-lisp
 (setq org-log-done nil)
 
 ;; Use the LOGBOOK drawer for logging
 (setq org-log-into-drawer "LOGBOOK")
+#+end_src
 
+Keywords should be reserved for task states that you want to count for statistics cookies. Metadata should be implemented as tags. If, however, you want keywords that don't count for statistics, see ~org-provide-todo-statistics~, but note that you would need to dig into ~org-not-done-keywords~ and/or ~org-block-todo-from-children-or-siblings-or-parent~ to somehow avoid blocking changes in todo state for these kewords.
+
+To delete a keyword with fast selection enabled, call ~org-todo~ then =SPC=.
+
+For keyword-based logging, =!= indicates a timestamp, =@= a timestamped note, and =/= permits different behavior for entry to (LHS) and exit from (RHS) a state. The exit behavior only applies when entering a state with no logging behavior.
+
+When the =*Org Note*= buffer is current, =C-c C-k= skips logging (but permits the state change), while =C-c C-c= records a note only if text has been inserted and a timestamp otherwise.
+
+#+begin_src emacs-lisp
 (setq org-todo-keywords
         '((sequence
            "TODO(t)"     ; A task that is ready to start
@@ -304,13 +427,33 @@ without folding any headings."
            "CHOSEN"
            "DONE(d!/@)"    ; Task successfully completed
            "KILL(k@/@)"))) ; Task was cancelled, aborted, or is no longer applicable
+#+end_src
+*** Automatic todo keyword and statistics updates
+Block switching of parent state to done until child headings or checkboxes are done.
 
+#+begin_src emacs-lisp
 (setq org-enforce-todo-dependencies t
       org-enforce-todo-checkbox-dependencies t)
+#+end_src
 
+When updating statistics cookies, count the number of direct child headings or the number of checkboxes recursively
+
+#+begin_src emacs-lisp
 (setq org-hierarchical-todo-statistics t
       org-checkbox-hierarchical-statistics nil)
+#+end_src
 
+When ~org-provide-todo-statistics~ is enabled and a function that calls ~org-todo~ is an element of ~org-after-todo-statistics-hook~, invoking a command that runs ~org-update-parent-todo-statistics~ may change todo state recursively up a subtree for each heading with a statistics cookie. The call/hook/variable sequence looks like:
+
+- org-todo
+  - org-update-parent-todo-statistics
+    - cookie-present
+      - org-after-todo-statistics-hook
+        - org-toggle-todo (loop back to top)
+
+~org-update-parent-todo-statistics~ is called by ~org-todo~ and ~org-update-statistics-cookies~. Commands that call ~org-todo~ include ~org-insert-todo-heading~, ~+org/insert-item-above~, ~+org/insert-item-below~, and ~+org/dwim~.
+
+#+begin_src emacs-lisp
 (add-hook 'org-after-todo-statistics-hook #'jkroes/org-toggle-todo)
 
 ;; A list of non-done todo states excluding CHOOSE and WAIT.
@@ -329,7 +472,11 @@ without folding any headings."
           ;; DONE -> TODO
           ((and (equal state "DONE") (> n-not-done 0))
            (org-todo "TODO")))))
+#+end_src
 
+This advice ensures that each parent heading has a cookie before ~org-update-parent-todo-statistics~ runs. It also transforms the (first) checkbox item list into a list of radio buttons for headings that have the =CHOOSE= or =CHOSEN= todo state.
+
+#+begin_src emacs-lisp
 (advice-add #'org-update-parent-todo-statistics
             :before #'jkroes/insert-statistics-cookie)
 
@@ -387,7 +534,13 @@ heading"
                          radio_keyword))
              (delete-region line-beg line-end)
              (delete-char 1))))))
+#+end_src
 
+This advice is like ~jkroes/org-toggle-todo~ for headings that use checkboxes instead of subheadings to track tasks. It affects ~org-toggle-checkbox~, ~org-toggle-radio-button~, ~org-insert-item~, ~org-list-indent-item-generic~ (called by cycling or indentation commands), and ~org-ctrl-c-ctrl-c~, and ~org-reset-checkbox-state-subtree~.
+
+Note that ~org-insert-item~ does not insert a list item unless a list already exists. The first checkbox list item can be created from simple text with =C-c-- C-u SPC m x=.
+
+#+begin_src emacs-lisp
 ;; `org-toggle-todo-checkboxes' runs `org-update-checkbox-count', and we don't
 ;; need it to run beforehand
 (after! org-list (setcdr (assoc 'checkbox org-list-automatic-rules) nil))
@@ -439,13 +592,19 @@ heading"
             ((and (equal state "DONE")
                   (not (= numerator denominator)))
              (org-todo "TODO"))))))
+#+end_src
 
+For radio lists, ~org-toggle-checkbox~ calls ~org-toggle-radio-button~, which both call ~org-update-checkbox-count-maybe~, which runs the functions in ~org-checkbox-statistics-hook~ twice. This should be fixed upstream.
+
+#+begin_src emacs-lisp
 (advice-add #'org-toggle-radio-button :around
             (lambda (orig-fun &rest args)
               (advice-add 'org-update-checkbox-count-maybe :override #'ignore)
               (apply orig-fun args)
               (advice-remove 'org-update-checkbox-count-maybe #'ignore)))
-
+#+end_src
+* modules/ui/popup
+#+begin_src emacs-lisp
 ;; Disable popup management of org-src buffer windows
 (after! org
   (advice-remove #'org-edit-src-exit #'+popup--org-edit-src-exit-a)
@@ -456,7 +615,10 @@ heading"
 ;; Investigate the modeline rules for popups. In the meantime, disable modeline
 ;; hiding for popups.
 (remove-hook '+popup-buffer-mode-hook #'+popup-set-modeline-on-enable-h)
-
+#+end_src
+* Keybindings
+** Easily scroll popups and the minibuffer with C-n and C-p
+#+begin_src emacs-lisp
 ;; TODO Can't pass cmd! or cmd!! forms as part of `predlist'. Must be a defined
 ;; function, because those forms are not evaluated to yield a lambda.
 (defmacro jkroes/dispatch-scroll-commands (keymap state binding fallback &rest predlist)
@@ -548,3 +710,4 @@ up the binding in the active keymaps."
 ;;   (general-predicate-dispatch #'scroll-down-command
 ;;     (jkroes/embark-actions-buffer-visible)
 ;;     #'scroll-other-window-down))
+#+end_src

@@ -1093,6 +1093,7 @@ between the two."
       ("^\\*Org \\(?:Select\\|Attach\\|Table Edit\\)" :slot -1 :vslot -2 :ttl 0 :size 0.25)
       ("^\\*Edit Formulas\\*$" :slot -1 :vslot -2 :ttl 0 :size 0.25)
       ("^\\*Org Agenda"     :ignore t)
+      ("^\\*Org Src"        :size 0.42  :quit nil :select t :autosave t :modeline t :ttl nil)
       ("^\\*Org-Babel")
       ("^\\*Capture\\*$\\|CAPTURE-.*$" :size 0.42 :quit nil :select t :autosave ignore))))
 
@@ -1235,9 +1236,8 @@ between the two."
           (CSdown  (concat "C-S-" .down)))
       (map! :map evil-org-mode-map
             :i [tab]    #'org-cycle
-            ;; TODO Test these bindings out later
-            ;; :nv "TAB" #'my/org-cycle
-            ;; :nv [tab] #'my/org-cycle
+            :n "TAB" #'my/org-cycle
+            :n [tab] #'my/org-cycle
 
             ;; Insert heading or list item directly below/above current
             :ni [C-return]   #'+org/insert-item-below

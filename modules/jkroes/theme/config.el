@@ -1,6 +1,8 @@
 ;;; -*- lexical-binding: t; -*-
 
 (defun jkroes/startup-font-size ()
+"On startup set the font to a smaller size if working on the
+ laptop without external monitors"
   (pcase (display-monitor-attributes-list)
     ;; dual monitor setup
     ((pred (lambda (dmal)

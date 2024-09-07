@@ -1,3 +1,42 @@
+;; NOTE These aren't strictly necessary
+
+(defun jkroes/org-statistics-count-checkbox ()
+  "Force the current heading to count checkboxes rather than child headings"
+  (interactive)
+  (org-set-property "COOKIE_DATA" "checkbox")
+  (save-excursion
+    (org-back-to-heading t)
+    (org-update-statistics-cookies nil)))
+
+(defun jkroes/org-statistics-count-todo ()
+  "Force the current heading to count child headings rather than checkboxes"
+  (interactive)
+  (org-set-property "COOKIE_DATA" "todo")
+  (save-excursion
+    (org-back-to-heading t)
+    (org-update-statistics-cookies nil)))
+
+;; NOTE Think twice before moving headings in and out of subtrees, because
+;; doing so may change the todo state of the subtrees. If you disable the
+;; advice below, you will need to manually trigger a todo state change (even
+;; to the same current state) to force the subtree to update itself. I think
+;; this is the safer option.
+
+(advice-add #'org-promote :after #'jkroes/org-promote-update-statistics)
+(advice-add #'org-demote :after #'jkroes/org-demote-update-statistics)
+
+(defun jkroes/org-promote-update-statistics ()
+  (org-update-statistics-cookies nil)
+  (org-backward-heading-same-level 1)
+  (jkroes/org-demote-update-statistics))
+
+(defun jkroes/org-demote-update-statistics ()
+  (save-excursion
+    (let ((continue? t))
+      (while continue?
+        (org-update-statistics-cookies nil)
+        (setq continue? (org-up-heading-safe))))))
+
 
 ;; TODO Has the org-attach window always been scrolled to the bottom? File a bug report so
 ;; you can remove this hack eventually.
@@ -18,8 +57,6 @@
                (prin1 "hello")
                (goto-line 1 (get-buffer "*Org Attach*")))))
     (call-interactively fn)))
-
-
 
 
 ;; Insert one blank line with a heading, and fold one blank line when cycling.
