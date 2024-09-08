@@ -29,7 +29,11 @@ directives. By default, this only recognizes C directives.")
 (defvar evil-want-C-w-delete t)
 (defvar evil-want-Y-yank-to-eol t)
 (defvar evil-want-abbrev-expand-on-insert-exit nil)
-(defvar evil-respect-visual-line-mode t)
+;; BUG When this and visual-line-mode are enabled, in org-mode d$ between a
+;; folded heading and a statistics cookie deletes any content underneath the
+;; heading. Unclear whether this is truly a bug, but it's dangerous! Look into
+;; whether evil-org causes this (when enabled, pressing d runs evil-org-delete).
+(defvar evil-respect-visual-line-mode nil)
 
 (use-package! evil
   :hook (doom-after-modules-config . evil-mode)

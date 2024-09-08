@@ -1,3 +1,20 @@
+(defvar org-attach-ignore-regexp-list (list "." ".." ".DS_STORE")
+  "A list of filenames for org-attach to ignore")
+
+(defadvice! +org-attach-file-list-a (directory)
+  "Return a list of files in the attachment DIRECTORY.
+This ignores \".\", \"..\", \".DS_STORE\", and files ending in \"~\"."
+  :override #'org-attach-file-list
+  (delq nil
+        (mapcar (lambda (x)
+                  (if (string-match
+                       (concat "^"
+                               (regexp-opt
+                                org-attach-ignore-regexp-list)
+                               "\\'")
+                       x) nil x))
+                (directory-files directory nil "[^~]\\'"))))
+
 ;; NOTE These aren't strictly necessary
 
 (defun jkroes/org-statistics-count-checkbox ()

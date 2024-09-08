@@ -9,9 +9,6 @@
         browse-url-generic-args '("/c" "start" "")
         browse-url-browser-function 'browse-url-generic))
 
-;; Center and focus Emacs frame on launch
-(select-frame-set-input-focus (selected-frame))
-
 ;; Do not prompt when killing Emacs
 (setq confirm-kill-emacs nil)
 
@@ -30,48 +27,16 @@
 
 (setq undo-no-redo t)
 
-(use-package! titlecase :defer t)
-
 ;; Projectile caching is used with e.g. doom-project-find-file (SPC-f-F).
 ;; It's probably worth enabling for large projects, but for now it's
 ;; omitting file candidates that have been recently added to e.g. a
 ;; private module.
 (setq projectile-enable-caching nil)
 
-;;; auto-fill -----------------------------------------------------------------
+(use-package! titlecase :defer t)
 
-(setq-default fill-column 79)
-
-;; Within a comment, typing a nonspace character followed by a space beyond
-;; column will cause Emacs to hard wrap your comment
-(add-hook 'prog-mode-hook 'turn-on-auto-fill) ; https://www.gnu.org/software/emacs/manual/html_node/efaq/Turning-on-auto_002dfill-by-default.html
-(setq comment-auto-fill-only-comments t)
-
-(defadvice! jkroes/scroll-right-on-auto-fill (fn &rest _)
-  "When auto-filling, automatically undo the effects of
- auto-hscroll-mode by scrolling back again to the left."
-  :around 'do-auto-fill
-  (when (funcall fn) (scroll-right)))
-
-;; TODO Set regexp if you need to inhibit auto-fill in specific places
-;; (setq auto-fill-inhibit-regexp "")
-
-;;; which-key -----------------------------------------------------------------
-
-;; See lisp/doom-keybinds.el for additional settings
-(setq which-key-idle-delay 0.1)
-
-;; NOTE This masks Doom's description of bindings for remaps only
-;; (e.g. "SPC h b b")
-(setq which-key-compute-remaps t)
-
-;; TODO This bug doesn't appear in every instance. See the binding at the
-;; bottom of this buffer.
-;; BUG Disable Doom's descriptions of bindings. If the user rebinds keys with map!
-;; but doesn't specify :desc, the :desc from previous bindings via map! still
-;; shows up for some reason. Unfortunately, this also strips some useful
-;; descriptions.
-;; (setq which-key-replacement-alist nil)
+;; Center and focus Emacs frame on launch
+(select-frame-set-input-focus (selected-frame))
 
 ;;; helpful -------------------------------------------------------------------
 
@@ -84,35 +49,9 @@
 ;; TODO File an issue with which-key
 (advice-add #'helpful--version-info :override #'my/helpful--version-info)
 
-;;; profiler ------------------------------------------------------------------
-
-;; HACK I'm not sure Doom's settings for these variables make sense.
-;; They push the functions to the RHS of the screen. I don't
-;; understand this variable fully, since there's no docs. I just
-;; tried left-aligning, but you may have to tweak this.
-(after! profiler
-  (setq profiler-report-memory-line-format
-        '((20 left
-           ((15 left profiler-format-number)
-            (5 left)))
-          (1 left "%s")
-          (0 left)))
-
-  (setq profiler-report-cpu-line-format
-        '((20 left
-           ((12 left)
-            (5 left)))
-          (1 left "%s")
-          (0 left))))
-
 ;;; modules/editor/evil -------------------------------------------------------
 
 ;;(set-evil-initial-state! '(dired-mode) 'emacs)
-
-;; TODO Binding is overriden in org-mode. Need to find an alternative binding sequence
-;; Easier scrolling
-(map! "M-h" (lambda () (interactive) (evil-scroll-column-left 40))
-      "M-l" (lambda () (interactive) (evil-scroll-column-right 40)))
 
 ;;; modules/tools/lsp ---------------------------------------------------------
 
@@ -151,11 +90,6 @@
 
 ;;; modules/ui/indent-guides
 
-;;; modules/ui/modeline -------------------------------------------------------
-
-;; Increase the visibility of the evil state indicator
-(setq doom-modeline-modal-icon nil)
-
 ;;; Extra keybindings ---------------------------------------------------------
 
 ;; Remapping a command via global-set-key applies to all keymaps. A binding
@@ -178,11 +112,6 @@
 ;; (after! vundo
 ;;   (evil-collection-define-key 'normal 'vundo-mode-map
 ;;     "d" 'vundo-diff))
-
-;; The keybindings are too easy to hit and aren't necessary with evil
-(when (modulep! :editor evil)
-  (unbind-command #'undo global-map)
-  (unbind-command #'undo-redo global-map))
 
 ;; TODO C-. and C-, are generally undefined and are also good candidates
 ;; for vertico-repeat/vertico-repeat-select instead of embark-collect, as
@@ -231,8 +160,13 @@
                (`nil "disabled")
                (_ (symbol-name next))))))
 
-;; Useful in conjunction with `enable-recursive-minibuffers'
+;; Increase the visibility of the evil state indicator
+(setq doom-modeline-modal-icon nil)
+
 (minibuffer-depth-indicate-mode)
+
+(setq read-extended-command-predicate
+      #'command-completion-default-include-p)
 
 ;; Print full or long results to the messages buffer when evaluating
 ;; expressions
@@ -240,381 +174,50 @@
       eval-expression-print-level  nil
       edebug-print-length 1000)
 
-;; Hide commands in M-x which do not work in the current mode
-(setq read-extended-command-predicate #'command-completion-default-include-p)
+(after! profiler
+  (setq profiler-report-memory-line-format
+        '((20 left
+           ((15 left profiler-format-number)
+            (5 left)))
+          (1 left "%s")
+          (0 left)))
 
-(map! :when (modulep! :editor evil)
-      :map vertico-map
-      ;; For files, `+vertico/embark-preview' emulates consult's preview
-      ;; capabilities for non-consult commands. A key difference e.g. is that
-      ;; buffers will be opened permanently. What this actually does is call
-      ;; `embark-dwim' with `embark-quit-after-action' disabled to keep the
-      ;; minibuffer alive. A better solution is to bind interactively toggle
-      ;; this variable via `universal-argument'.
-      ;;
-      ;; "C-SPC" #'+vertico/embark-preview
-      "C-j"   #'vertico-next
-      "M-j" #'vertico-next-group
-      ;; Shadows `kill-line', but S-<backspace> and C-S-<backspace> are still
-      ;; available
-      "C-k"   #'vertico-previous
-      "M-k" #'vertico-previous-group)
+  (setq profiler-report-cpu-line-format
+        '((20 left
+           ((12 left)
+            (5 left)))
+          (1 left "%s")
+          (0 left))))
 
-;; Use Spotlight as the backend for locate on macOS
-(when (featurep :system 'macos)
-  (setq consult-locate-args "mdfind"))
+(setq-default fill-column 79)
 
-;; When selecting a directory with consult-dir, replace the
-;; original directory in the minibuffer prompt rather than
-;; shadowing it. This is cleaner but does prevent the user from
-;; deleting the new dir to recover the original dir
-(setq consult-dir-shadow-filenames nil)
+;; Within a comment, typing a nonspace character followed by a space beyond
+;; column will cause Emacs to hard wrap your comment
+;; https://www.gnu.org/software/emacs/manual/html_node/efaq/Turning-on-auto_002dfill-by-default.html
+(add-hook 'prog-mode-hook 'turn-on-auto-fill)
+(setq comment-auto-fill-only-comments t)
 
-;; Use `+default/find-file-under-here' instead of `consult-find'
-;; as the back-end for `consult-dir-jump-file'
-(setq consult-dir-jump-file-command
-      (cmd! (call-interactively #'+default/find-file-under-here)))
+(defadvice! jkroes/scroll-right-on-auto-fill (fn &rest _)
+  "When auto-filling, automatically undo the effects of
+ auto-hscroll-mode by scrolling back again to the left."
+  :around 'do-auto-fill
+  (when (funcall fn) (scroll-right)))
 
-;; Map completion categories to completion styles. The partial-completion style
-;; is important if you want to: (1) Complete doom/move-this-file as d/m-t-f or
-;; /usr/local/bin as /u/l/b, or (2) Open multiple files at once with find-file
-;; using wildcards. In order to open multiple files with a wildcard at once,
-;; you have to submit the prompt with M-RET. Note that opening buffers does not
-;; mean every file will be visible in its own window.
-(after! orderless
-  (add-to-list
-   'completion-category-overrides
-   '(project-file (styles
-                   +vertico-basic-remote
-                   orderless
-                   partial-completion)))
+;; TODO Set regexp if you need to inhibit auto-fill in specific places
+;; (setq auto-fill-inhibit-regexp "")
 
-  (setq orderless-style-dispatchers '(jkroes/orderless-dispatch)))
+;; See lisp/doom-keybinds.el for additional settings
+(setq which-key-idle-delay 0.1)
 
-(defun jkroes/orderless-dispatch (pattern _index _total)
-  "Like `+vertico-orderless-dispatch', this alters the orderless matching style for match
-sub-components using prefix or suffix characters. Matches
-initials with a comma instead of a backtick prefix."
-  (cond
-   ;; Ensure $ works with Consult commands, which add disambiguation suffixes
-   ((string-suffix-p "$" pattern)
-    `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))
-   ;; Ignore single !
-   ((string= "!" pattern) `(orderless-literal . ""))
-   ;; Without literal
-   ((string-prefix-p "!" pattern) `(orderless-without-literal . ,(substring pattern 1)))
-   ;; Annotation
-   ((string-prefix-p "&" pattern) `(orderless-annotation . ,(substring pattern 1)))
-   ((string-suffix-p "&" pattern) `(orderless-annotation . ,(substring pattern 0 -1)))
-   ;; Character folding
-   ((string-prefix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 1)))
-   ((string-suffix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 0 -1)))
-   ;; Initialism matching
-   ((string-prefix-p "," pattern) `(orderless-initialism . ,(substring pattern 1)))
-   ((string-suffix-p "," pattern) `(orderless-initialism . ,(substring pattern 0 -1)))
-   ;; Literal matching
-   ((string-prefix-p "=" pattern) `(orderless-literal . ,(substring pattern 1)))
-   ((string-suffix-p "=" pattern) `(orderless-literal . ,(substring pattern 0 -1)))
-   ;; Flex matching
-   ((string-prefix-p "~" pattern) `(orderless-flex . ,(substring pattern 1)))
-   ((string-suffix-p "~" pattern) `(orderless-flex . ,(substring pattern 0 -1)))))
+;; This masks Doom's description of bindings for remaps only (e.g. "SPC h b b")
+(setq which-key-compute-remaps t)
 
-(defun jkroes/embark-prefix-help-command (&optional _)
-  (interactive)
-  (let (keys)
-    (if (which-key--popup-showing-p)
-        (progn
-          (setq keys (which-key--current-prefix))
-          (which-key--hide-popup-ignore-command))
-      (setq keys (this-command-keys-vector))
-      (setq keys (seq-take keys (1- (length keys)))))
-    (my/embark-prefix-bindings keys)))
-
-(autoload #'embark-completing-read-prompter "embark")
-;; HACK Later versions of embark altered this function so that it no
-;; longer filters bindings by the current key prefix. This is the
-;; original definition from commit 35f3961cd1e6
-(defun my/embark-prefix-bindings (&optional prefix)
-  "Explore all current keybindings and commands with `completing-read'.
-The selected command will be executed. The set keybindings can be restricted
-by passing a PREFIX key."
-  (interactive)
-  (let ((keymap (if prefix
-                    (key-binding prefix)
-                  (make-composed-keymap (current-active-maps t)))))
-    (unless (keymapp keymap)
-      (user-error "No keybindings found"))
-    (when-let (command (embark-completing-read-prompter keymap 'no-default))
-      (call-interactively command))))
-
-(defun my/marginalia-annotate-binding (cand)
-  "Annotate command CAND with keybinding. If CAND is remapped to
-  OTHER-COMMAND, return [remap OTHER-COMMAND]."
-  (when-let* ((sym (intern-soft cand))
-              (key (and (commandp sym) (where-is-internal sym nil 'first-only))))
-    (let ((remap (command-remapping sym)))
-      (propertize (format " (%s)" (if remap remap (key-description key)))
-                  'face 'marginalia-key))))
-
-(defun my/marginalia-annotate-symbol (cand)
-  (when-let (sym (intern-soft cand))
-    (marginalia--fields
-     (:left (marginalia-annotate-binding cand))
-     ((marginalia--symbol-class sym) :face 'marginalia-type)
-     ((cond
-       ((fboundp sym) (marginalia--function-doc sym))
-       ((facep sym) (documentation-property sym 'face-documentation))
-       (t (documentation-property sym 'variable-documentation)))
-      :truncate 1.0 :face 'marginalia-documentation)
-     ;; ((abbreviate-file-name (or (symbol-file sym) ""))
-     ;;  :truncate -0.5 :face 'marginalia-file-name)
-     )))
-
-(defun marginalia-annotate-attachment (cand)
-  (marginalia-annotate-file (cdr (embark--expand-attachment nil cand))))
-
-(defun embark--expand-attachment (_ target)
-  "Transform marginalia category from `attach' to `file' and
- convert target to filepath. `org-attach-open' does not use the
- path returned by `org-attach-dir' as minibuffer input.
- `embark--vertico-selected' constructs embark targets from the
- candidate and the minibuffer input, so the target is not the
- full path."
-  (with-current-buffer (window-buffer (minibuffer-selected-window))
-    (cons 'file (expand-file-name target (org-attach-dir)))))
-
-;; Where my org notes live
-(setq org-directory (expand-file-name "~/org"))
-
-;; All of my org files are org-roam files
-(setq org-roam-directory org-directory)
-
-;; Don't fold drawers when cycling.
-(after! org-fold (fset 'org-fold-hide-drawer-all #'ignore))
-
-;; Keep drawers open on startup
-;; (setq org-cycle-hide-drawer-startup nil)
-
-(defun my/org-cycle ()
-  "Adapt org-cycle to fold the current code block if point is within
-one. Useful for finding one's place within a large code block
-without folding any headings."
-  (interactive)
-  (let* ((element (org-element-at-point))
-         (type (org-element-type element)))
-    (cond ((eq type 'src-block)
-           (let* ((post (org-element-property :post-affiliated element))
-                  (start (save-excursion
-                           (goto-char post)
-                           (line-end-position)))
-                  (end (save-excursion
-                         (goto-char (org-element-property :end element))
-                         (skip-chars-backward " \t\n")
-                         (line-end-position))))
-             (when (let ((eol (line-end-position)))
-                     (and (/= eol start) (/= eol end)))
-               (call-interactively #'org-previous-block)))))
-    (call-interactively #'org-cycle)))
-
-(setq org-footnote-define-inline nil
-      org-footnote-section "Footnotes"
-      org-footnote-auto-adjust t ; Like org-footnote-normalize
-      org-footnote-auto-label t)
-
-(setq org-priority-lowest 5
-      org-priority-highest 1
-      org-priority-default 3)
-
-(setq org-log-done nil)
-
-;; Use the LOGBOOK drawer for logging
-(setq org-log-into-drawer "LOGBOOK")
-
-(setq org-todo-keywords
-        '((sequence
-           "TODO(t)"     ; A task that is ready to start
-           "NOW(n!)"     ; An active task
-           "CHOOSE(c)"
-           "WAIT(w@/!)"  ; A suspended task
-           "|"
-           "CHOSEN"
-           "DONE(d!/@)"    ; Task successfully completed
-           "KILL(k@/@)"))) ; Task was cancelled, aborted, or is no longer applicable
-
-(setq org-enforce-todo-dependencies t
-      org-enforce-todo-checkbox-dependencies t)
-
-(setq org-hierarchical-todo-statistics t
-      org-checkbox-hierarchical-statistics nil)
-
-(add-hook 'org-after-todo-statistics-hook #'jkroes/org-toggle-todo)
-
-;; A list of non-done todo states excluding CHOOSE and WAIT.
-(defvar jkroes/active-todo-states '("TODO" "NOW"))
-
-(defun jkroes/org-toggle-todo (n-done n-not-done)
-  "Toggle between active todo and done keywords based on the number of
- subheadings that are marked as todo/done"
-  (let ((state (org-get-todo-state))
-        ;; Only log for the subentries. Note that without this, only the
-        ;; topmost heading with a state change may be logged.
-        org-log-done org-todo-log-states)
-    ;; TODO, NOW -> DONE
-    (cond ((and (member state jkroes/active-todo-states) (= n-not-done 0))
-           (org-todo "DONE"))
-          ;; DONE -> TODO
-          ((and (equal state "DONE") (> n-not-done 0))
-           (org-todo "TODO")))))
-
-(advice-add #'org-update-parent-todo-statistics
-            :before #'jkroes/insert-statistics-cookie)
-
-(defun jkroes/insert-statistics-cookie (&rest _)
-  (let ((state (org-get-todo-state)))
-    (cond ((equal state "CHOOSE")
-           ;; (org-set-property "NOBLOCKING" "t")
-           (jkroes/org-toggle-radio-keyword 'on)
-           (let (org-checkbox-statistics-hook)
-             (org-reset-checkbox-state-subtree)))
-          ((not (member state '("CHOOSE" "CHOSEN")))
-           ;; (org-delete-property "NOBLOCKING")
-           (jkroes/org-toggle-radio-keyword 'off))))
-  (save-excursion
-    ;; Ensure a cookie is inserted so that `org-toggle-todo' can trigger
-    ;; recursive state change acrosss the entire subtree.
-    (when (> (org-current-level) 1)
-      (org-up-heading-safe)
-      ;; Don't insert a cookie if one already exists
-      (let* ((cookie-re "\\[\\([0-9]*\\)/\\([0-9]*\\)\\]")
-             (cookie-end (re-search-forward cookie-re (line-end-position) t)))
-        (unless cookie-end
-          (org-end-of-line)
-          (insert " [/]"))))))
-
-(defun jkroes/org-toggle-radio-keyword (state)
-  "Toggle the radio keyword above the first plain list or else next
-heading"
-  (let ((case-fold-search t)
-        (radio_keyword "#+attr_org: :radio t")
-        (end (org-entry-end-position))
-        (continue? t)
-        line-beg line-end)
-    (save-excursion
-      (org-back-to-heading t)
-      ;; Skip all drawers (PROPERTIES, LOGBOOK, etc.)
-      (while continue?
-        (unless (re-search-forward "^[ \t]*:END:[ \t]*$" end t)
-          (setq continue? nil)))
-      ;; Search for the first list item within the body of the current
-      ;; heading. If one is not found, insert a radio keyword before the next
-      ;; heading or end of the buffer.
-      (unless (re-search-forward org-list-full-item-re end t)
-        (outline-next-heading))
-      (forward-line -1)
-      (setq line-beg (line-beginning-position)
-            line-end (line-end-position))
-      (cond ((and (eq state 'on)
-                  (not (equal (buffer-substring line-beg line-end)
-                              radio_keyword)))
-             (forward-line)
-             (insert (string-join (list radio_keyword "\n"))))
-            ((and (eq state 'off)
-                  (equal (buffer-substring line-beg line-end)
-                         radio_keyword))
-             (delete-region line-beg line-end)
-             (delete-char 1))))))
-
-;; `org-toggle-todo-checkboxes' runs `org-update-checkbox-count', and we don't
-;; need it to run beforehand
-(after! org-list (setcdr (assoc 'checkbox org-list-automatic-rules) nil))
-
-(add-hook 'org-checkbox-statistics-hook #'org-toggle-todo-checkboxes)
-
-;; BUG When another heading is at the end of the list, if the user has marked
-;; the entire list with evil-visual-line (V) from the top down, point will be
-;; on the other heading!
-(defun org-toggle-todo-checkboxes (&rest _)
-  ;; HACK Ugly hack for when another heading is at the end of the list. If the
-  ;; user has marked the entire list with evil-visual-line (V) from the top
-  ;; down, point will be on the other heading!
-  ;; (forward-line -1)
-  ;; Count must be updated before regexp matching occurs
-  (org-update-checkbox-count)
-  (save-excursion
-    (org-back-to-heading t)
-    (let* ((cookie-re "\\[\\([0-9]*\\)/\\([0-9]*\\)\\]")
-           (cookie-end (re-search-forward cookie-re (line-end-position) t))
-           (cookie-beginning (when cookie-end (match-beginning 0)))
-           (numerator (when cookie-end (string-to-number (match-string 1))))
-           (denominator (when cookie-end (string-to-number (match-string 2))))
-           (state (org-get-todo-state)))
-      (cond ((not cookie-end)
-             (org-end-of-line)
-             (insert " [/]")
-             (org-toggle-todo-checkboxes))
-            ;; CHOOSE -> CHOSEN
-            ((and (equal state "CHOOSE")
-                  (= numerator 1))
-             ;; See the definition of `org-enforce-todo-checkbox-dependencies'.
-             ;; This is like setting the property NOBLOCKING for the current
-             ;; heading.
-             (let ((org-blocker-hook
-                    (remove #'org-block-todo-from-checkboxes
-                            org-blocker-hook)))
-               (org-todo "CHOSEN")))
-            ;; CHOSEN -> CHOOSE
-            ((and (equal state "CHOSEN")
-                  (= numerator 0)
-                  (eq this-command #'org-toggle-checkbox))
-             (org-todo "CHOOSE"))
-            ;; TODO, NOW -> DONE
-            ((and (member state jkroes/active-todo-states)
-                  (= numerator denominator))
-             (org-todo "DONE"))
-            ;; DONE -> TODO
-            ((and (equal state "DONE")
-                  (not (= numerator denominator)))
-             (org-todo "TODO"))))))
-
-(advice-add #'org-toggle-radio-button :around
-            (lambda (orig-fun &rest args)
-              (advice-add 'org-update-checkbox-count-maybe :override #'ignore)
-              (apply orig-fun args)
-              (advice-remove 'org-update-checkbox-count-maybe #'ignore)))
-
-;; TODO This is a temporary keybinding and workaround to find a definition via
-;; completing-read, until I can investigate the lookup module and whether it's
-;; possible to incorporate completing read into its commands.
-
-;; Search by completing read. If a thing is at point, it will be the first candidate
-(setq xref-show-definitions-function #'xref-show-definitions-completing-read)
-(map! :leader "cd"
-      (cmd! (let ((current-prefix-arg '(4)))
-              (call-interactively #'xref-find-definitions))))
-
-;; Disable popup management of org-src buffer windows
-(after! org
-  (advice-remove #'org-edit-src-exit #'+popup--org-edit-src-exit-a)
-  (assoc-delete-all "^\\*Org Src" +popup--display-buffer-alist)
-  (assoc-delete-all "^\\*Org Src" display-buffer-alist))
-
-;; TODO The first info buffer shows the modeline, but successive buffers do not.
-;; Investigate the modeline rules for popups. In the meantime, disable modeline
-;; hiding for popups.
-(remove-hook '+popup-buffer-mode-hook #'+popup-set-modeline-on-enable-h)
-
-;; If we bind `other-window' directly, it will remap to `ace-window' when
-;; the window-select module is active. If we want to circumvent remapping, wrap
-;; the remapped command in a function call.
-(map! "M-o" (cmd! (call-interactively #'other-window)))
-
-;; BUG When the top line of a window's buffer is blank, the background extends
-;; to the entire line, or else the letter is invisible.
-;; https://emacs.stackexchange.com/questions/45895/changing-faces-one-at-a-time-outside-customize
-(after! ace-window
-  (custom-set-faces!
-    '(aw-leading-char-face
-      :foreground "white" :background "red" :height 500)))
+;; BUG Disable Doom's descriptions of bindings. If the user rebinds keys with map!
+;; but doesn't specify :desc, the :desc from previous bindings via map! still
+;; shows up for some reason. Unfortunately, this also strips some useful
+;; descriptions.
+;;
+;; (setq which-key-replacement-alist nil)
 
 ;; TODO Can't pass cmd! or cmd!! forms as part of `predlist'. Must be a defined
 ;; function, because those forms are not evaluated to yield a lambda.
@@ -669,3 +272,794 @@ up the binding in the active keymaps."
 (jkroes/dispatch-scroll-commands minibuffer-local-map nil "C-p" scroll-down-command
   (jkroes/embark-actions-buffer-visible)
   #'scroll-other-window-down)
+
+;; TODO This is a temporary keybinding and workaround to find a definition via
+;; completing-read, until I can investigate the lookup module and whether it's
+;; possible to incorporate completing read into its commands.
+
+;; Search by completing read. If a thing is at point, it will be the first candidate
+(setq xref-show-definitions-function #'xref-show-definitions-completing-read)
+(map! :leader "cd"
+      (cmd! (let ((current-prefix-arg '(4)))
+              (call-interactively #'xref-find-definitions))))
+
+(when (modulep! :editor evil)
+  (unbind-command #'undo global-map)
+  (unbind-command #'undo-redo global-map))
+
+;; TODO Binding is overriden in org-mode. Need to find an alternative binding
+;; sequence. Then again, org-mode typically uses visual-line-mode...
+(map! "M-h" (lambda () (interactive) (evil-scroll-column-left 40))
+      "M-l" (lambda () (interactive) (evil-scroll-column-right 40)))
+
+(when (featurep :system 'macos)
+  (setq consult-locate-args "mdfind"))
+
+(setq consult-dir-shadow-filenames nil)
+
+(setq consult-dir-jump-file-command
+      (cmd! (call-interactively #'+default/find-file-under-here)))
+
+(after! orderless
+  (add-to-list 'completion-category-overrides
+        '(project-file (styles +vertico-basic-remote orderless partial-completion))))
+
+(after! orderless
+  (setq orderless-style-dispatchers '(jkroes/orderless-dispatch)))
+
+(defun jkroes/orderless-dispatch (pattern _index _total)
+  (cond
+   ;; Ensure $ works with Consult commands, which add disambiguation suffixes
+   ((string-suffix-p "$" pattern)
+    `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))
+   ;; Ignore single !
+   ((string= "!" pattern) `(orderless-literal . ""))
+   ;; Without literal
+   ((string-prefix-p "!" pattern) `(orderless-without-literal . ,(substring pattern 1)))
+   ;; Annotation
+   ((string-prefix-p "&" pattern) `(orderless-annotation . ,(substring pattern 1)))
+   ((string-suffix-p "&" pattern) `(orderless-annotation . ,(substring pattern 0 -1)))
+   ;; Character folding
+   ((string-prefix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 1)))
+   ((string-suffix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 0 -1)))
+   ;; Initialism matching
+   ((string-prefix-p "," pattern) `(orderless-initialism . ,(substring pattern 1)))
+   ((string-suffix-p "," pattern) `(orderless-initialism . ,(substring pattern 0 -1)))
+   ;; Literal matching
+   ((string-prefix-p "=" pattern) `(orderless-literal . ,(substring pattern 1)))
+   ((string-suffix-p "=" pattern) `(orderless-literal . ,(substring pattern 0 -1)))
+   ;; Flex matching
+   ((string-prefix-p "~" pattern) `(orderless-flex . ,(substring pattern 1)))
+   ((string-suffix-p "~" pattern) `(orderless-flex . ,(substring pattern 0 -1)))))
+
+(setq embark-confirm-act-all nil)
+
+(setq embark-cycle-key "C-;")
+
+(setq embark-mixed-indicator-delay which-key-idle-delay)
+
+(setq embark-help-key "C-h")
+
+(setq embark-keymap-prompter-key ",")
+
+(after! vertico-multiform
+  (add-to-list 'vertico-multiform-categories
+               '(embark-keybinding grid)))
+
+;; (setq embark-prompter 'embark-completing-read-prompter)
+
+(after! embark
+  (when (eq embark-prompter 'embark-completing-read-prompter)
+    (setq embark-indicators
+          (remove 'embark-mixed-indicator embark-indicators))))
+
+(after! (embark which-key)
+  (cl-nsubstitute #'embark-mixed-indicator
+                  #'+vertico-embark-which-key-indicator
+                  embark-indicators)
+  (advice-remove #'embark-completing-read-prompter
+                 #'+vertico--embark-which-key-prompt-a))
+
+(setq prefix-help-command #'jkroes/embark-prefix-help-command)
+
+(setq which-key-use-C-h-commands t)
+
+(map! :map which-key-C-h-map
+      "h" #'jkroes/embark-prefix-help-command
+      "C-h" #'jkroes/embark-prefix-help-command)
+
+;; The pager text is rendered by replacing each command with its key in
+;; `which-key-C-h-map'
+(after! which-key
+  (setq which-key-C-h-map-prompt
+        (string-replace "\\[which-key-show-standard-help]"
+                        "\\[jkroes/embark-prefix-help-command]"
+                        which-key-C-h-map-prompt)))
+
+(advice-add #'marginalia-annotate-binding
+            :override #'my/marginalia-annotate-binding)
+
+(after! marginalia
+  (setf (car (alist-get 'symbol marginalia-annotator-registry))
+        'my/marginalia-annotate-symbol))
+
+(map! :when (modulep! :editor evil)
+      :map vertico-map
+      ;; "C-SPC" #'+vertico/embark-preview
+      "C-j"   #'vertico-next
+      "M-j" #'vertico-next-group
+      ;; Shadows `kill-line', but S-<backspace> and C-S-<backspace> are still
+      ;; available
+      "C-k"   #'vertico-previous
+      "M-k" #'vertico-previous-group)
+
+(map! :map embark-file-map
+      ;; When Emacs runs on WSL, open files externally in Windows
+      (:when IS-WSL "x" #'open-in-windows)
+      ;; Adds file to bookmarks
+      "b" #'my/bookmark-set)
+
+(defun jkroes/embark-prefix-help-command (&rest _)
+  (interactive)
+  (let (keys)
+    (if (which-key--popup-showing-p)
+        (progn
+          (setq keys (which-key--current-prefix))
+          (which-key--hide-popup-ignore-command))
+      (setq keys (this-command-keys-vector))
+      (setq keys (seq-take keys (1- (length keys)))))
+    (my/embark-prefix-bindings keys)))
+
+(autoload #'embark-completing-read-prompter "embark")
+
+;; Later versions of embark altered this function so that it no longer
+;; filters bindings by the current key prefix. This is the original definition
+;; from commit 35f3961cd1e6
+(defun my/embark-prefix-bindings (&optional prefix)
+  "Explore all current keybindings and commands with `completing-read'.
+The selected command will be executed. The set keybindings can be restricted
+by passing a PREFIX key."
+  (let ((keymap (if prefix
+                    (key-binding prefix)
+                  (make-composed-keymap (current-active-maps t)))))
+    (unless (keymapp keymap)
+      (user-error "No keybindings found"))
+    (when-let (command (embark-completing-read-prompter keymap 'no-default))
+      (call-interactively command))))
+
+(defun my/marginalia-annotate-binding (cand)
+  "Annotate command CAND with keybinding. If CAND is remapped to
+  OTHER-COMMAND, return [remap OTHER-COMMAND]."
+  (when-let* ((sym (intern-soft cand))
+              (key (and (commandp sym) (where-is-internal sym nil 'first-only))))
+    (let ((remap (command-remapping sym)))
+      (propertize (format " (%s)" (if remap remap (key-description key)))
+                  'face 'marginalia-key))))
+
+(defun my/marginalia-annotate-symbol (cand)
+  (when-let (sym (intern-soft cand))
+    (marginalia--fields
+     (:left (marginalia-annotate-binding cand))
+     ((marginalia--symbol-class sym) :face 'marginalia-type)
+     ((cond
+       ((fboundp sym) (marginalia--function-doc sym))
+       ((facep sym) (documentation-property sym 'face-documentation))
+       (t (documentation-property sym 'variable-documentation)))
+      :truncate 1.0 :face 'marginalia-documentation)
+     ;; ((abbreviate-file-name (or (symbol-file sym) ""))
+     ;;  :truncate -0.5 :face 'marginalia-file-name)
+     )))
+
+(defun marginalia-annotate-attachment (cand)
+  (marginalia-annotate-file (cdr (embark--expand-attachment nil cand))))
+
+(defun embark--expand-attachment (_ target)
+  "Transform marginalia category from `attach' to `file' and
+ convert target to filepath. `org-attach-open' does not use the
+ path returned by `org-attach-dir' as minibuffer input.
+ `embark--vertico-selected' constructs embark targets from the
+ candidate and the minibuffer input, so the target is not the
+ full path."
+  (with-current-buffer (window-buffer (minibuffer-selected-window))
+    (cons 'file (expand-file-name target (org-attach-dir)))))
+
+;; Where my org notes live
+(setq org-directory (expand-file-name "~/org"))
+
+;; All of my org files are org-roam files
+(setq org-roam-directory org-directory)
+
+(after! org
+  (setq org-highlight-latex-and-related '(native script entities)))
+
+(use-package! org-appear
+  :hook (org-mode . org-appear-mode)
+  :init
+  ;; Hide emphasis markers
+  (setq org-hide-emphasis-markers t
+        org-appear-autoemphasis t)
+
+  ;; Replace link with description text
+  (setq org-link-descriptive t
+        ;; You can always edit links with spc-m-l-l
+        org-appear-autolinks nil)
+
+  ;; Render subscripts/superscripts and Org entities
+  (setq org-pretty-entities t
+        ;; Requires brackets to render when `org-use-sub-superscripts' is `{}'.
+        ;; E.g. r_{1} or r^{1}.
+        org-appear-autosubmarkers t
+        ;; E.g. \ast
+        org-appear-autoentities t)
+
+  ;; Hide listed keywords. org-modern has a setting that hides #+ instead.
+  ;; (setq org-hidden-keywords '(title)
+  ;;       org-appear-autokeywords t)
+
+  ;; Render subscripts/superscripts and Org entities inside latex
+  ;; fragments
+  (setq org-appear-inside-latex nil)
+
+  ;; Toggle org-appear off after idling over an element
+  (setq org-appear-trigger #'always
+        org-appear-delay 0.5))
+
+
+(use-package! org-modern
+  :hook ((org-mode . org-modern-mode)
+         ;; TODO No image of this is available, and I can't see a difference...
+         (org-agenda-finalize . org-modern-agenda))
+  :init
+  ;; TODO Customize org-modern settings:
+  ;;   org-modern-fold-stars
+  ;;   org-modern-footnote
+  ;;   org-modern-list
+  ;;   org-modern-checkbox
+  ;;   org-modern-tag-faces
+  ;;   org-modern-block-fringe (incompatible with org-indent)
+  ;;   org-modern-keyword
+  ;;   org-modern-radio-target
+  ;;   org-modern-internal-target
+  ;;   org-modern-progress
+
+  ;; org-modern does not use `org-todo-keyword-faces'. The car of each alist
+  ;; element should match an element in `org-todo-keywords'
+  (setq org-modern-todo-faces
+        '(("NOW" :inherit org-done :inverse-video t)
+          ("WAIT" :inherit org-warning :inverse-video t)
+          ;; NOTE If you inherit explivitly from org-modern-done or
+          ;; org-modern-todo, the label will be smaller than other labels,
+          ;; possibly because those faces explicitly inherit from
+          ;; org-modern-label, which sets :height to 0.8, while faces in
+          ;; `org-modern-todo-faces' automatically inherit from org-modern-label.
+          ;; I'm guessing the reduced height is applied multiple times
+          ;; multiplicatively.
+          ("KILL" :background "gray20" :foreground "red")))
+
+  ;; Hide keywords prefix. org-appear has a setting that hides the entire
+  ;; keyword instead.
+  (setq org-modern-keyword t)
+
+  ;; org settings
+
+  (setq-hook! 'org-mode-hook line-spacing 0.3)
+
+  (setq org-auto-align-tags nil
+        org-catch-invisible-edits 'show-and-error
+
+        ;; Agenda styling
+        org-agenda-tags-column 0
+        org-agenda-block-separator ?─
+        org-agenda-time-grid
+        '((daily today require-timed)
+          (800 1000 1200 1400 1600 1800 2000)
+          " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
+        org-agenda-current-time-string
+        "◀── now ─────────────────────────────────────────────────")
+
+  ;; Ellipsis styling
+  (setq org-ellipsis " ")
+  (after! org-faces
+    (set-face-attribute 'org-ellipsis nil :inherit 'default :box nil)))
+
+;;; https://jft.home.blog/2019/07/17/use-unicode-symbol-to-display-org-mode-c
+
+;; (defun prettify-org-checkboxes ()
+;;   (push '("[ ]" . "󰝦") prettify-symbols-alist) ; todo
+;;   (push '("[/]" . "󱎖") prettify-symbols-alist) ; doing
+;;   (push '("[-]" . "󰜺") prettify-symbols-alist) ; cancelled
+;;   (push '("[X]" . "") prettify-symbols-alist) ; done
+;;   (push '("[>]" . "") prettify-symbols-alist) ; email
+;;   (push '("[!]" . "") prettify-symbols-alist) ; important
+;;   (push '("[?]" . "") prettify-symbols-alist) ; question
+;;   (push '("[a]" . "") prettify-symbols-alist) ; answer
+;;   (push '("[b]" . "") prettify-symbols-alist) ; bookmark
+;;   (push '("[d]" . "") prettify-symbols-alist) ; calendar
+;;   (push '("[e]" . "") prettify-symbols-alist) ; example
+;;   (push '("[l]" . "") prettify-symbols-alist) ; location
+;;   (push '("[q]" . "󰉾") prettify-symbols-alist) ; quote
+;;   (push '("[w]" . "") prettify-symbols-alist) ; waiting
+;;   (prettify-symbols-mode))
+;; (add-hook 'org-mode-hook #'prettify-org-checkboxes)
+
+;; (defface org-checkbox-done-text
+;;   '((t (:foreground "#71696A" :strike-through t)))
+;;   "Face for the text part of a checked org-mode checkbox.")
+
+;; (font-lock-add-keywords
+;;  'org-mode
+;;  `(("^[ \t]*\\(?:[-+*]\\|[0-9]+[).]\\)[ \t]+\\(\\(?:\\[@\\(?:start:\\)?[0-9]+\\][ \t]*\\)?\\[\\(?:X\\|\\([0-9]+\\)/\\2\\)\\][^\n]*\n\\)"
+;;     1 'org-checkbox-done-text prepend))
+;;  'append)
+
+;; TODO The following text can be used and modified to search for whatever
+;; pretty bullets you want within vertico/consult/embark.
+;; -\ \[[^X\s]\]
+
+;; NOTE Uncomment this if you disable org-superstar-remove-leading-stars and
+;; enable org-hide-leading-stars. It works in either situation, but I figured
+;; it was best to comment it out to reduce the overhead. This is not necessary
+;; for org-modern.
+
+;; (setq-hook! 'org-mode-hook hl-line-range-function #'my/hl-line-skip-org-hide-stars)
+;; (defun my/hl-line-skip-org-hide-stars ()
+;;   "Don't apply the `hl-line' overlay to org heading stars. Note
+;; that leading stars are still visible via the cursor."
+;;   (if (and hl-line-mode
+;;            ;; (eq major-mode 'org-mode)
+;;            (not (bound-and-true-p org-superstar-remove-leading-stars))
+;;            org-hide-leading-stars
+;;            (org-at-heading-p))
+;;       (cons (+ (line-beginning-position) (1+ (org-current-level)))
+;;             (line-beginning-position 2))
+;;     (cons (line-beginning-position)
+;;           (line-beginning-position 2))))
+
+;; NOTE Three configurations for hiding leading stars on org headings:
+;;
+;; 1. Enable `org-superstar-remove-leading-stars' to hide leading stars and
+;; hide the "indentation" from those characters
+;;
+;; 2. Disable `org-superstar-remove-leading-stars' and enable
+;; `org-hide-leading-stars' to apply the `org-hide' face to leading stars,
+;; which might require customization depending on your theme. The intention is
+;; for this face's foreground to match the background. Note that stars will be
+;; visible when `hl-line-mode' is enabled or the cursor is on a star.
+;;
+;; 3. Disable `org-superstar-remove-leading-stars' and `org-hide-leading-stars'
+;; and set `org-superstar-leading-bullet' to `?\s' to preserve all indentation
+;; but still hide leading stars. If `org-indent-mode' is enabled, you also
+;; need to disable `org-indent-mode-turns-on-hiding-stars' to disable
+;; `org-hide-leading-stars'.
+;;
+;; NOTE See `org-superstar-restart' for enabling changes made on the fly
+
+;; (use-package! org-superstar ; "prettier" bullets
+;;   :hook (org-mode . org-superstar-mode)
+;;   :config
+;;   ;; Make leading stars truly invisible, by rendering them as spaces!
+;;   (setq org-superstar-leading-bullet ?\s
+;;         org-superstar-leading-fallback ?\s
+;;         org-superstar-remove-leading-stars nil
+;;         org-superstar-headline-bullets-list '(?\s ?\s ?\s ?\s)
+;;         org-superstar-special-todo-items t
+;;         org-superstar-todo-bullet-alist
+;;         '(("TODO" . ?\s)
+;;           ("DONE" . ?☑))))
+
+
+;; (use-package! org-fancy-priorities ; priority icons
+;;   :hook (org-mode . org-fancy-priorities-mode)
+;;   :hook (org-agenda-mode . org-fancy-priorities-mode)
+;;   :config (setq org-fancy-priorities-list '("⚑" "⬆" "■")))
+
+(setq org-footnote-define-inline nil
+      org-footnote-section "Footnotes"
+      org-footnote-auto-adjust t ; Like org-footnote-normalize
+      org-footnote-auto-label t)
+
+(setq org-priority-lowest 5
+      org-priority-highest 1
+      org-priority-default 3)
+
+(setq org-log-done nil)
+
+;; Use the LOGBOOK drawer for logging
+(setq org-log-into-drawer "LOGBOOK")
+
+(after! org
+  (setq org-todo-keywords
+        '((sequence
+           "TODO(t)"     ; A task that is ready to start
+           "NOW(n!)"     ; An active task
+           "CHOOSE(c)"
+           "WAIT(w@/!)"  ; A suspended task
+           "|"
+           "CHOSEN"
+           "DONE(d!/@)"    ; Task successfully completed
+           "KILL(k@/@)")))) ; Task was cancelled, aborted, or is no longer applicable
+
+(setq org-enforce-todo-dependencies t
+      org-enforce-todo-checkbox-dependencies t)
+
+(setq org-hierarchical-todo-statistics t
+      org-checkbox-hierarchical-statistics nil)
+
+(add-hook 'org-after-todo-statistics-hook #'jkroes/org-toggle-todo)
+
+(advice-add #'org-update-parent-todo-statistics
+            :before #'jkroes/insert-statistics-cookie)
+
+;; `org-toggle-todo-checkboxes' runs `org-update-checkbox-count', and we don't
+;; need it to run beforehand
+(after! org-list (setcdr (assoc 'checkbox org-list-automatic-rules) nil))
+
+(add-hook 'org-checkbox-statistics-hook #'org-toggle-todo-checkboxes)
+
+(advice-add #'org-toggle-radio-button :around
+            (lambda (orig-fun &rest args)
+              (advice-add 'org-update-checkbox-count-maybe :override #'ignore)
+              (apply orig-fun args)
+              (advice-remove 'org-update-checkbox-count-maybe #'ignore)))
+
+;; Attachment directory for my work computer.
+(when IS-WSL
+  (setq org-attach-id-dir
+        "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation (1)/org-attach"))
+
+;; Resolve attachment links by walking up the entire subtree, then in the
+;; file-level properites drawer.
+(advice-add #'org-attach-expand :override #'jkroes/org-attach-expand-a)
+
+;; Define the `attach' completion category for org-attach-open and associate it
+;; with an annotation function
+(after! marginalia
+  (add-to-list 'marginalia-command-categories
+               '(org-attach-open . attach))
+  (add-to-list 'marginalia-annotator-registry
+               '(attach marginalia-annotate-attachment builtin none)))
+
+;; Transform the `attach' completion category to `file', so that we can execute
+;; actions from `embark-file-map' on attachments.
+(after! embark
+  (add-to-list 'embark-transformer-alist
+               '(attach . embark--expand-attachment)))
+
+;; BUG Large code blocks can slow down `org-cycle-global' noticeably when
+;; code block native fontification is enabled. Disable this if you notice an
+;; issue.
+(setq org-src-fontify-natively t)
+
+;; Hide org src block highlighting when headings are folded
+(setq org-fontify-whole-block-delimiter-line nil)
+
+;; Edit in the current window, save edits automaticlaly, and exit back to org
+;; file with "q"
+(setq org-src-ask-before-returning-to-edit-buffer nil)
+(map! :map org-src-mode-map :n "q" #'my/org-edit-src-save-and-exit)
+(add-hook! 'org-src-mode-hook #'evil-normalize-keymaps)
+(after! org (setq org-src-window-setup 'current-window))
+
+;; Directory file links launch `find-file' with the directory as initial
+;; input, rather than launching dired.
+(add-to-list 'find-directory-functions #'jkroes/not-dired)
+
+;; TODO Test that this opens pptx, pdf, docx, etc., in Windows when Emacs is
+;; running on WSL when org-open-at-point and org-attach-open are invoked. If
+;; it does, delete the commented code below
+(setq org-file-apps
+      '(("\\.pptx?\\'" . system)
+        ("\\.pdf?\\'" . system)
+        ("\\.docx?\\'" . system)
+        ("\\.txt?\\'" . system)
+        ("\\.xlsx?\\'" . system)
+        ("\\.csv?\\'" . system)
+        ("\\.png?\\'" . system)
+        ("\\.html?\\'" . system)
+        (remote . emacs)
+        (auto-mode . emacs)
+        (directory . emacs)))
+
+;; Open files in emacs even if they aren't part of auto-mode-alist
+(after! org
+  (setq org-file-apps-macos
+        '((system . "open %s")
+          (t . emacs)))
+
+  ;; TODO Per org-file-apps docstring, we can replace open-in-windows with a
+  ;; string "wslview %s" if this has issues
+  (setq org-file-apps-gnu
+        `(,(cons 'system (if IS-WSL #'open-in-windows 'mailcap))
+          (t . emacs))))
+
+(after! org (setq org-insert-heading-respect-content nil))
+
+;; Make the backend for org's native various heading insertion commands enter
+;; insert state after insertion
+(defadvice! jkroes/org-insert-heading-insert-state-a (&rest _)
+  :after (list #'org-insert-heading)
+  (when (and (bound-and-true-p evil-local-mode)
+             (not (evil-emacs-state-p)))
+    (evil-insert 1)))
+
+;; Don't insert blank lines when creating a heading
+(setq org-blank-before-new-entry '((heading) (plain-list-item))
+      ;; Show all empty lines when headings are folded
+      org-cycle-separator-lines -1)
+
+;; Don't hide blocks unless org-global-cyle-shows-blocks
+(advice-add #'org-cycle-internal-global
+            :override #'jkroes/org-cycle-internal-global)
+
+;; See org-use-sub-superscripts
+(setq org-export-with-sub-superscripts '{})
+
+;; TODO Run this if you need to generate a Word style template file:
+;;
+;; pandoc --print-default-data-file=reference.docx > ~/org/custom-reference.docx
+;;
+;; See org-pandoc-valid-options for available pandoc CLI flags
+
+;; (add-to-list (cons 'reference-doc "~/org/custom-reference.docx")
+;;              org-pandoc-options)
+
+(defvar org-global-cyle-shows-blocks nil)
+
+(defun jkroes/org-cycle-internal-global ()
+  "Do the global cycling action."
+  ;; Hack to avoid display of messages for .org  attachments in Gnus
+  (let ((ga (string-match-p "\\*fontification" (buffer-name))))
+    (cond
+     ((and (eq last-command this-command)
+	   (eq org-cycle-global-status 'overview))
+      ;; We just created the overview - now do table of contents
+      ;; This can be slow in very large buffers, so indicate action
+      (run-hook-with-args 'org-cycle-pre-hook 'contents)
+      (unless ga (org-unlogged-message "CONTENTS..."))
+      (org-cycle-content)
+      (unless ga (org-unlogged-message "CONTENTS...done"))
+      (setq org-cycle-global-status 'contents)
+      (run-hook-with-args 'org-cycle-hook 'contents))
+
+     ((and (eq last-command this-command)
+	   (eq org-cycle-global-status 'contents))
+      ;; We just showed the table of contents - now show everything
+      (run-hook-with-args 'org-cycle-pre-hook 'all)
+      (org-fold-show-all
+       (append (list 'headings)
+               (when org-global-cyle-shows-blocks (list 'blocks))))
+      (unless ga (org-unlogged-message "SHOW ALL"))
+      (setq org-cycle-global-status 'all)
+      (run-hook-with-args 'org-cycle-hook 'all))
+
+     (t
+      ;; Default action: go to overview
+      (run-hook-with-args 'org-cycle-pre-hook 'overview)
+      (org-cycle-overview)
+      (unless ga (org-unlogged-message "OVERVIEW"))
+      (setq org-cycle-global-status 'overview)
+      (run-hook-with-args 'org-cycle-hook 'overview)))))
+
+;; Stack trace when following attachment links:
+;; org-open-at-point
+;; org-link-open
+;; org-attach-follow
+;; org-link-open-as-file(org-attach-expand)
+;; org-open-file
+;; (user-error "No such file: %s" file))
+
+;; NOTE org-attach-dir searches up the subre for DIR, ATTACH_DIR, then ID, in
+;; that order. This means it will skip e.g. any ID-based attachment dirs when
+;; an ancesor has a DIR or ATTACH_DIR-based attachment dir.
+;; org-attach-reveal also skips headings. I think best practice is to use this
+;; to enable attachment links below subheadings, rather than to have multiple
+;; attachment directories within a tree.
+(defun jkroes/org-attach-expand-a (file)
+  "HACK A version of org-attach-expand that actually will look
+ through all parent headings until it finds the linked attachment,
+ to quote the docs for `org-attach-use-inheritance'. Normally the
+ search stops at the first heading for which there is an
+ attachment directory."
+  (let ((filepath (expand-file-name file (org-attach-dir))))
+    (if (and (org-attach-dir)
+             (file-exists-p filepath))
+        filepath
+      (if (= (point) (point-min))
+          ;; Don't pass back control to org-attach-follow,
+          ;; then org-link-open-as-file, then org-open-file.
+          ;; If no file is found, exit immediately.
+          (user-error "No such file: %s" file)
+        (org-roam-up-heading-or-point-min)
+        (org-attach-expand file)))))
+
+;; A list of non-done todo states excluding CHOOSE and WAIT.
+(defvar jkroes/active-todo-states '("TODO" "NOW"))
+
+(defun jkroes/org-toggle-todo (n-done n-not-done)
+  "Toggle between active todo and done keywords based on the number of
+ subheadings that are marked as todo/done"
+  (let ((state (org-get-todo-state))
+        ;; Only log for the subentries. Note that without this, only the
+        ;; topmost heading with a state change may be logged.
+        org-log-done org-todo-log-states)
+    ;; TODO, NOW -> DONE
+    (cond ((and (member state jkroes/active-todo-states) (= n-not-done 0))
+           (org-todo "DONE"))
+          ;; DONE -> TODO
+          ((and (equal state "DONE") (> n-not-done 0))
+           (org-todo "TODO")))))
+
+(defun jkroes/insert-statistics-cookie (&rest _)
+  (let ((state (org-get-todo-state)))
+    (cond ((equal state "CHOOSE")
+           ;; (org-set-property "NOBLOCKING" "t")
+           (jkroes/org-toggle-radio-keyword 'on)
+           (let (org-checkbox-statistics-hook)
+             (org-reset-checkbox-state-subtree)))
+          ((not (member state '("CHOOSE" "CHOSEN")))
+           ;; (org-delete-property "NOBLOCKING")
+           (jkroes/org-toggle-radio-keyword 'off))))
+  (save-excursion
+    ;; Ensure a cookie is inserted so that `org-toggle-todo' can trigger
+    ;; recursive state change acrosss the entire subtree.
+    (when (> (org-current-level) 1)
+      (org-up-heading-safe)
+      ;; Don't insert a cookie if one already exists
+      (let* ((cookie-re "\\[\\([0-9]*\\)/\\([0-9]*\\)\\]")
+             (cookie-end (re-search-forward cookie-re (line-end-position) t)))
+        (unless cookie-end
+          (org-end-of-line)
+          (insert " [/]"))))))
+
+;; BUG This inserts the radio keyword above the current heading if there is not
+;; a blank line after the heading
+(defun jkroes/org-toggle-radio-keyword (state)
+  "Toggle the radio keyword above the first plain list or else next
+heading"
+  (let ((case-fold-search t)
+        (radio_keyword "#+attr_org: :radio t")
+        (end (org-entry-end-position))
+        (continue? t)
+        line-beg line-end)
+    (save-excursion
+      (org-back-to-heading t)
+      ;; Skip all drawers (PROPERTIES, LOGBOOK, etc.)
+      (while continue?
+        (unless (re-search-forward "^[ \t]*:END:[ \t]*$" end t)
+          (setq continue? nil)))
+      ;; Search for the first list item within the body of the current
+      ;; heading. If one is not found, insert a radio keyword before the next
+      ;; heading or end of the buffer.
+      (unless (re-search-forward org-list-full-item-re end t)
+        (outline-next-heading))
+      (forward-line -1)
+      (setq line-beg (line-beginning-position)
+            line-end (line-end-position))
+      (cond ((and (eq state 'on)
+                  (not (equal (buffer-substring line-beg line-end)
+                              radio_keyword)))
+             (forward-line)
+             (insert (string-join (list radio_keyword "\n"))))
+            ((and (eq state 'off)
+                  (equal (buffer-substring line-beg line-end)
+                         radio_keyword))
+             (delete-region line-beg line-end)
+             (delete-char 1))))))
+
+;; BUG When another heading is at the end of the list, if the user has marked
+;; the entire list with evil-visual-line (V) from the top down, point will be
+;; on the other heading!
+(defun org-toggle-todo-checkboxes (&rest _)
+  ;; HACK Ugly hack for when another heading is at the end of the list. If the
+  ;; user has marked the entire list with evil-visual-line (V) from the top
+  ;; down, point will be on the other heading!
+  ;; (forward-line -1)
+  ;; Count must be updated before regexp matching occurs
+  (org-update-checkbox-count)
+  (save-excursion
+    (org-back-to-heading t)
+    (let* ((cookie-re "\\[\\([0-9]*\\)/\\([0-9]*\\)\\]")
+           (cookie-end (re-search-forward cookie-re (line-end-position) t))
+           (cookie-beginning (when cookie-end (match-beginning 0)))
+           (numerator (when cookie-end (string-to-number (match-string 1))))
+           (denominator (when cookie-end (string-to-number (match-string 2))))
+           (state (org-get-todo-state)))
+      (cond ((not cookie-end)
+             (org-end-of-line)
+             (insert " [/]")
+             (org-toggle-todo-checkboxes))
+            ;; CHOOSE -> CHOSEN
+            ((and (equal state "CHOOSE")
+                  (= numerator 1))
+             ;; See the definition of `org-enforce-todo-checkbox-dependencies'.
+             ;; This is like setting the property NOBLOCKING for the current
+             ;; heading.
+             (let ((org-blocker-hook
+                    (remove #'org-block-todo-from-checkboxes
+                            org-blocker-hook)))
+               (org-todo "CHOSEN")))
+            ;; CHOSEN -> CHOOSE
+            ((and (equal state "CHOSEN")
+                  (= numerator 0)
+                  (eq this-command #'org-toggle-checkbox))
+             (org-todo "CHOOSE"))
+            ;; TODO, NOW -> DONE
+            ((and (member state jkroes/active-todo-states)
+                  (= numerator denominator))
+             (org-todo "DONE"))
+            ;; DONE -> TODO
+            ((and (equal state "DONE")
+                  (not (= numerator denominator)))
+             (org-todo "TODO"))))))
+
+(defun my/org-cycle ()
+  "Adapt org-cycle to fold the current code block if point is within
+one. Useful for finding one's place within a large code block
+without folding any headings."
+  (interactive)
+  ;; Move to the start of the block so that org-cycle will call
+  ;; org-fold-hide-block-toggle
+  (let* ((element (org-element-at-point))
+         (type (org-element-type element)))
+    (cond ((eq type 'src-block)
+           (let* ((post (org-element-property :post-affiliated element))
+                  (start (save-excursion
+                           (goto-char post)
+                           (line-end-position)))
+                  (end (save-excursion
+                         (goto-char (org-element-property :end element))
+                         (skip-chars-backward " \t\n")
+                         (line-end-position))))
+             (when (let ((eol (line-end-position)))
+                     (and (/= eol start) (/= eol end)))
+               (call-interactively #'org-previous-block)))))
+    (call-interactively #'org-cycle)))
+
+(defun delete-empty-org-attach-id-dirs ()
+  "Delete empty directories within org-attach-id-dir."
+  (interactive)
+  (require 'dash)
+  ;; Delete org-attach-id-dir sub-sub folders
+  (-each
+      (-filter
+       (lambda (file) (directory-empty-p file))
+       (directory-files-recursively org-attach-id-dir "" t))
+    #'delete-directory)
+  ;; Delete org-attach-id-dir sub-folders. Some will be newly empty after the
+  ;; last deletion.
+  (-each
+      (-filter
+       (lambda (file) (directory-empty-p file))
+       (directory-files org-attach-id-dir t))
+    #'delete-directory))
+
+(defun my/org-edit-src-save-and-exit ()
+  (interactive)
+  (org-edit-src-save)
+  (org-edit-src-exit)
+  ;; Prevents accidental text insertion
+  (evil-normal-state))
+
+;; Disable popup management of org-src buffer windows
+(after! org
+  (advice-remove #'org-edit-src-exit #'+popup--org-edit-src-exit-a)
+  (assoc-delete-all "^\\*Org Src" +popup--display-buffer-alist)
+  (assoc-delete-all "^\\*Org Src" display-buffer-alist))
+
+;; TODO The first info buffer shows the modeline, but successive buffers do not.
+;; Investigate the modeline rules for popups. In the meantime, disable modeline
+;; hiding for popups.
+(remove-hook '+popup-buffer-mode-hook #'+popup-set-modeline-on-enable-h)
+
+;; BUG When the top line of a window's buffer is blank, the background extends
+;; to the entire line, or else the letter is invisible.
+;; https://emacs.stackexchange.com/questions/45895/changing-faces-one-at-a-time-outside-customize
+(after! ace-window
+  (custom-set-faces!
+    '(aw-leading-char-face
+      :foreground "white" :background "red" :height 500)))
+
+;; If we bind `other-window' directly, it will remap to `ace-window' when
+;; the window-select module is active. If we want to circumvent remapping, wrap
+;; the remapped command in a function call.
+(map! "M-o" (cmd! (call-interactively #'other-window)))

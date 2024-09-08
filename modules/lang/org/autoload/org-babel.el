@@ -88,19 +88,3 @@
              (org-babel-where-is-src-block-result))
     (org-babel-remove-result)
     t))
-
-;;;###autoload
-(defun my/org-edit-src-save-and-exit ()
-  (interactive)
-  (org-edit-src-save)
-  (org-edit-src-exit)
-  ;; Prevents accidental text insertion
-  (evil-normal-state)
-  ;; TODO Make this respect current fold settings. Only re-fold
-  ;; if it was previously folded.
-  ;; Assume we want a folded block, because editing a block unfolds it. Since
-  ;; we are exiting a src block, we don't need to test whether we are within a block.
-  ;; (org-end-of-line)
-  ;; (when (not (org-fold-folded-p))
-  ;;   (my/org-cycle))
-  )

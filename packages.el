@@ -51,6 +51,9 @@
 
 ;;; 8/20/24
 
+(package! org-appear :pin "32ee50f8fdfa449bbc235617549c1bccb503cb09")
+(package! org-modern)
+
 (package! titlecase)
 
 ;; BUG https://github.com/doomemacs/doomemacs/issues/7039

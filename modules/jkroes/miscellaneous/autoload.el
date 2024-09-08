@@ -47,6 +47,7 @@ the end of the line to `fill-column'."
          (confirm-nonexistent-file-or-buffer)))))
 
 ;; TODO Modify this so that it works without visiting file via find-file
+;;;###autoload
 (defun my/bookmark-set (file)
   "For use with embark-file-map. Bookmark the selected file and
 prompt for a name, using filename as default input"

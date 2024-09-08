@@ -105,10 +105,12 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
 (defun +org-init-appearance-h ()
   "Configures the UI for `org-mode'."
   (setq org-indirect-buffer-display 'current-window
+        org-enforce-todo-dependencies t
+        org-entities-user
+        '(("flat"  "\\flat" nil "" "" "266D" "♭")
+          ("sharp" "\\sharp" nil "" "" "266F" "♯"))
         org-fontify-done-headline t
         org-fontify-quote-and-verse-blocks t
-        ;; Hide org src block highlighting when headings are folded
-        org-fontify-whole-block-delimiter-line nil
         org-fontify-whole-heading-line t
         org-hide-leading-stars t
         org-image-actual-width nil
@@ -138,6 +140,47 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
 
   (plist-put org-format-latex-options :scale 1.5) ; larger previews
 
+  ;; HACK Face specs fed directly to `org-todo-keyword-faces' don't respect
+  ;;      underlying faces like the `org-todo' face does, so we define our own
+  ;;      intermediary faces that extend from org-todo.
+  (with-no-warnings
+    (custom-declare-face '+org-todo-active  '((t (:inherit (bold font-lock-constant-face org-todo)))) "")
+    (custom-declare-face '+org-todo-project '((t (:inherit (bold font-lock-doc-face org-todo)))) "")
+    (custom-declare-face '+org-todo-onhold  '((t (:inherit (bold warning org-todo)))) "")
+    (custom-declare-face '+org-todo-cancel  '((t (:inherit (bold error org-todo)))) ""))
+  (setq org-todo-keywords
+        '((sequence
+           "TODO(t)"  ; A task that needs doing & is ready to do
+           "PROJ(p)"  ; A project, which usually contains other tasks
+           "LOOP(r)"  ; A recurring task
+           "STRT(s)"  ; A task that is in progress
+           "WAIT(w)"  ; Something external is holding up this task
+           "HOLD(h)"  ; This task is paused/on hold because of me
+           "IDEA(i)"  ; An unconfirmed and unapproved task or notion
+           "|"
+           "DONE(d)"  ; Task successfully completed
+           "KILL(k)") ; Task was cancelled, aborted, or is no longer applicable
+          (sequence
+           "[ ](T)"   ; A task that needs doing
+           "[-](S)"   ; Task is in progress
+           "[?](W)"   ; Task is being held up or paused
+           "|"
+           "[X](D)")  ; Task was completed
+          (sequence
+           "|"
+           "OKAY(o)"
+           "YES(y)"
+           "NO(n)"))
+        org-todo-keyword-faces
+        '(("[-]"  . +org-todo-active)
+          ("STRT" . +org-todo-active)
+          ("[?]"  . +org-todo-onhold)
+          ("WAIT" . +org-todo-onhold)
+          ("HOLD" . +org-todo-onhold)
+          ("PROJ" . +org-todo-project)
+          ("NO"   . +org-todo-cancel)
+          ("KILL" . +org-todo-cancel)))
+
   (set-ligatures! 'org-mode
     :name "#+NAME:"
     :name "#+name:"
@@ -152,22 +195,13 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
 
 
 (defun +org-init-babel-h ()
-  ;; BUG Large code blocks can slow down `org-cycle-global' noticeably when
-  ;; code block native fontification is enabled. Disable this if you notice an
-  ;; issue.
-  (setq org-src-fontify-natively t)
-
-  ;; Save edits and exit back to org file with "q"
-  (setq org-src-ask-before-returning-to-edit-buffer nil)
-  (add-hook! 'org-src-mode-hook #'evil-normalize-keymaps)
-  (map! :map org-src-mode-map :n "q" #'my/org-edit-src-save-and-exit)
-
   (setq org-src-preserve-indentation t  ; use native major-mode indentation
         org-src-tab-acts-natively t     ; we do this ourselves
         ;; You don't need my permission (just be careful, mkay?)
         org-confirm-babel-evaluate nil
         org-link-elisp-confirm-function nil
-        org-src-window-setup 'current-window
+        ;; Show src buffer in popup, and don't monopolize the frame
+        org-src-window-setup 'other-window
         ;; Our :lang common-lisp module uses sly, so...
         org-babel-lisp-eval-fn #'sly-eval)
 
@@ -634,8 +668,6 @@ relative to `org-directory', unless it is an absolute path."
         org-html-validation-link nil
         org-latex-prefer-user-labels t)
 
-  (setq org-export-with-sub-superscripts org-use-sub-superscripts)
-
   (when (modulep! :lang markdown)
     (add-to-list 'org-export-backends 'md))
 
@@ -643,29 +675,17 @@ relative to `org-directory', unless it is an absolute path."
     :when (modulep! +hugo)
     :after ox)
 
-  ;; Unlike CLI pandoc, ox-pandoc and citar/org-cite seem to work together to
-  ;; export citations.
   (use-package! ox-pandoc
     :when (modulep! +pandoc)
     :when (executable-find "pandoc")
     :after ox
     :init
-    ;; Run this if you need to generate a Word style template file:
-    ;;
-    ;; pandoc --print-default-data-file=reference.docx > ~/org/custom-reference.docx
-    ;;
-    ;; See org-pandoc-valid-options for available pandoc CLI flags
-
-    ;; (add-to-list (cons 'reference-doc "~/org/custom-reference.docx") org-pandoc-options)
-
     (add-to-list 'org-export-backends 'pandoc)
     (setq org-pandoc-options
           '((standalone . t)
             (mathjax . t)
             (variable . "revealjs-url=https://revealjs.com"))))
 
-  ;; TODO This advice may have been the cause of huge lags in the past. Disable
-  ;; it if the bug reappears.
   (defadvice! +org--dont-trigger-save-hooks-a (fn &rest args)
     "Exporting and tangling trigger save hooks; inadvertantly triggering
 mutating hooks on exported output, like formatters."
@@ -715,41 +735,9 @@ mutating hooks on exported output, like formatters."
   "Getting org to behave."
   ;; Open file links in current window, rather than new ones
   (setf (alist-get 'file org-link-frame-setup) #'find-file)
-
-  ;; TODO Test that this opens pptx, pdf, docx, etc., in Windows when Emacs is
-  ;; running on WSL when org-open-at-point and org-attach-open are invoked. If
-  ;; it does, delete the commented code below
-  (setq org-file-apps
-        '(("\\.pptx?\\'" . default)
-          ("\\.pdf?\\'" . default)
-          ("\\.docx?\\'" . default)
-          ("\\.txt?\\'" . default)
-          ("\\.xlsx?\\'" . default)
-          ("\\.csv?\\'" . default)
-          ("\\.png?\\'" . default)
-          ("\\.html?\\'" . default)
-          (remote . emacs)
-          (auto-mode . emacs)
-          (directory . emacs)))
-  ;; TODO Per org-file-apps docstring, we can replace open-in-windows with a
-  ;; string "wslview %s" if this has issues
-  (setq org-file-apps-gnu
-       `((system . mailcap)
-         ,(cons t (if IS-WSL #'open-in-windows 'mailcap))))
-  ;; (when IS-WSL
-  ;;   (setq org-file-apps
-  ;;         '(("\\.pptx?\\'" . open-in-windows)
-  ;;           ("\\.pdf?\\'" . open-in-windows)
-  ;;           ("\\.docx?\\'" . open-in-windows)
-  ;;           ("\\.txt?\\'" . open-in-windows)
-  ;;           ("\\.xlsx?\\'" . open-in-windows)
-  ;;           ("\\.csv?\\'" . open-in-windows)
-  ;;           ("\\.png?\\'" . open-in-windows)
-  ;;           ("\\.html?\\'" . open-in-windows)
-  ;;           (remote . emacs)
-  ;;           (auto-mode . emacs)
-  ;;           ;; dired is unbelievably slow on Windows shared network drives
-  ;;           (directory . open-in-windows))))
+  ;; Open directory links in dired
+  (add-to-list 'org-file-apps '(directory . emacs))
+  (add-to-list 'org-file-apps '(remote . emacs))
 
   ;; Directory file links launch `find-file' with the directory as initial
   ;; input, rather than launching dired
@@ -850,19 +838,9 @@ between the two."
   ;; `doom/forward-to-last-non-comment-or-eol', but with more org awareness.
   (setq org-special-ctrl-a/e t)
 
-  ;; Don't split lines when creating a heading
-  (setq org-M-RET-may-split-line nil)
-
-  ;; Don't insert blank lines when creating a heading
-  (setq org-blank-before-new-entry '((heading) (plain-list-item)))
-
-  ;; Extend the behavior of +org--insert-item to the backend for org's native
-  ;; various heading insertion commands
-  (defadvice! jkroes/org-insert-heading-insert-state-a (&rest _)
-    :after (list #'org-insert-heading)
-    (when (and (bound-and-true-p evil-local-mode)
-               (not (evil-emacs-state-p)))
-      (evil-insert 1)))
+  (setq org-M-RET-may-split-line nil
+        ;; insert new headings after current subtree rather than inside it
+        org-insert-heading-respect-content t)
 
   (add-hook! 'org-tab-first-hook
              #'+org-yas-expand-maybe-h
@@ -875,7 +853,7 @@ between the two."
         ;; Recently, a [tab] keybind in `outline-mode-cycle-map' has begun
         ;; overriding org's [tab] keybind in GUI Emacs. This is needed to undo
         ;; that, and should probably be PRed to org.
-        [tab]    #'org-cycle
+        :ie [tab]    #'org-cycle
 
         "C-c C-S-l"  #'+org/remove-link
         "C-c C-i"    #'org-toggle-inline-images
