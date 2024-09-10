@@ -15,7 +15,7 @@
     ;; macbook air (m3, 2024)
     ((pred (lambda (dmal)
              (and (length= dmal 1)
-                  (equal (last (caar dmal) 2) '(1470 956))))) 16)))
+                  (equal (last (caar dmal) 2) '(1470 956))))) 14)))
 
 ;; NOTE This package is built-in but differs from the external package. If
 ;; switching to the built-in, you will need to translate the configuration.

@@ -739,10 +739,6 @@ mutating hooks on exported output, like formatters."
   (add-to-list 'org-file-apps '(directory . emacs))
   (add-to-list 'org-file-apps '(remote . emacs))
 
-  ;; Directory file links launch `find-file' with the directory as initial
-  ;; input, rather than launching dired
-  (add-to-list 'find-directory-functions #'jkroes/not-dired)
-
   ;; Open help:* links with helpful-* instead of describe-*
   (advice-add #'org-link--open-help :around #'doom-use-helpful-a)
 

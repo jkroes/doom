@@ -611,26 +611,24 @@
        ;; TODO Conditional bindings for `featurep' dendroam
        (:when (modulep! :lang org +noter)
         :desc "Org noter"                  "e" #'org-noter)
-       ;; TODO I temporarily restored the bindings from here to the commented
-       ;; bindings. Once dendroam is up and running, restore the old bindings.
-       :desc "Find file in notes"           "f" #'+default/find-in-notes
-       :desc "Browse notes"                 "F" #'+default/browse-notes
-       :desc "Org store link"               "l" #'org-store-link
-       :desc "Tags search"                  "m" #'org-tags-view
-       :desc "Org capture"                  "n" #'org-capture
-       :desc "Goto capture"                 "N" #'org-capture-goto-target
-       :desc "Active org-clock"             "o" #'org-clock-goto
-       :desc "Todo list"                    "t" #'org-todo-list
-       ;; :desc "Find node"               "f" #'dendroam-find
-       ;; :desc "Find ref"                "F" #'org-roam-ref-find
-       ;; :desc "Insert link to node"     "i" #'org-roam-node-insert
-       ;; :desc "Toggle backlinks buffer" "l" #'org-roam-buffer-toggle
-       ;; :desc "Find meeting node"       "m" #'dendroam-find-meeting
-       ;; :desc "Find related nodes"      "n" #'dendroam-find-related
-       ;; :desc "Find project node"       "p" #'dendroam-find-project
-       ;; :desc "Switch to scratch"       "x" #'dendroam-find-master-scratch
-       ;; :desc "Rename node"             "r" #'dendroam-rename-note
-       ;; :desc "Refactor hierarchy"      "R" #'dendroam-refactor-hierarchy
+       ;; :desc "Find file in notes"           "f" #'org-roam-node-find
+       ;; :desc "Browse notes"                 "F" #'+default/browse-notes
+       ;; :desc "Org store link"               "l" #'org-store-link
+       ;; :desc "Tags search"                  "m" #'org-tags-view
+       ;; :desc "Org capture"                  "n" #'org-capture
+       ;; :desc "Goto capture"                 "N" #'org-capture-goto-target
+       ;; :desc "Active org-clock"             "o" #'org-clock-goto
+       ;; :desc "Todo list"                    "t" #'org-todo-list
+       :desc "Find node"               "f" #'dendroam-find
+       :desc "Find ref"                "F" #'org-roam-ref-find
+       :desc "Insert link to node"     "i" #'org-roam-node-insert
+       :desc "Toggle backlinks buffer" "l" #'org-roam-buffer-toggle
+       :desc "Find meeting node"       "m" #'dendroam-find-meeting
+       :desc "Find related nodes"      "n" #'dendroam-find-related
+       :desc "Find project node"       "p" #'dendroam-find-project
+       :desc "Switch to scratch"       "x" #'dendroam-find-master-scratch
+       :desc "Rename node"             "r" #'dendroam-rename-note
+       :desc "Refactor hierarchy"      "R" #'dendroam-refactor-hierarchy
        :desc "Search notes"                 "s" #'+default/org-notes-search
        :desc "Search org agenda headlines"  "S" #'+default/org-notes-headlines
        :desc "Find scratch node"       "X" #'dendroam-find-scratch

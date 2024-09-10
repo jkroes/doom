@@ -54,6 +54,12 @@
 (package! org-appear :pin "32ee50f8fdfa449bbc235617549c1bccb503cb09")
 (package! org-modern)
 
+(package! consult-org-roam)
+
+;; TODO Temporary while getting dendroam up and running
+(package! citar)
+(package! citar-org-roam)
+
 (package! titlecase)
 
 ;; BUG https://github.com/doomemacs/doomemacs/issues/7039

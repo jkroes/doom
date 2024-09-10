@@ -3,8 +3,19 @@
 ;; This code is based on
 ;; https://github.com/vicrdguez/dendroam/blob/main/dendroam.el
 
+;; Functions defined via cl-defgeneric, as in vertico.el, can be extended
+;; through cl-defmethod, similar to how advice works. See:
+;; - https://github.com/minad/vertico/wiki
+;; - https://www.gnu.org/software/emacs/manual/html_node/elisp/Generic-Functions.html
+;; - https://www.gnu.org/software/emacs/manual/html_node/eieio/index.html
+;;
+;; This macro is also used below to dispatch on org-roam-node structs:
+;; - https://nullprogram.com/blog/2018/02/14/ and
+;; - https://www.orgroam.com/manual.html#Accessing-and-Modifying-Nodes
+
 (require 'org-roam)
 (require 'citar)
+(require 'citar-org-roam)
 
 (setq org-roam-node-display-template "${dendroam-display-hierarchy}")
 
@@ -18,8 +29,10 @@
 
 (defvar dendroam-display-separator (propertize ">" 'face 'shadow))
 
-(defvar dendroam-hidden-tags nil)
+(defvar dendroam-hidden-tags (list org-archive-tag
+                                   org-attach-auto-tag))
 
+;; TODO Replace this with file-name-concat
 ;; (defun concat-path (&rest parts)
 ;;   "Concatenate unlimited path components"
 ;;   (cl-reduce (lambda (a b) (expand-file-name b a)) parts))
@@ -33,41 +46,13 @@ Arguments otherwise are the same as for `file-name-concat'."
     (error "DIRECTORY is not an absolute path"))
   (expand-file-name (apply 'file-name-concat (cons directory components))))
 
-;;; NODE DISPLAY --------------------------------------------------------------------
-
-;; Functions defined via cl-defgeneric, as in vertico.el, can be extended
-;; through cl-defmethod, similar to how advice works. See:
-;; - https://github.com/minad/vertico/wiki
-;; - https://www.gnu.org/software/emacs/manual/html_node/elisp/Generic-Functions.html
-;; - https://www.gnu.org/software/emacs/manual/html_node/eieio/index.html
-;;
-;; This macro is also used below to dispatch on org-roam-node structs:
-;; - https://nullprogram.com/blog/2018/02/14/ and
-;; - https://www.orgroam.com/manual.html#Accessing-and-Modifying-Nodes
-
-(defvar my-last-minibuffer-command nil
-  "The last command that invoked the minibuffer.")
-
-(cl-defmethod vertico--setup :before ()
-  (setq my-last-minibuffer-command (symbol-name this-command)))
-
-;; NOTE For an alternative implementation: replace ".*" with "^" to match from
-;; the start of the candidate
-(cl-defmethod vertico--format-candidate :around
-  (cand prefix suffix index _start &context ((not (string-match-p "^dendroam-" my-last-minibuffer-command)) null))
-  "Trim candidate string from its start to `vertico-input' when the
-latter ends with `dendroam-display-separator'. Input can include
-regexp characters. This method is dispatched when the current
-command is part of the dendroam library."
-    (let ((parent (dendroam-display-up-hierarchy (car vertico--input))))
-      (when (not (string-empty-p parent))
-        (setq cand (replace-regexp-in-string
-                    (concat ".*" parent ">") "" cand))))
-  (cl-call-next-method cand prefix suffix index _start))
+;;; Converting selected vertico candidate to node title -------------------------
 
 (cl-defmethod org-roam-node-dendroam-slug ((node org-roam-node))
-  "Return the input with non-alphanumeric characters replaced with underscores,
-except for periods, spaces, and dashes. Based on `org-roam-node-slug'."
+  "For use in `org-roam-capture-templates'. Return the node title
+with non-alphanumeric characters replaced with underscores,
+except for periods, spaces, and dashes. Additionally replace
+`dendroam-display-separator' with `dendroam-separator'."
   (let* ((title (org-roam-node-title node))
          (slug-trim-chars '(;; Combining Diacritical Marks https://www.unicode.org/charts/PDF/U0300.pdf
                             768 ; U+0300 COMBINING GRAVE ACCENT
@@ -98,10 +83,6 @@ except for periods, spaces, and dashes. Based on `org-roam-node-slug'."
                                                    (seq-remove #'nonspacing-mark-p
                                                                (string-glyph-decompose s)))))
                (cl-replace (title pair) (replace-regexp-in-string (car pair) (cdr pair) title)))
-      ;; HACK The first pair is useful when you complete a new node from an existing
-      ;; node, which displays nodes with `dendroam-display-separator'. The
-      ;; second pair has been altered to allow spaces, periods, and hyphens in
-      ;; the slug.
       (let* ((pairs `((,dendroam-display-separator . ,dendroam-separator)
                       ("[^[:alnum:][:digit:][:space:].-]" . "_")
                       ("__*" . "_")   ; remove sequential underscore
@@ -111,18 +92,59 @@ except for periods, spaces, and dashes. Based on `org-roam-node-slug'."
              (slug (-reduce-from #'cl-replace (strip-nonspacing-marks title) pairs)))
         slug))))
 
+;;; Annotations ---------------------------------------------------------------
+
+(setq org-roam-node-annotation-function #'my/org-roam-node-read--annotation)
+
+(defun my/org-roam-node-read--annotation (node)
+  "Replaces org-roam's dummy annotation function for org-roam-node-read"
+  (let ((tags (org-roam-node-dendroam-tags node)))
+    (concat " " (when tags (concat ":" (mapconcat (lambda (tag) (propertize tag 'face '(:inherit org-tag :box nil))) tags ":") ":")))))
+
 (cl-defmethod org-roam-node-dendroam-tags ((node org-roam-node))
   "When this function is used in `org-roam-node-display-template',
 node: tags will be displayed and searchable unless they are
 explicitly excluded here. To exclude nodes by tag, see
 `org-roam-db-node-include-function'"
-  (cl-remove-if (doom-rpartial #'member (delq nil (ensure-list dendroam-hidden-tags)))
+  (cl-remove-if (doom-rpartial
+                 #'member (delq nil (ensure-list dendroam-hidden-tags)))
                 (org-roam-node-tags node)))
+
+;;; Vertico candidates --------------------------------------------------------
+
+(defvar my-last-minibuffer-command nil
+  "The last command that invoked the minibuffer.")
+
+(cl-defmethod vertico--setup :before ()
+  (setq my-last-minibuffer-command (symbol-name this-command)))
+
+;; NOTE For an alternative implementation: replace ".*" with "^" to match from
+;; the start of the candidate
+(cl-defmethod vertico--format-candidate :around
+  (cand prefix suffix index _start
+        &context ((not (string-match-p "^dendroam-" my-last-minibuffer-command))
+                  null))
+  "Trim candidate string from its start to `vertico--input' when the
+latter ends with `dendroam-display-separator'. Input can include
+regexp characters. This method is dispatched when the current
+command is part of the dendroam library."
+    (let ((parent (dendroam-display-up-hierarchy (car vertico--input))))
+      (when (not (string-empty-p parent))
+        (setq cand (replace-regexp-in-string
+                    (concat ".*" parent ">") "" cand))))
+  (cl-call-next-method cand prefix suffix index _start))
+
+;;; NODE DISPLAY --------------------------------------------------------------------
+
+(cl-defmethod org-roam-node-dendroam-display-hierarchy ((node org-roam-node))
+  (replace-regexp-in-string (regexp-quote dendroam-separator)
+                            dendroam-display-separator
+                            (org-roam-node-dendroam-hierarchy node)))
 
 ;; NOTE citar notes can be displayed as if they were a dendroam note for
 ;; `org-roam-node-find' and `dendroam-find' via `org-roam-alias-add'. See e.g.,
 ;; work.cdpr.voc.rulemakings.nonfumigants.
-;;
+
 ;; TODO The dendroam capture and navigation commands only work with file nodes,
 ;; even though this and other functions support heading nodes.
 (cl-defmethod org-roam-node-dendroam-hierarchy ((node org-roam-node))
@@ -144,11 +166,6 @@ explicitly excluded here. To exclude nodes by tag, see
         (0 (dendroam-join file))
         (1 (dendroam-join (-concat file title)))
         (t (dendroam-join (-concat file olp title)))))))
-
-(cl-defmethod org-roam-node-dendroam-display-hierarchy ((node org-roam-node))
-  (replace-regexp-in-string (regexp-quote dendroam-separator)
-                            dendroam-display-separator
-                            (org-roam-node-dendroam-hierarchy node)))
 
 (defun dendroam-split (str)
   (when (stringp str)
