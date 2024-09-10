@@ -17,14 +17,6 @@
 (require 'citar)
 (require 'citar-org-roam)
 
-(setq org-roam-node-display-template "${dendroam-display-hierarchy}")
-
-(setq org-roam-capture-templates
-      '(("d" "dendroam" plain "%?"
-         :target (file+head
-                  "${dendroam-slug}.org" "#+title: %(car (last (dendroam-split \"${dendroam-slug}\")))")
-         :immediate-finish t)))
-
 (defvar dendroam-separator ".")
 
 (defvar dendroam-display-separator (propertize ">" 'face 'shadow))
@@ -32,19 +24,13 @@
 (defvar dendroam-hidden-tags (list org-archive-tag
                                    org-attach-auto-tag))
 
-;; TODO Replace this with file-name-concat
-;; (defun concat-path (&rest parts)
-;;   "Concatenate unlimited path components"
-;;   (cl-reduce (lambda (a b) (expand-file-name b a)) parts))
-(defun concat-path (directory &rest components)
-  "Append COMPONENTS to DIRECTORY and return the resulting string.
+(setq org-roam-node-display-template "${dendroam-display-hierarchy}")
 
-DIRECTORY must be an absolute path.
-
-Arguments otherwise are the same as for `file-name-concat'."
-  (unless (file-name-absolute-p directory)
-    (error "DIRECTORY is not an absolute path"))
-  (expand-file-name (apply 'file-name-concat (cons directory components))))
+(setq org-roam-capture-templates
+      '(("d" "dendroam" plain "%?"
+         :target (file+head
+                  "${dendroam-slug}.org" "#+title: %(car (last (dendroam-split \"${dendroam-slug}\")))")
+         :immediate-finish t)))
 
 ;;; Converting selected vertico candidate to node title -------------------------
 
@@ -252,7 +238,7 @@ input defaults to the current node."
         (org-roam-capture-
          :node (org-roam-node-create
                 :title (or title (completing-read "Title: " nil))
-                :file (concat-path
+                :file (file-name-concat
                        org-roam-directory
                        (concat (org-roam-node-dendroam-hierarchy node) "." suffix ".org")))
          :templates template
@@ -286,7 +272,7 @@ input defaults to the current node."
 (cl-defmethod dendroam--citar-note-p ((node org-roam-node))
   (string=
    (directory-file-name (file-name-directory (org-roam-node-file node)))
-   (concat-path org-roam-directory citar-org-roam-subdir)))
+   (file-name-concat org-roam-directory citar-org-roam-subdir)))
 
 ;; (cl-defmethod dendroam--project-note-p ((node org-roam-node))
 ;;   (string=
@@ -303,7 +289,7 @@ This is a convenience function that skips a prompt."
            (file (org-roam-node-file node))
            (dir (f-dirname file))
            (ext (f-ext file))
-           (parent-file (concat-path dir (concat (org-roam-node-dendroam-hierarchy-no-title node) "." ext)))
+           (parent-file (file-name-concat dir (concat (org-roam-node-dendroam-hierarchy-no-title node) "." ext)))
            (parent-hierarchy (org-roam-node-dendroam-hierarchy-no-title node)))
       ;; Do nothing if we're at a file at the top of a hierarchy
       (unless (length= parent-hierarchy 0)
