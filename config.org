@@ -880,34 +880,30 @@ Bindings for embark maps used by ~embark-act~.
 #+end_src
 ** roam  [0/1]
 #+begin_src emacs-lisp :tangle no
-(after! org-roam
-  ;; NOTE If this isn't working, try running `org-roam-db-clear-all',then
-  ;; `org-roam-db-sync'
-  ;; (defvar org-roam-excluded-tags
-  ;;    (list (bound-and-true-p org-archive-tag)
-  ;;          (bound-and-true-p org-attach-auto-tag)
-  ;;          ;; Omit vulpea tag. TODO Update this when you create a variable
-  ;;          ;; to customize the vulpea tag
-  ;;          "project"))
+;; (after! org-roam
+;;   ;; NOTE If this isn't working, try running `org-roam-db-clear-all',then
+;;   ;; `org-roam-db-sync'
+;;   ;; (defvar org-roam-excluded-tags
+;;   ;;    (list (bound-and-true-p org-archive-tag)
+;;   ;;          (bound-and-true-p org-attach-auto-tag)
+;;   ;;          ;; Omit vulpea tag. TODO Update this when you create a variable
+;;   ;;          ;; to customize the vulpea tag
+;;   ;;          "project"))
 
-  ;; (setq org-roam-db-node-include-function
-  ;;       (lambda ()
-  ;;         (not (-any (lambda (tag)
-  ;;                      (member tag (org-get-tags nil)))
-  ;;                    org-roam-excluded-tags))))
-  )
+;;   ;; (setq org-roam-db-node-include-function
+;;   ;;       (lambda ()
+;;   ;;         (not (-any (lambda (tag)
+;;   ;;                      (member tag (org-get-tags nil)))
+;;   ;;                    org-roam-excluded-tags))))
 
-;; org-roam doesn't set the default value correctly. Any files or directories
-;; to exclue must be relative to `org-roam-directory'
-(after! org-roam
-  ;; TODO Delete this after reorganiing these files
-  (setq org-roam-file-exclude-regexp
-        (list "reorg/"))
-  ;; HACK org-attach-id-dir is not a subdirectory of org-roam-directory on WSL
-  ;; (per my own settings)
-  (unless IS-WSL
-    (setq org-roam-file-exclude-regexp
-          (cons ".attach/" org-roam-file-exclude-regexp))))
+;;   ;; TODO Delete this after reorganiing these files
+;;   ;; (setq org-roam-file-exclude-regexp
+;;   ;;       (list "reorg/"))
+
+;;   ;; org-roam doesn't set the default value correctly. Any files or directories
+;;   ;; to exclue must be relative to `org-roam-directory'
+;;   (setq org-roam-file-exclude-regexp
+;;         (cons ".attach/" org-roam-file-exclude-regexp)))
 
 (use-package! consult-org-roam
   :after org-roam
@@ -921,30 +917,6 @@ Bindings for embark maps used by ~embark-act~.
   ;; live previews by default (consult-org-roam--node-preview), but you
   ;; can suppress them via consult-customize.
   (consult-org-roam-mode))
-
-;; Annotate tags rather than including them in org-roam-node-display-template.
-;; In the latter case, they are part of the vertico candidate string, and
-;; vertico-insert (tab) inserts the tags as well as the org-roam node string.
-;; But this doesn't interfere with exit-minibuffer (RET), and there's no real
-;; reason to insert the candidate. The bigger issue stems from the way in which
-;; specified widths can interfere with display when trying to include tags and
-;; other information in org-roam-node-display-template. See
-;; https://github.com/org-roam/org-roam/issues/2066. By using annotations
-;; instead, these issues are resolved. You can still search annotations with a
-;; comma prefix because of jkroes/orderless-dispatch.
-
-;; (after! org-roam
-;;   (setq org-roam-node-display-template "${doom-hierarchy}"))
-
-(setq org-roam-node-annotation-function #'my/org-roam-node-read--annotation)
-
-(defun my/org-roam-node-read--annotation (node)
-  "Replaces org-roam's dummy annotation function for org-roam-node-read"
-  (let ((type (org-roam-node-doom-type node))
-        (tags (org-roam-node-doom-tags node)))
-    (concat " "
-            (when type (format "%s " (propertize (concat "@" type) 'face 'font-lock-keyword-face)))
-            (when tags (concat ":" (mapconcat (lambda (tag) (propertize tag 'face '(:inherit org-tag :box nil))) tags ":") ":")))))
 
 ;; (setq org-roam-node-display-template
 ;;         (format "%s %s %s"
