@@ -638,6 +638,64 @@ by passing a PREFIX key."
 ;;   :hook (org-agenda-mode . org-fancy-priorities-mode)
 ;;   :config (setq org-fancy-priorities-list '("⚑" "⬆" "■")))
 
+;; (after! org-roam
+;;   ;; NOTE If this isn't working, try running `org-roam-db-clear-all',then
+;;   ;; `org-roam-db-sync'
+;;   ;; (defvar org-roam-excluded-tags
+;;   ;;    (list (bound-and-true-p org-archive-tag)
+;;   ;;          (bound-and-true-p org-attach-auto-tag)
+;;   ;;          ;; Omit vulpea tag. TODO Update this when you create a variable
+;;   ;;          ;; to customize the vulpea tag
+;;   ;;          "project"))
+
+;;   ;; (setq org-roam-db-node-include-function
+;;   ;;       (lambda ()
+;;   ;;         (not (-any (lambda (tag)
+;;   ;;                      (member tag (org-get-tags nil)))
+;;   ;;                    org-roam-excluded-tags))))
+
+;;   ;; TODO Delete this after reorganiing these files
+;;   ;; (setq org-roam-file-exclude-regexp
+;;   ;;       (list "reorg/"))
+
+;;   ;; org-roam doesn't set the default value correctly. Any files or directories
+;;   ;; to exclue must be relative to `org-roam-directory'
+;;   (setq org-roam-file-exclude-regexp
+;;         (cons ".attach/" org-roam-file-exclude-regexp)))
+
+(use-package! consult-org-roam
+  :after org-roam
+  :config
+  ;;(consult-customize org-roam-node-find :preview-key "C-SPC")
+
+  ;; (Faster) live preview
+  (setq consult-org-roam-grep-func #'consult-ripgrep)
+
+  ;; Advise org-roam-node-read to use consult--read. This package uses
+  ;; live previews by default (consult-org-roam--node-preview), but you
+  ;; can suppress them via consult-customize.
+  (consult-org-roam-mode))
+
+;; TODO org-roam links only complete the title, which is a problem for dendroam
+;; since it allows for the same title with different hierarchies. See
+;; `org-roam-link-auto-replace'
+;; TODO org-roam completion only seems to work with trailing brackets, per
+;; doom's global smartparens mode
+;; TODO org-roam seems capable of completing node headings with trailing
+;; brackets, but pcomplete-completions-at-point (the capf provided by org-mode)
+;; is incapable of doing so. To complete with org-mode, you need e.g. "[[*XXX",
+;; where XXX is the name of a heading in the buffer (see
+;; https://orgmode.org/manual/Completion.html).
+
+(add-to-list 'load-path (expand-file-name "libraries" doom-private-dir))
+(autoload #'dendroam-find "dendroam")
+(autoload #'dendroam-find-master-scratch "dendroam")
+(autoload #'dendroam-find-scratch "dendroam")
+(autoload #'dendroam-find-meeting "dendroam")
+(autoload #'dendroam-find-children "dendroam")
+(autoload #'dendroam-find-siblings "dendroam")
+(autoload #'dendroam-find-parent "dendroam")
+
 (setq org-footnote-define-inline nil
       org-footnote-section "Footnotes"
       org-footnote-auto-adjust t ; Like org-footnote-normalize

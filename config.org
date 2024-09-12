@@ -879,7 +879,7 @@ Bindings for embark maps used by ~embark-act~.
 ;;   :config (setq org-fancy-priorities-list '("⚑" "⬆" "■")))
 #+end_src
 ** roam  [0/1]
-#+begin_src emacs-lisp :tangle no
+#+begin_src emacs-lisp
 ;; (after! org-roam
 ;;   ;; NOTE If this isn't working, try running `org-roam-db-clear-all',then
 ;;   ;; `org-roam-db-sync'
@@ -918,12 +918,25 @@ Bindings for embark maps used by ~embark-act~.
   ;; can suppress them via consult-customize.
   (consult-org-roam-mode))
 
-;; (setq org-roam-node-display-template
-;;         (format "%s %s %s"
-;;                 (propertize "${doom-type}" 'face 'font-lock-keyword-face)
-;;                 "${doom-hierarchy}"
-;;                 (propertize " ${doom-tags}" 'face '(:inherit org-tag :box nil))))
+;; TODO org-roam links only complete the title, which is a problem for dendroam
+;; since it allows for the same title with different hierarchies. See
+;; `org-roam-link-auto-replace'
+;; TODO org-roam completion only seems to work with trailing brackets, per
+;; doom's global smartparens mode
+;; TODO org-roam seems capable of completing node headings with trailing
+;; brackets, but pcomplete-completions-at-point (the capf provided by org-mode)
+;; is incapable of doing so. To complete with org-mode, you need e.g. "[[*XXX",
+;; where XXX is the name of a heading in the buffer (see
+;; https://orgmode.org/manual/Completion.html).
 
+(add-to-list 'load-path (expand-file-name "libraries" doom-private-dir))
+(autoload #'dendroam-find "dendroam")
+(autoload #'dendroam-find-master-scratch "dendroam")
+(autoload #'dendroam-find-scratch "dendroam")
+(autoload #'dendroam-find-meeting "dendroam")
+(autoload #'dendroam-find-children "dendroam")
+(autoload #'dendroam-find-siblings "dendroam")
+(autoload #'dendroam-find-parent "dendroam")
 #+end_src
 *** TODO Custom completion function for org-roam
 ** Footnotes

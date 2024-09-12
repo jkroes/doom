@@ -168,36 +168,6 @@ return the path"
     (evil-append-line 1)
     (insert "\n")))
 
-
-;;;; dendroam --------------------------------------------------------------------
-
-;; TODO Create a command that completes only the unique components at each
-;; level of the heirarchy. This makes finding things easier if you don't know
-;; what you're looking for.
-
-;; NOTE Nodes can be created by running org-roam-node-find;
-;; org-roam-node-insert; or by typing a roam link like
-;; [[roam:this is a roam link]], moving the cursor onto it,
-;; and running org-open-at-point. The latter behavior is
-;; similar to how dendroam works, where following a link
-;; creates a new node.
-
-(add-to-list 'load-path (expand-file-name "libraries" doom-private-dir))
-
-;; TODO Is this the best solution?
-(autoload #'dendroam-find "dendroam")
-
-;; TODO org-roam links only complete the title, which is a problem for dendroam
-;; since it allows for the same title with different hierarchies. See
-;; `org-roam-link-auto-replace'
-;; TODO org-roam completion only seems to work with trailing brackets, per
-;; doom's global smartparens mode
-;; TODO org-roam seems capable of completing node headings with trailing
-;; brackets, but pcomplete-completions-at-point (the capf provided by org-mode)
-;; is incapable of doing so. To complete with org-mode, you need e.g. "[[*XXX",
-;; where XXX is the name of a heading in the buffer (see
-;; https://orgmode.org/manual/Completion.html).
-
 ;;;; zotero --------------------------------------------------------------
 
 ;; NOTE This works on MacOS but won't work in WSL

@@ -608,18 +608,18 @@
 
        (:when (modulep! :lang org +noter)
         :desc "Org noter"                  "e" #'org-noter)
-       :desc "Find child node"         "c" #'dendroam-find-children
-       :desc "Find node"               "f" #'dendroam-find
-       :desc "Find ref"                "F" #'org-roam-ref-find
-       :desc "Insert link to node"     "i" #'org-roam-node-insert
-       :desc "Toggle backlinks buffer" "l" #'org-roam-buffer-toggle
-       :desc "Find meeting node"       "m" #'dendroam-find-meeting
-       :desc "Find meeting node"       "p" #'dendroam-find-parent
-       :desc "Find related nodes"      "s" #'dendroam-find-siblings
-       :desc "Switch to scratch"       "x" #'dendroam-find-master-scratch
-       :desc "Find scratch node"       "X" #'dendroam-find-scratch
-       ;;:desc "Rename node"             "r" #'dendroam-rename-note
-       ;;:desc "Refactor hierarchy"      "R" #'dendroam-refactor-hierarchy
+       :desc "Find child node"          "c" #'dendroam-find-children
+       :desc "Find node"                "f" #'dendroam-find
+       :desc "Find ref"                 "F" #'org-roam-ref-find
+       :desc "Insert link to node"      "i" #'org-roam-node-insert
+       :desc "Toggle backlinks buffer"  "l" #'org-roam-buffer-toggle
+       :desc "Find meeting node"        "m" #'dendroam-find-meeting
+       :desc "Find parent node"         "p" #'dendroam-find-parent
+       :desc "Find related nodes"       "r" #'dendroam-find-siblings
+       :desc "Find master scratch node" "x" #'dendroam-find-master-scratch
+       :desc "Find scratch node"        "X" #'dendroam-find-scratch
+       ;;:desc "Rename node"              "r" #'dendroam-rename-note
+       ;;:desc "Refactor hierarchy"       "R" #'dendroam-refactor-hierarchy
        :desc "Search notes"                 "s" #'+default/org-notes-search
        :desc "Search org agenda headlines"  "S" #'+default/org-notes-headlines
 

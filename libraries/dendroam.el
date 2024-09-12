@@ -180,9 +180,7 @@ command is part of the dendroam library."
       (1 (dendroam-join-strings file-first file-last title))
       (t (dendroam-join-strings file-first file-last olp title)))))
 
-;;; Capturing nodes -------------------------------------------------------------
-
-;; These commands can be used anywhere
+;;; Capturing nodes from anywhere ------------------------------------------------
 
 (defun dendroam-find ()
   "Find dendroam nodes. These are org-roam nodes, excluding citar
@@ -190,35 +188,26 @@ reference notes."
   (interactive)
   (org-roam-node-find nil nil (lambda (node) (not (dendroam--citar-note-p node)))))
 
-;; TODO Insert an ID for these nodes so we can search them?
 (defun dendroam-find-master-scratch ()
   "Create an entry in scratch.org"
   (interactive)
   (org-roam-capture-
-   :node (org-roam-node-create :title (completing-read "Title: " nil))
-   ;; %? only applies when creating the node, before :jump-to-captured t
-   ;; jumps to the buffer
-   :templates '(("s" "scratch" entry "* %<%Y-%m-%d.%H:%M:%S>.${title}\n%?"
-                 :target (file+head "scratch.org" "#+title: scratch")
-                 ;; Defined by `org-capture'. Alternatively, pass
-                 ;; :props '(:finalize find-file)
-                 ;; as an argument to org-roam-capture-. See
-                 ;; `org-roam-capture--finalize-find-file'.
-                 ;;:jump-to-captured t
+   :node (org-roam-node-create :title "")
+   :templates '(("s" "scratch" entry "* %<%Y-%m-%d.%H:%M:%S>\n%?"
+                 :target (file+head "scratch.org" "#+title: scratch\n\n")
                  :prepend t
                  :empty-lines-after 1))))
 
-;; TODO Insert an ID for these nodes so we can search them?
+
 (defun dendroam-find-scratch ()
-  "Create an entry in a local scratch file derived from the
+  "Create an entry in a scratch file derived from the
 selected node. Initial input defaults to the current node."
   (interactive)
   (dendroam--find
    "scratch"
-   '(("s" "scratch" entry "* %<%Y%m%d%H%M%S>.${title}\n%?"
-      :target (file+head "${dendroam-hierarchy}.scratch.org" "#+title: scratch")
-      :prepend t
-      :empty-lines-after 1))))
+   '("s" "scratch" entry "* %<%Y-%m-%d.%H:%M:%S>\n%?"
+     :prepend t
+     :empty-lines-after 1)))
 
 (defun dendroam-find-meeting ()
   "Create a meeting file derived from the selected node. Initial
@@ -226,33 +215,31 @@ input defaults to the current node."
   (interactive)
   (dendroam--find
    (format-time-string "%Y%m%d")
-   '(("m" "meeting" plain ""
-      :target (file+head "${dendroam-hierarchy}.%<%Y%m%d>.org" "#+title: ${title}")
-      :immediate-finish t))
-   (format-time-string "%Y%m%d")))
+   '("m" "meeting" plain ""
+      :immediate-finish t
+      :jump-to-captured t)))
 
-(defun dendroam--find (suffix template &optional title)
-  (if (eq major-mode 'org-mode)
-      (let* ((parent (org-roam-node-at-point))
-             (input (if parent (org-roam-node-dendroam-display-hierarchy parent)))
-             (node (org-roam-node-read
-                    input
-                    #'dendroam--exclude-nodes
-                    #'dendroam-sort-by-display-hierarchy
-                    t)))
-        (org-roam-capture-
-         :node (org-roam-node-create
-                :title (or title (completing-read "Title: " nil))
-                :file (file-name-concat
-                       org-roam-directory
-                       (concat (org-roam-node-dendroam-hierarchy node) "." suffix ".org")))
-         :templates template
-         :props '(:finalize find-file)))
-    (message "%s only works within org-mode." this-command)))
+(defun dendroam--find (title template)
+  (interactive)
+  (let* ((selected-node (org-roam-node-read
+                         (when (org-roam-file-p (buffer-file-name))
+                           (org-roam-node-dendroam-display-hierarchy
+                            (org-roam-node-at-point)))
+                         #'dendroam--exclude-nodes
+                         #'dendroam-sort-by-display-hierarchy
+                         t))
+         ;; Filename should be used instead of the hierarchy here
+         (selected-file (file-name-sans-extension (org-roam-node-file selected-node)))
+         (slug (org-roam-node-slug selected-node)))
+    (org-roam-capture-
+     :node (org-roam-node-create :title title)
+     :templates (list
+                 (append
+                  template
+                  `(:target (file+head ,(concat (dendroam-join-strings selected-file title) ".org")
+                                       "#+title: ${title}\n\n")))))))
 
 ;;; Node navigation --------------------------------------------------------------------
-
-;; These commands can be used within org-roam nodes to travel to related nodes
 
 ;; NOTE Using cl-defmethod instead of defun means an error message will be
 ;; thrown if the user tries to invoke this on a normal org file that is not an
@@ -280,6 +267,8 @@ This is a convenience function that skips a prompt."
           (find-file parent-file)
         (org-roam-capture-
          :node (org-roam-node-create :title parent-hierarchy)
+         ;; NOTE Same as :jump-to-captured t within a template. See
+         ;; `org-roam-capture--finalize-find-file'
          :props '(:finalize find-file))))))
 
 (defun dendroam-find-siblings ()
@@ -367,10 +356,9 @@ This is a convenience function that skips a prompt."
 (defun dendroam--exclude-nodes (node)
   "Scrath and meeting nodes should only be made on normal dendroam
 notes, not other meeting, scratch, or reference notes."
-  (lambda (node)
-    (not (or (dendroam--meeting-note-p node)
-             (dendroam--scratch-note-p node)
-             (dendroam--citar-note-p node)))))
+  (not (or (dendroam--meeting-note-p node)
+           (dendroam--scratch-note-p node)
+           (dendroam--citar-note-p node))))
 
 (cl-defmethod dendroam--meeting-note-p ((node org-roam-node))
   "Return t if org-roam note is a dendroam meeting note"
