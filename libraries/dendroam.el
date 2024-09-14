@@ -99,7 +99,8 @@ node: tags will be displayed and searchable unless they are
 explicitly excluded here. To exclude nodes by tag, see
 `org-roam-db-node-include-function'"
   (cl-remove-if (doom-rpartial
-                 #'member (delq nil (ensure-list dendroam-hidden-tags)))
+                 #'member
+                 (delq nil (ensure-list dendroam-hidden-tags)))
                 (org-roam-node-tags node)))
 
 ;;; Smarter vertico candidates and minibuffer input ------------------------------

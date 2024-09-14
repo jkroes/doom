@@ -160,7 +160,7 @@ In case of failure, fail gracefully."
          "r" #'org-roam-ref-add
          "R" #'org-roam-ref-remove))
 
-  (when (modulep! :editor evil)
+  (when (modulep! :editor evil +everywhere)
     (add-hook! 'org-roam-mode-hook
       (defun +org-roam-detach-magit-section-mode-map-h ()
         "Detach `magit-section-mode-map' from `org-roam-mode-map'.

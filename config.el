@@ -638,54 +638,13 @@ by passing a PREFIX key."
 ;;   :hook (org-agenda-mode . org-fancy-priorities-mode)
 ;;   :config (setq org-fancy-priorities-list '("⚑" "⬆" "■")))
 
-;; (after! org-roam
-;;   ;; NOTE If this isn't working, try running `org-roam-db-clear-all',then
-;;   ;; `org-roam-db-sync'
-;;   ;; (defvar org-roam-excluded-tags
-;;   ;;    (list (bound-and-true-p org-archive-tag)
-;;   ;;          (bound-and-true-p org-attach-auto-tag)
-;;   ;;          ;; Omit vulpea tag. TODO Update this when you create a variable
-;;   ;;          ;; to customize the vulpea tag
-;;   ;;          "project"))
-
-;;   ;; (setq org-roam-db-node-include-function
-;;   ;;       (lambda ()
-;;   ;;         (not (-any (lambda (tag)
-;;   ;;                      (member tag (org-get-tags nil)))
-;;   ;;                    org-roam-excluded-tags))))
-
-;;   ;; TODO Delete this after reorganiing these files
-;;   ;; (setq org-roam-file-exclude-regexp
-;;   ;;       (list "reorg/"))
-
-;;   ;; org-roam doesn't set the default value correctly. Any files or directories
-;;   ;; to exclue must be relative to `org-roam-directory'
-;;   (setq org-roam-file-exclude-regexp
-;;         (cons ".attach/" org-roam-file-exclude-regexp)))
+(setq org-roam-file-exclude-regexp nil) ; (cons ".attach/" org-roam-file-exclude-regexp)
 
 (use-package! consult-org-roam
   :after org-roam
   :config
-  ;;(consult-customize org-roam-node-find :preview-key "C-SPC")
-
-  ;; (Faster) live preview
   (setq consult-org-roam-grep-func #'consult-ripgrep)
-
-  ;; Advise org-roam-node-read to use consult--read. This package uses
-  ;; live previews by default (consult-org-roam--node-preview), but you
-  ;; can suppress them via consult-customize.
   (consult-org-roam-mode))
-
-;; TODO org-roam links only complete the title, which is a problem for dendroam
-;; since it allows for the same title with different hierarchies. See
-;; `org-roam-link-auto-replace'
-;; TODO org-roam completion only seems to work with trailing brackets, per
-;; doom's global smartparens mode
-;; TODO org-roam seems capable of completing node headings with trailing
-;; brackets, but pcomplete-completions-at-point (the capf provided by org-mode)
-;; is incapable of doing so. To complete with org-mode, you need e.g. "[[*XXX",
-;; where XXX is the name of a heading in the buffer (see
-;; https://orgmode.org/manual/Completion.html).
 
 (add-to-list 'load-path (expand-file-name "libraries" doom-private-dir))
 (autoload #'dendroam-find "dendroam")
@@ -695,6 +654,15 @@ by passing a PREFIX key."
 (autoload #'dendroam-find-children "dendroam")
 (autoload #'dendroam-find-siblings "dendroam")
 (autoload #'dendroam-find-parent "dendroam")
+
+;; Tags to hide from searchable annotations
+(after! org (setq dendroam-hidden-tags (list org-archive-tag))) ; org-attach-auto-tag
+
+(after! org-roam
+  (map! :map org-mode-map
+        :localleader
+        :prefix ("m" . "org-roam")
+        "f" #'dendroam-find))
 
 (setq org-footnote-define-inline nil
       org-footnote-section "Footnotes"
@@ -879,6 +847,14 @@ heading"
 (advice-add #'org-attach-expand
             :override #'jkroes/org-attach-expand-a)
 
+;; HACK org-attach-dir searches up the entire subtree for a DIR, ATTACH_DIR, or ID
+;; property (in that order) when org-attach-use-inheritance is enabled;
+;; however, org-attach-tag simply adds a tag specified by org-attach-auto-tag
+;; (typically :attach:) to the next heading at or above point. This advice
+;; fixes this behavior so that a tag is only added if the current heading has
+;; an ID property.
+(advice-add #'org-attach-tag :override #'jkroes/org-attach-tag)
+
 ;; Define the `attach' completion category for org-attach-open and associate it
 ;; with an annotation function
 (after! marginalia
@@ -901,12 +877,7 @@ heading"
 ;; org-open-file
 ;; (user-error "No such file: %s" file))
 
-;; NOTE org-attach-dir searches up the subre for DIR, ATTACH_DIR, then ID, in
-;; that order. This means it will skip e.g. any ID-based attachment dirs when
-;; an ancesor has a DIR or ATTACH_DIR-based attachment dir.
-;; org-attach-reveal also skips headings. I think best practice is to use this
-;; to enable attachment links below subheadings, rather than to have multiple
-;; attachment directories within a tree.
+;; Use this to enable attachment links below subheadings
 (defun jkroes/org-attach-expand-a (file)
   "HACK A version of org-attach-expand that actually will look
  through all parent headings until it finds the linked attachment,
@@ -924,6 +895,18 @@ heading"
           (user-error "No such file: %s" file)
         (org-roam-up-heading-or-point-min)
         (org-attach-expand file)))))
+
+(defun jkroes/org-attach-tag (&optional off)
+  "Turn the autotag on or (if OFF is set) off."
+  (when org-attach-auto-tag
+    ;; FIXME: There is currently no way to set #+FILETAGS
+    ;; programmatically.  Do nothing when before first heading
+    ;; (attaching to file) to avoid blocking error.
+    (unless (org-before-first-heading-p)
+      (save-excursion
+        (org-back-to-heading t)
+        (when (org-entry-get nil "ID")
+                (org-toggle-tag org-attach-auto-tag (if off 'off 'on)))))))
 
 (defun marginalia-annotate-attachment (cand)
   (marginalia-annotate-file (cdr (embark--expand-attachment nil cand))))
@@ -1227,6 +1210,11 @@ If on a:
          (org-cite-follow context arg))
 
         (`headline
+         ;; TODO Use org-attach-dir with org-attach-use-inheritance bound to
+         ;; nil via let, instead of the code below, to find an attachment
+         ;; directory in the current heading. This would enable operating on
+         ;; file-level property drawers too.
+         ;;
          ;; HACK Avoid errors generated by calling org-update-checkbox-count
          ;; or other functions meant to run in an org buffer after switching to
          ;; an attached file

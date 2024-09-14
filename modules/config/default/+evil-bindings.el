@@ -608,6 +608,7 @@
 
        (:when (modulep! :lang org +noter)
         :desc "Org noter"                  "e" #'org-noter)
+
        :desc "Find child node"          "c" #'dendroam-find-children
        :desc "Find node"                "f" #'dendroam-find
        :desc "Find ref"                 "F" #'org-roam-ref-find
@@ -620,8 +621,6 @@
        :desc "Find scratch node"        "X" #'dendroam-find-scratch
        ;;:desc "Rename node"              "r" #'dendroam-rename-note
        ;;:desc "Refactor hierarchy"       "R" #'dendroam-refactor-hierarchy
-       :desc "Search notes"                 "s" #'+default/org-notes-search
-       :desc "Search org agenda headlines"  "S" #'+default/org-notes-headlines
 
        (:when (modulep! :lang org +journal)
         (:prefix ("j" . "journal")

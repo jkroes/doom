@@ -4,6 +4,8 @@
 #+title: config.org
 #+startup: hideblocks
 
+* Notes on this file
+Instead of commenting out source code, code blocks may be disabled via ~:tangle no~
 * Installation
 The current Doom commit is =bf330b405d73757b314cc70e16ce991d2bbd9cc5=.
 
@@ -20,9 +22,11 @@ brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-n
 #+begin_src emacs-lisp
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 #+end_src
-* Todo list [0/4]
+* Todo list [0/5]
+** TODO Resolve the todo comment within jkroes/org-dwim-at-point
 ** TODO Move this list to a project-level todos file?
-** TODO Command bindings [0/17]
+** TODO Command bindings [0/18]
+- [ ] consult-org-roam-search
 - [ ] consult-yank-pop (M-y in normal state)
 - [ ] doom/copy-module-to-private
 - [ ] my/ediff-doom-private-module
@@ -878,57 +882,40 @@ Bindings for embark maps used by ~embark-act~.
 ;;   :hook (org-agenda-mode . org-fancy-priorities-mode)
 ;;   :config (setq org-fancy-priorities-list '("⚑" "⬆" "■")))
 #+end_src
-** roam  [0/1]
+** roam  [0/3]
+Any files or directories to exclude must be relative to ~org-roam-directory~, per the definition of ~org-roam-file-p~; this isn't documented, and org-roam's default value for this is the absolute path to ~org-attach-id-dir~.
+
 #+begin_src emacs-lisp
-;; (after! org-roam
-;;   ;; NOTE If this isn't working, try running `org-roam-db-clear-all',then
-;;   ;; `org-roam-db-sync'
-;;   ;; (defvar org-roam-excluded-tags
-;;   ;;    (list (bound-and-true-p org-archive-tag)
-;;   ;;          (bound-and-true-p org-attach-auto-tag)
-;;   ;;          ;; Omit vulpea tag. TODO Update this when you create a variable
-;;   ;;          ;; to customize the vulpea tag
-;;   ;;          "project"))
+(setq org-roam-file-exclude-regexp nil) ; (cons ".attach/" org-roam-file-exclude-regexp)
+#+end_src
 
-;;   ;; (setq org-roam-db-node-include-function
-;;   ;;       (lambda ()
-;;   ;;         (not (-any (lambda (tag)
-;;   ;;                      (member tag (org-get-tags nil)))
-;;   ;;                    org-roam-excluded-tags))))
+Certain tags indicate headings that should not count as org-roam nodes, despite having an =ID= property. If this isn't working, try running ~org-roam-db-clear-all~,then ~org-roam-db-sync~.
 
-;;   ;; TODO Delete this after reorganiing these files
-;;   ;; (setq org-roam-file-exclude-regexp
-;;   ;;       (list "reorg/"))
+#+begin_src emacs-lisp :tangle no
+(defvar org-roam-excluded-tags
+  (list (bound-and-true-p org-archive-tag)
+        (bound-and-true-p org-attach-auto-tag)))
 
-;;   ;; org-roam doesn't set the default value correctly. Any files or directories
-;;   ;; to exclue must be relative to `org-roam-directory'
-;;   (setq org-roam-file-exclude-regexp
-;;         (cons ".attach/" org-roam-file-exclude-regexp)))
+(setq org-roam-db-node-include-function
+      (lambda ()
+        (not (-any (lambda (tag)
+                     (member tag (org-get-tags nil)))
+                   org-roam-excluded-tags))))
+#+end_src
 
+This mode advises ~org-roam-node-read~ to use ~consult--read~, which adds live previews to ~org-roam~ commands (see ~consult-org-roam--node-preview~). You can suppress them via ~consult-customize~. The package also provides novel commands like ~consult-org-roam-search.~
+
+#+begin_src emacs-lisp
 (use-package! consult-org-roam
   :after org-roam
   :config
-  ;;(consult-customize org-roam-node-find :preview-key "C-SPC")
-
-  ;; (Faster) live preview
   (setq consult-org-roam-grep-func #'consult-ripgrep)
-
-  ;; Advise org-roam-node-read to use consult--read. This package uses
-  ;; live previews by default (consult-org-roam--node-preview), but you
-  ;; can suppress them via consult-customize.
   (consult-org-roam-mode))
+#+end_src
+*** dendroam [0/3]
+Originated as a fork of https://github.com/vicrdguez/dendroam. Hierarchical org-roam notes with a pretty interface and searchable annotations.
 
-;; TODO org-roam links only complete the title, which is a problem for dendroam
-;; since it allows for the same title with different hierarchies. See
-;; `org-roam-link-auto-replace'
-;; TODO org-roam completion only seems to work with trailing brackets, per
-;; doom's global smartparens mode
-;; TODO org-roam seems capable of completing node headings with trailing
-;; brackets, but pcomplete-completions-at-point (the capf provided by org-mode)
-;; is incapable of doing so. To complete with org-mode, you need e.g. "[[*XXX",
-;; where XXX is the name of a heading in the buffer (see
-;; https://orgmode.org/manual/Completion.html).
-
+#+begin_src emacs-lisp
 (add-to-list 'load-path (expand-file-name "libraries" doom-private-dir))
 (autoload #'dendroam-find "dendroam")
 (autoload #'dendroam-find-master-scratch "dendroam")
@@ -937,8 +924,25 @@ Bindings for embark maps used by ~embark-act~.
 (autoload #'dendroam-find-children "dendroam")
 (autoload #'dendroam-find-siblings "dendroam")
 (autoload #'dendroam-find-parent "dendroam")
+
+;; Tags to hide from searchable annotations
+(after! org (setq dendroam-hidden-tags (list org-archive-tag))) ; org-attach-auto-tag
 #+end_src
-*** TODO Custom completion function for org-roam
+**** TODO Custom completion function for dendroam
+org-roam completion operates by org-roam node title, not by dendroam hierarchy. Titles may not be unique but hierarchies are.
+**** TODO Disable org-roam-complete-everywhere?
+Note that org-roam completion only work with trailing brackets present, which are inserted by doom's global smartparens mode. In contrast, but pcomplete-completions-at-point (the capf provided by org-mode) is incapable of doing so. To complete links to headings with org-mode, you need "[[*" (see https://orgmode.org/manual/Completion.html). This requires deleting the closing brackets inserted by smartparens. Additionally, completion for headings is only guaranteed tab is pressed to the right of the star, because once text is typed org-roam node title completion overrides org-mode heading completion if there are any matches. It might be necessary to disable org-roam-complete-everywhere to get heading completions consistently and other types of completion described in the link.
+**** TODO
+*** Bindings
+#+begin_src emacs-lisp
+(after! org-roam
+  (map! :map org-mode-map
+        :localleader
+        :prefix ("m" . "org-roam")
+        "f" #'dendroam-find))
+#+end_src
+*** TODO Many attachment headings don't have :attach: tags
+Finish processing these files and add missing tags
 ** Footnotes
 #+begin_src emacs-lisp
 (setq org-footnote-define-inline nil
@@ -1170,7 +1174,9 @@ For radio lists, ~org-toggle-checkbox~ calls ~org-toggle-radio-button~, which bo
      (apply orig-fun args))))
 #+end_src
 ** Attachments
-When ~org-attach-use-inheritance~ is enabled, org-attach will add attachments to the nearest node with an attachment directory, so you can e.g. add an attachment to an org-roam file from anywhere in the file if none of the above headings have an attachment dir. To create an attachment dir on the current heading, first run ~org-id-get-create~.
+When ~org-attach-use-inheritance~ is enabled, ~org-attach~ will add attachments to the nearest node with an existing attachment directory. This means you can add an attachment to an org-roam file from anywhere in the file if none of the above headings have an attachment dir. To create an attachment dir on the current heading, execute ~org-id-get-create~ once, then run ~org-attach~.
+
+Because ~org-attach-dir~ searches up the entire subtree for a =DIR=, =ATTACH_DIR=, or =ID= property, in that order, when ~org-attach-use-inheritance~ is enabled, an =ID= subheading should not be created underneath e.g. a =DIR= parent heading. In that case, commands like ~org-attach~, ~org-attach-reveal~ and ~org-attach-open~ will always operate on the parent heading.
 
 #+begin_src emacs-lisp
 ;; Attachment directory for my work computer.
@@ -1182,6 +1188,14 @@ When ~org-attach-use-inheritance~ is enabled, org-attach will add attachments to
 ;; file-level properites drawer.
 (advice-add #'org-attach-expand
             :override #'jkroes/org-attach-expand-a)
+
+;; HACK org-attach-dir searches up the entire subtree for a DIR, ATTACH_DIR, or ID
+;; property (in that order) when org-attach-use-inheritance is enabled;
+;; however, org-attach-tag simply adds a tag specified by org-attach-auto-tag
+;; (typically :attach:) to the next heading at or above point. This advice
+;; fixes this behavior so that a tag is only added if the current heading has
+;; an ID property.
+(advice-add #'org-attach-tag :override #'jkroes/org-attach-tag)
 
 ;; Define the `attach' completion category for org-attach-open and associate it
 ;; with an annotation function
@@ -1205,12 +1219,7 @@ When ~org-attach-use-inheritance~ is enabled, org-attach will add attachments to
 ;; org-open-file
 ;; (user-error "No such file: %s" file))
 
-;; NOTE org-attach-dir searches up the subre for DIR, ATTACH_DIR, then ID, in
-;; that order. This means it will skip e.g. any ID-based attachment dirs when
-;; an ancesor has a DIR or ATTACH_DIR-based attachment dir.
-;; org-attach-reveal also skips headings. I think best practice is to use this
-;; to enable attachment links below subheadings, rather than to have multiple
-;; attachment directories within a tree.
+;; Use this to enable attachment links below subheadings
 (defun jkroes/org-attach-expand-a (file)
   "HACK A version of org-attach-expand that actually will look
  through all parent headings until it finds the linked attachment,
@@ -1229,6 +1238,18 @@ When ~org-attach-use-inheritance~ is enabled, org-attach will add attachments to
         (org-roam-up-heading-or-point-min)
         (org-attach-expand file)))))
 
+(defun jkroes/org-attach-tag (&optional off)
+  "Turn the autotag on or (if OFF is set) off."
+  (when org-attach-auto-tag
+    ;; FIXME: There is currently no way to set #+FILETAGS
+    ;; programmatically.  Do nothing when before first heading
+    ;; (attaching to file) to avoid blocking error.
+    (unless (org-before-first-heading-p)
+      (save-excursion
+        (org-back-to-heading t)
+        (when (org-entry-get nil "ID")
+                (org-toggle-tag org-attach-auto-tag (if off 'off 'on)))))))
+
 (defun marginalia-annotate-attachment (cand)
   (marginalia-annotate-file (cdr (embark--expand-attachment nil cand))))
 
@@ -1241,6 +1262,7 @@ When ~org-attach-use-inheritance~ is enabled, org-attach will add attachments to
  full path."
   (with-current-buffer (window-buffer (minibuffer-selected-window))
     (cons 'file (expand-file-name target (org-attach-dir)))))
+
 #+end_src
 ** Source code blocks
 #+begin_src emacs-lisp
@@ -1543,6 +1565,11 @@ If on a:
          (org-cite-follow context arg))
 
         (`headline
+         ;; TODO Use org-attach-dir with org-attach-use-inheritance bound to
+         ;; nil via let, instead of the code below, to find an attachment
+         ;; directory in the current heading. This would enable operating on
+         ;; file-level property drawers too.
+         ;;
          ;; HACK Avoid errors generated by calling org-update-checkbox-count
          ;; or other functions meant to run in an org buffer after switching to
          ;; an attached file
