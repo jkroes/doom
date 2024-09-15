@@ -17,8 +17,18 @@
 
 (defvar dendroam-separator ".")
 
+;; HACK Insert | but display it like a space to avoid orderless interpreting
+;; the arrow as a component that can match in any order. This character is not
+;; likely to be an intentional part of a filename, because it would be
+;; converted to an underscore by org-roam-node-dendroam-slug anyway. The whole
+;; point of hierarchy is that its ordered. Orderless matches are possible with
+;; the same number of keystrokes by inserting a space.
 (defvar dendroam-display-separator
-  (propertize org-eldoc-breadcrumb-separator 'face 'shadow 'rear-nonsticky t))
+  ;; (propertize org-eldoc-breadcrumb-separator 'face 'shadow 'rear-nonsticky t))
+  (concat
+   (propertize "|" 'display " ")
+   (propertize "→" 'face 'shadow 'rear-nonsticky t)
+   (propertize "|" 'display " ")))
 
 (defvar dendroam-hidden-tags
   (list org-archive-tag org-attach-auto-tag))
@@ -83,15 +93,17 @@ except for periods, spaces, and dashes. Additionally replace
 
 (defun my/org-roam-node-read--annotation (node)
   "Replaces org-roam's dummy annotation function for org-roam-node-read"
-  (let ((tags (org-roam-node-dendroam-tags node)))
-    (when tags
-      (concat
-       " :"
-       (mapconcat
-        (lambda (tag)
-          (propertize tag 'face '(:inherit org-tag :box nil)))
-        tags ":")
-       ":"))))
+  (let ((tags (org-roam-node-dendroam-tags node))
+        (type (org-roam-node-doom-type node)))
+    (concat
+     ;; Matches org-modern-tag
+     ;; (mapconcat (lambda (tag) (format " %s" (propertize tag 'face '(:background "#654a39" :foreground "#ffffff")))) tags)
+     (when tags
+       (propertize (format " :%s:" (string-join tags ":"))
+                   'face '(:inherit font-lock-keyword-face)))
+     (when type
+       (propertize (format " @%s" type)
+                   'face 'font-lock-doc-face)))))
 
 (cl-defmethod org-roam-node-dendroam-tags ((node org-roam-node))
   "When this function is used in `org-roam-node-display-template',
@@ -114,8 +126,6 @@ explicitly excluded here. To exclude nodes by tag, see
 (cl-defmethod vertico--setup :before ()
   (setq my-last-minibuffer-command (symbol-name this-command)))
 
-;; NOTE For an alternative implementation: replace ".*" with "^" to match from
-;; the start of the candidate
 (cl-defmethod vertico--format-candidate :around
   (cand prefix suffix index _start
         &context ((not (string-match-p "^dendroam-" my-last-minibuffer-command))
@@ -125,9 +135,14 @@ latter ends with `dendroam-display-separator'. Input can include
 regexp characters. This method is dispatched when the current
 command is part of the dendroam library."
   (let ((parent (dendroam-display-up-hierarchy (car vertico--input))))
+  ;; HACK Un-escape spaces (see `dendroam-insert-display-separator')
+  ;; (let ((parent (dendroam-display-up-hierarchy (string-replace "\\" "" (car vertico--input)))))
     (when (not (string-empty-p parent))
       (setq cand (replace-regexp-in-string
-                  (concat ".*" parent (regexp-quote dendroam-display-separator))
+                  ;; Match anywhere within the candidate
+                  ;; (concat ".*" parent (regexp-quote dendroam-display-separator))
+                  ;; Match from the start of the candidate
+                  (concat "^" parent (regexp-quote dendroam-display-separator))
                   ""
                   cand))))
   (cl-call-next-method cand prefix suffix index _start))
@@ -140,6 +155,10 @@ command is part of the dendroam library."
   (interactive)
   (if (string-match-p "^dendroam-" my-last-minibuffer-command)
       (insert dendroam-display-separator)
+      ;; TODO Would need to redefine vertico-exit or exit-minibuffer to replace
+      ;; escaped spaces with spaces so that they don't interfere with finding nodes
+      ;; HACK Escape spaces so that orderless interprets them as literal spaces
+      ;; (insert (string-replace " " "\\ " dendroam-display-separator))
     (call-interactively #'self-insert-command)))
 
 ;; Delete `dendroam-display-separator' preceding point
@@ -187,7 +206,7 @@ command is part of the dendroam library."
   "Find dendroam nodes. These are org-roam nodes, excluding citar
 reference notes."
   (interactive)
-  (org-roam-node-find nil nil (lambda (node) (not (dendroam--citar-note-p node)))))
+  (org-roam-node-find nil nil (lambda (node) (not (or (dendroam--citar-note-p node))))))
 
 (defun dendroam-find-master-scratch ()
   "Create an entry in scratch.org"

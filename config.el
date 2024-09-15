@@ -489,7 +489,6 @@ by passing a PREFIX key."
   (setq org-appear-trigger #'always
         org-appear-delay 0.5))
 
-
 (use-package! org-modern
   :hook ((org-mode . org-modern-mode)
          ;; TODO No image of this is available, and I can't see a difference...
@@ -640,11 +639,63 @@ by passing a PREFIX key."
 
 (setq org-roam-file-exclude-regexp nil) ; (cons ".attach/" org-roam-file-exclude-regexp)
 
+(advice-add #'org-roam-tag-add :override #'jkroes/org-roam-tag-add)
+
+(defun jkroes/org-roam-tag-add (tags)
+  (interactive
+   (list (let ((crm-separator "[ 	]*:[ 	]*"))
+           (completing-read-multiple "Tag: " (org-roam-tag-completions)))))
+  (let ((node (org-roam-node-at-point 'assert)))
+    (save-excursion
+      (goto-char (org-roam-node-point node))
+      (if (= (org-outline-level) 0)
+          (let ((current-tags (split-string (or (cadr (assoc "FILETAGS"
+                                                             (org-collect-keywords '("filetags"))))
+                                                "")
+                                            ":" 'omit-nulls)))
+            (org-roam-set-keyword "filetags" (org-make-tag-string (seq-uniq (append tags current-tags)))))
+        (org-set-tags (seq-uniq (append tags (org-get-tags nil t)))))
+      tags)))
+
 (use-package! consult-org-roam
   :after org-roam
+  :init
+  ;; BUG https://github.com/jgru/consult-org-roam/issues/32. Vertico sorting is
+  ;; only active if consult-org-roam-mode is disabled or enabled in tandem with
+  ;; this advice.
+  (advice-add #'consult-org-roam-node-read
+              :override #'jkroes/consult-org-roam-node-read)
   :config
   (setq consult-org-roam-grep-func #'consult-ripgrep)
   (consult-org-roam-mode))
+
+(defun jkroes/consult-org-roam-node-read (&optional initial-input filter-fn sort-fn
+                                     require-match prompt)
+  (let* ((nodes (org-roam-node-read--completions filter-fn sort-fn)) ;;
+         (prompt (or prompt "Node: "))
+         ;; Sets state-func only when there are nodes to avoid errors
+         ;; with empty roam-dirs
+         (state-func (when nodes
+                       (consult-org-roam--node-preview)))
+         (node
+          (consult--read
+           nodes
+           :prompt prompt
+           :initial initial-input
+           ;; HACK Enabling sorting here allows the user to override sorting
+           ;; via vertico-multiform when consult-org-roam-mode is enabled
+           :sort t
+           :require-match require-match
+           :category 'org-roam-node
+           ;;:history 'org-roam-node-history
+           :state state-func
+           :annotate (lambda (title)
+                       (funcall org-roam-node-annotation-function
+                                (get-text-property 0 'node title)))
+           ;; Uses the DEFAULT argument of alist-get to return input in case the input is not found as key.
+           :lookup (lambda (selected candidates input narrow) (alist-get selected candidates input nil #'equal)))))
+    (if (org-roam-node-p node) (progn node)
+      (progn (org-roam-node-create :title node)))))
 
 (add-to-list 'load-path (expand-file-name "libraries" doom-private-dir))
 (autoload #'dendroam-find "dendroam")
@@ -655,8 +706,13 @@ by passing a PREFIX key."
 (autoload #'dendroam-find-siblings "dendroam")
 (autoload #'dendroam-find-parent "dendroam")
 
-;; Tags to hide from searchable annotations
-(after! org (setq dendroam-hidden-tags (list org-archive-tag))) ; org-attach-auto-tag
+;; See the definition of `org-roam-node-dendroam-tags'
+(setq dendroam-hidden-tags nil)
+
+;; Sort nodes alphabetically
+(after! vertico-multiform
+  (add-to-list 'vertico-multiform-commands
+               '(dendroam-find (vertico-sort-function . vertico-sort-alpha))))
 
 (after! org-roam
   (map! :map org-mode-map
@@ -830,44 +886,18 @@ heading"
                   (not (= numerator denominator)))
              (org-todo "TODO"))))))
 
-(advice-add
- #'org-toggle-radio-button :around
- (lambda (orig-fun &rest args)
-   (cl-letf (((symbol-function 'org-update-checkbox-count-maybe)
-              #'ignore))
-     (apply orig-fun args))))
+(advice-add #'org-toggle-radio-button
+            :around (lambda (orig-fun &rest args)
+                      (cl-letf (((symbol-function 'org-update-checkbox-count-maybe)
+                                 #'ignore))
+                        (apply orig-fun args))))
 
 ;; Attachment directory for my work computer.
 (when IS-WSL
   (setq org-attach-id-dir
         "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation (1)/org-attach"))
 
-;; Resolve attachment links by walking up the entire subtree, then in the
-;; file-level properites drawer.
-(advice-add #'org-attach-expand
-            :override #'jkroes/org-attach-expand-a)
-
-;; HACK org-attach-dir searches up the entire subtree for a DIR, ATTACH_DIR, or ID
-;; property (in that order) when org-attach-use-inheritance is enabled;
-;; however, org-attach-tag simply adds a tag specified by org-attach-auto-tag
-;; (typically :attach:) to the next heading at or above point. This advice
-;; fixes this behavior so that a tag is only added if the current heading has
-;; an ID property.
-(advice-add #'org-attach-tag :override #'jkroes/org-attach-tag)
-
-;; Define the `attach' completion category for org-attach-open and associate it
-;; with an annotation function
-(after! marginalia
-  (add-to-list 'marginalia-command-categories
-               '(org-attach-open . attach))
-  (add-to-list 'marginalia-annotator-registry
-               '(attach marginalia-annotate-attachment builtin none)))
-
-;; Transform the `attach' completion category to `file', so that we can execute
-;; actions from `embark-file-map' on attachments.
-(after! embark
-  (add-to-list 'embark-transformer-alist
-               '(attach . embark--expand-attachment)))
+(advice-add #'org-attach-expand :override #'jkroes/org-attach-expand-a)
 
 ;; Stack trace when following attachment links:
 ;; org-open-at-point
@@ -896,6 +926,8 @@ heading"
         (org-roam-up-heading-or-point-min)
         (org-attach-expand file)))))
 
+(advice-add #'org-attach-tag :override #'jkroes/org-attach-tag)
+
 (defun jkroes/org-attach-tag (&optional off)
   "Turn the autotag on or (if OFF is set) off."
   (when org-attach-auto-tag
@@ -908,8 +940,18 @@ heading"
         (when (org-entry-get nil "ID")
                 (org-toggle-tag org-attach-auto-tag (if off 'off 'on)))))))
 
+(after! marginalia
+  (add-to-list 'marginalia-command-categories
+               '(org-attach-open . attach))
+  (add-to-list 'marginalia-annotator-registry
+               '(attach marginalia-annotate-attachment builtin none)))
+
 (defun marginalia-annotate-attachment (cand)
   (marginalia-annotate-file (cdr (embark--expand-attachment nil cand))))
+
+(after! embark
+  (add-to-list 'embark-transformer-alist '(attach . embark--expand-attachment))
+  (add-to-list 'embark-transformer-alist '(org-roam-node . embark--org-roam-node-file)))
 
 (defun embark--expand-attachment (_ target)
   "Transform marginalia category from `attach' to `file' and
@@ -920,6 +962,11 @@ heading"
  full path."
   (with-current-buffer (window-buffer (minibuffer-selected-window))
     (cons 'file (expand-file-name target (org-attach-dir)))))
+
+(defun embark--org-roam-node-file (x target)
+  "Transform marginalia category from `org-roam-node' to `file' and
+ convert target to filepath."
+  (cons 'file (org-roam-node-file (get-text-property 0 'node target))))
 
 ;; BUG Large code blocks can slow down `org-cycle-global' noticeably when
 ;; code block native fontification is enabled. Disable this if you notice an
@@ -1174,7 +1221,6 @@ without folding any headings."
   (evil-normal-state))
 
 (autoload 'ffap-string-at-point "ffap")
-
 (defun jkroes/org-dwim-at-point (&optional arg)
   "Do-what-I-mean at point.
 
