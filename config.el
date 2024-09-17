@@ -290,6 +290,24 @@ up the binding in the active keymaps."
 (map! "M-h" (lambda () (interactive) (evil-scroll-column-left 40))
       "M-l" (lambda () (interactive) (evil-scroll-column-right 40)))
 
+;; HACK vertico changes the behavior of the ~completing-read~ argument
+;; ~require-match~ when it is a function. If the function returns nil, the
+;; minibuffer should not exit even if the input matches a completion candidate.
+;; This hack fixes that behavior. If you encounter issues with completing in
+;; other commands, make sure this hack is not the source.
+(advice-add #'vertico--match-p :override #'jkroes/vertico--match-p)
+
+(defun jkroes/vertico--match-p (input)
+  "Return t if INPUT is a valid match."
+  (let ((rm minibuffer--require-match))
+    (or (memq rm '(nil confirm-after-completion))
+        (equal "" input) ;; Null completion, returns default value
+        (if (functionp rm)
+            (funcall rm input) ;; Emacs 29 supports functions
+          (test-completion input minibuffer-completion-table minibuffer-completion-predicate))
+        (if (eq rm 'confirm) (eq (ignore-errors (read-char "Confirm")) 13)
+          (minibuffer-message "Match required") nil))))
+
 (when (featurep :system 'macos)
   (setq consult-locate-args "mdfind"))
 
@@ -637,7 +655,21 @@ by passing a PREFIX key."
 ;;   :hook (org-agenda-mode . org-fancy-priorities-mode)
 ;;   :config (setq org-fancy-priorities-list '("⚑" "⬆" "■")))
 
-(setq org-roam-file-exclude-regexp nil) ; (cons ".attach/" org-roam-file-exclude-regexp)
+;; A list of regular expressions matching paths to exclude from org-roam. Any
+;; files or directories to exclude must be relative to `org-roam-directory',
+;; per the definition of `org-roam-file-p'; this isn't documented, and
+;; org-roam's default value for this is wrong: the absolute path to
+;; `org-attach-id-dir'.
+(setq org-roam-file-exclude-regexp nil)
+
+;; A predicate function that determines valid nodes for org-roam
+(setq org-roam-db-node-include-function #'jkroes/org-roam-include-nodes)
+
+(defun jkroes/org-roam-include-nodes ()
+  ;; Exclude attachment headings unless there is another reason to keep them,
+  ;; such as a ROAM_REFS property
+  (not (and (member org-attach-auto-tag (org-get-tags))
+            (not (org-entry-get nil "roam_refs" nil)))))
 
 (advice-add #'org-roam-tag-add :override #'jkroes/org-roam-tag-add)
 

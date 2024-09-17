@@ -25,7 +25,8 @@ brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-n
 * Todo list [0/5]
 ** TODO Resolve the todo comment within jkroes/org-dwim-at-point
 ** TODO Move this list to a project-level todos file?
-** TODO Command bindings [0/18]
+** TODO Command bindings [0/19]
+- [ ] alt-dendroam-open-note
 - [ ] consult-org-roam-search
 - [ ] consult-yank-pop (M-y in normal state)
 - [ ] doom/copy-module-to-private
@@ -42,6 +43,7 @@ brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-n
 - [ ] org-toggle-ordered-property
 - [ ] org-update-statistics-cookies
 - [ ] delete-empty-org-attach-id-dirs
+  - Compare this to org-attach-sync with org-attach-sync-delete-empty-dir
 - [ ] consult-org-roam-search
 - [ ] consult-org-roam-forward-links (like ffap-menu for links to nodes)
 ** TODO Code reorganization [0/14]
@@ -60,13 +62,13 @@ brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-n
 - [ ] Rename user functions/commands
 - [ ] Convert all of my defadvice! to advice-add
 ** TODO Bugs and Features [0/19]
+- [ ] Set up citar and citar-org-roam
 - Tags
   - [ ] Set up tag hierarchy
     - [ ] E.g., git should be a child of shell, and none of the git-tagged files should have an explicit shell tag
-  - [ ] Re-tag all files and headings with ref if they have ROAM_REFS
-  - [ ] Advise org-roam-ref-add and rog-roam-ref-remove to add and remove the ref tag
 - [ ] Make +default/search-buffer more like consult-org-roam-search in that it does not show text properties in the search results, which is an issue of readability for org buffers
 - [ ] Set up org-capture as a journal. Insert a date heading for each day.
+  - [ ] Is this still necessary given the scratch file?
 - [ ] +org/dwim toggles between TODO and CHOSEN on a heading
 - [ ] If you $ to the end of a folded heading, the first tab folds the bottommost block, the second cycles. That's why blocks seem randomly folded. Find a way to keep cursor off of the end.
 - [ ] org-list-indent-item-generic leads to cookies in headings where they aren't necessary (e.g. plain lists without checkboxes). This seems to be caused by evil-move-beyond-eol.
@@ -428,6 +430,28 @@ The global keybindings are too easy to hit and aren't necessary with evil
       "M-l" (lambda () (interactive) (evil-scroll-column-right 40)))
 #+end_src
 * modules/completion/vertico
+** vertico
+#+begin_src emacs-lisp
+;; HACK vertico changes the behavior of the ~completing-read~ argument
+;; ~require-match~ when it is a function. If the function returns nil, the
+;; minibuffer should not exit even if the input matches a completion candidate.
+;; This hack fixes that behavior. If you encounter issues with completing in
+;; other commands, make sure this hack is not the source.
+(advice-add #'vertico--match-p :override #'jkroes/vertico--match-p)
+
+(defun jkroes/vertico--match-p (input)
+  "Return t if INPUT is a valid match."
+  (let ((rm minibuffer--require-match))
+    (or (memq rm '(nil confirm-after-completion))
+        (equal "" input) ;; Null completion, returns default value
+        (if (functionp rm)
+            (funcall rm input) ;; Emacs 29 supports functions
+          (test-completion input minibuffer-completion-table minibuffer-completion-predicate))
+        (if (eq rm 'confirm) (eq (ignore-errors (read-char "Confirm")) 13)
+          (minibuffer-message "Match required") nil))))
+#+end_src
+*** TODO Remove this advice once you update vertico's commit
+I checked the most recent commit on 9/16/24, and it verbtaim replicates my hack. I implemented the hack on the version of vertico in Doom, but Doom is often not up to date.
 ** consult
 Use Spotlight as the backend for locate on macOS
 
@@ -888,24 +912,25 @@ Bindings for embark maps used by ~embark-act~.
 ;;   :config (setq org-fancy-priorities-list '("⚑" "⬆" "■")))
 #+end_src
 ** roam  [0/2]
-Any files or directories to exclude must be relative to ~org-roam-directory~, per the definition of ~org-roam-file-p~; this isn't documented, and org-roam's default value for this is the absolute path to ~org-attach-id-dir~.
+Files to exclude from, and nodes for inclusion by, org-roam. After changing these settings, run ~org-roam-db-clear-all~ and ~org-roam-db-sync~. Compare this to dendroam's strategy of filtering out certain nodes from the candidates to ~org-roam-node-insert~ and ~org-roam-node-find~ (see ~dendroam-insert~ and ~dendroam-find~). This permits us to continue using ~org-roam-ref-find~ and related commands with headings without cluttering the minibuffer completion candidates for non-ref org-roam commands.
 
 #+begin_src emacs-lisp
-(setq org-roam-file-exclude-regexp nil) ; (cons ".attach/" org-roam-file-exclude-regexp)
-#+end_src
+;; A list of regular expressions matching paths to exclude from org-roam. Any
+;; files or directories to exclude must be relative to `org-roam-directory',
+;; per the definition of `org-roam-file-p'; this isn't documented, and
+;; org-roam's default value for this is wrong: the absolute path to
+;; `org-attach-id-dir'.
+(setq org-roam-file-exclude-regexp nil)
 
-Certain tags indicate headings that should not count as org-roam nodes, despite having an =ID= property. If this isn't working, try running ~org-roam-db-clear-all~,then ~org-roam-db-sync~.
+;; A predicate function that determines valid nodes for org-roam
+(setq org-roam-db-node-include-function #'jkroes/org-roam-include-nodes)
 
-#+begin_src emacs-lisp :tangle no
-(defvar org-roam-excluded-tags
-  (list (bound-and-true-p org-archive-tag)
-        (bound-and-true-p org-attach-auto-tag)))
+(defun jkroes/org-roam-include-nodes ()
+  ;; Exclude attachment headings unless there is another reason to keep them,
+  ;; such as a ROAM_REFS property
+  (not (and (member org-attach-auto-tag (org-get-tags))
+            (not (org-entry-get nil "roam_refs" nil)))))
 
-(setq org-roam-db-node-include-function
-      (lambda ()
-        (not (-any (lambda (tag)
-                     (member tag (org-get-tags nil)))
-                   org-roam-excluded-tags))))
 #+end_src
 
 There's no need to add inherited tags directly to a heading when setting tags via org-roam.
@@ -929,7 +954,6 @@ There's no need to add inherited tags directly to a heading when setting tags vi
         (org-set-tags (seq-uniq (append tags (org-get-tags nil t)))))
       tags)))
 #+end_src
-
 
 This mode advises ~org-roam-node-read~ to use ~consult--read~, which adds live previews to ~org-roam~ commands (see ~consult-org-roam--node-preview~). You can suppress them via ~consult-customize~. The package also provides novel commands like ~consult-org-roam-search.~
 
@@ -1009,8 +1033,6 @@ Note that org-roam completion only work with trailing brackets present, which ar
 #+end_src
 *** TODO Many attachment headings don't have :attach: tags
 Finish processing these files and add missing tags
-*** TODO Omit references/ subfolder from node candidates but make it accessible through citar(-org-roam)
-See org-roam-db-node-include-function
 ** Footnotes
 #+begin_src emacs-lisp
 (setq org-footnote-define-inline nil

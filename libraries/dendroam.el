@@ -2,6 +2,12 @@
 
 ;; This code is based on https://github.com/vicrdguez/dendroam/blob/main/dendroam.el
 
+;; A decision was made to model the hierarchy via filename instead of
+;; subdirectories because a node anywhere in the hierarchy can be a note. If
+;; directories are used, then to mimic this behavior, a note would be needed
+;; with the same name as each subdirectory. Relying solely on filepath
+;; simplifies the logic a bit.
+
 ;; Functions defined via cl-defgeneric, as in vertico.el, can be extended
 ;; through cl-defmethod, similar to how advice works. See:
 ;; - https://github.com/minad/vertico/wiki
@@ -94,6 +100,8 @@ except for periods, spaces, and dashes. Additionally replace
 (defun my/org-roam-node-read--annotation (node)
   "Replaces org-roam's dummy annotation function for org-roam-node-read"
   (let ((tags (org-roam-node-dendroam-tags node))
+        ;; TODO Delete this once you finish processing notes in subdirectories
+        ;; like reorg/ and delete those subdirectories
         (type (org-roam-node-doom-type node)))
     (concat
      ;; Matches org-modern-tag
@@ -202,11 +210,24 @@ command is part of the dendroam library."
 
 ;;; Capturing nodes from anywhere ------------------------------------------------
 
+(defun dendroam-insert ()
+  "Insert dendroam nodes. These are org-roam nodes, excluding citar
+reference files and heading nodes."
+  (interactive)
+  (org-roam-node-insert
+   (lambda (node)
+     (not (or (dendroam--citar-note-p node)
+              (dendroam--heading-p node))))))
+
 (defun dendroam-find ()
   "Find dendroam nodes. These are org-roam nodes, excluding citar
-reference notes."
+reference files and heading nodes."
   (interactive)
-  (org-roam-node-find nil nil (lambda (node) (not (or (dendroam--citar-note-p node))))))
+  (org-roam-node-find
+   nil nil
+   (lambda (node)
+     (not (or (dendroam--citar-note-p node)
+              (dendroam--heading-p node))))))
 
 (defun dendroam-find-master-scratch ()
   "Create an entry in scratch.org"
@@ -245,7 +266,7 @@ input defaults to the current node."
                          (when (org-roam-file-p (buffer-file-name))
                            (org-roam-node-dendroam-display-hierarchy
                             (org-roam-node-at-point)))
-                         #'dendroam--exclude-nodes
+                         #'dendroam--basic-node-p
                          #'dendroam-sort-by-display-hierarchy
                          t))
          ;; Filename should be used instead of the hierarchy here
@@ -373,8 +394,8 @@ This is a convenience function that skips a prompt."
 (defun dendroam-display-up-hierarchy (hierarchy)
   (dendroam-display-join (butlast (dendroam-display-split hierarchy))))
 
-(defun dendroam--exclude-nodes (node)
-  "Scrath and meeting nodes should only be made on normal dendroam
+(defun dendroam--basic-node-p (node)
+  "Scrath and meeting nodes should only be made on basic dendroam
 notes, not other meeting, scratch, or reference notes."
   (not (or (dendroam--meeting-note-p node)
            (dendroam--scratch-note-p node)
@@ -395,6 +416,9 @@ notes, not other meeting, scratch, or reference notes."
   (string=
    (directory-file-name (file-name-directory (org-roam-node-file node)))
    (file-name-concat org-roam-directory citar-org-roam-subdir)))
+
+(cl-defmethod dendroam--heading-p ((node org-roam-node))
+  (> (org-roam-node-level node) 0))
 
 (defun dendroam-sort-by-display-hierarchy (completion-a completion-b)
   (let ((node-a (cdr completion-a))
