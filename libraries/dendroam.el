@@ -26,15 +26,14 @@
 ;; HACK Insert | but display it like a space to avoid orderless interpreting
 ;; the arrow as a component that can match in any order. This character is not
 ;; likely to be an intentional part of a filename, because it would be
-;; converted to an underscore by org-roam-node-dendroam-slug anyway. The whole
-;; point of hierarchy is that its ordered. Orderless matches are possible with
-;; the same number of keystrokes by inserting a space.
+;; converted to an underscore by org-roam-node-dendroam-slug anyway. It is also
+;; not a regexp component. The whole point of hierarchy is that its ordered.
+;; Orderless matches are possible with the same number of keystrokes by
+;; inserting a space.
 (defvar dendroam-display-separator
-  ;; (propertize org-eldoc-breadcrumb-separator 'face 'shadow 'rear-nonsticky t))
-  (concat
-   (propertize "|" 'display " ")
-   (propertize "→" 'face 'shadow 'rear-nonsticky t)
-   (propertize "|" 'display " ")))
+  (concat (propertize "|" 'display " ")
+          (propertize "→" 'face 'shadow 'rear-nonsticky t)
+          (propertize "|" 'display " ")))
 
 (defvar dendroam-hidden-tags
   (list org-archive-tag org-attach-auto-tag))
@@ -148,8 +147,6 @@ command is part of the dendroam library."
   ;; (let ((parent (dendroam-display-up-hierarchy (string-replace "\\" "" (car vertico--input)))))
     (when (not (string-empty-p parent))
       (setq cand (replace-regexp-in-string
-                  ;; Match anywhere within the candidate
-                  ;; (concat ".*" parent (regexp-quote dendroam-display-separator))
                   ;; Match from the start of the candidate
                   (concat "^" parent (regexp-quote dendroam-display-separator))
                   ""
