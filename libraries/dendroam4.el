@@ -16,8 +16,8 @@
          (filename (alt-dendroam--expand selection)))
     (find-file filename)))
 
-(defvar alt-dendroam--intermediate-note-face font-lock-warning-face)
-(defvar alt-dendroam--final-note-face font-lock-preprocessor-face)
+(defvar alt-dendroam--intermediate-non-note-face font-lock-warning-face)
+(defvar alt-dendroam--intermediate-note-face font-lock-preprocessor-face)
 
 (defun alt-dendroam--parse-filename-hierarchy-tree (directory)
   "Parse period-separated filenames in DIRECTORY into an alist hierarchy-tree.
@@ -34,9 +34,11 @@ and the file extension is removed before processing."
         ;; Propertize the last component of each name
         (if (seq-filter (lambda (other) (string-prefix-p name other)) (remove name names))
             (setcar (last components)
-                    (propertize (car (last components)) 'face alt-dendroam--intermediate-note-face))
-          (setcar (last components)
-                  (propertize (car (last components)) 'face alt-dendroam--final-note-face)))
+                    (propertize (car (last components)) 'face alt-dendroam--intermediate-non-note-face))
+          (setq components
+                (append (mapcar (lambda (comp) (propertize comp 'face alt-dendroam--intermediate-note-face))
+                                (butlast components))
+                        (last components))))
         (setq hierarchy-tree (alt-dendroam--insert-into-alist components hierarchy-tree))))
     hierarchy-tree))
 

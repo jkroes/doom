@@ -25,8 +25,10 @@ brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-n
 * Todo list [0/5]
 ** TODO Resolve the todo comment within jkroes/org-dwim-at-point
 ** TODO Move this list to a project-level todos file?
-** TODO Command bindings [0/19]
+** TODO Command bindings [0/21]
 - [ ] alt-dendroam-open-note
+- [ ] org-roam-db-sync
+- [ ] org-roam-clear-all
 - [ ] consult-org-roam-search
 - [ ] consult-yank-pop (M-y in normal state)
 - [ ] doom/copy-module-to-private
