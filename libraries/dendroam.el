@@ -95,6 +95,7 @@ except for periods, spaces, and dashes. Additionally replace
 
 ;;; Annotations (searchable tags) ------------------------------------------------
 
+;; Annotation function for completion category org-roam-node (see org-roam-node-read)
 (setq org-roam-node-annotation-function #'my/org-roam-node-read--annotation)
 
 (defun my/org-roam-node-read--annotation (node)
@@ -465,7 +466,8 @@ and the file extension is removed before processing."
     (dolist (name names)
       (let ((components (dendroam-split name)))
         ;; Propertize the last component of each name
-        (if (seq-filter (lambda (other) (string-prefix-p name other)) (remove name names))
+        (if (seq-filter (lambda (other) (string-prefix-p (concat name dendroam-separator) other))
+                        (remove name names))
             (setcar (last components)
                     (propertize (car (last components)) 'face dendroam--intermediate-non-note-face))
           (setq components
@@ -505,7 +507,23 @@ Return the updated TREE."
                       (lambda (cand)
                         (string-join (append traversed-components (list cand)) dendroam-display-separator))
                       candidates))
-    (complete-with-action action candidates input predicate)))
+    (cond ((eq action 'metadata)
+           `(metadata
+             (annotation-function . dendroam--open-note-annotation)))
+          ;; Handles the remaining actions
+          (t (complete-with-action action candidates input predicate)))))
+
+(defun dendroam--open-note-annotation (input)
+  "Annotate component with the number of child components"
+  (let* ((components (split-string input dendroam-display-separator t))
+         (node dendroam-hierarchy-tree)
+         nchild)
+    (dolist (comp components)
+      (setq node (assoc comp node)))
+    (setq nchild (length (mapcar #'car (cdr node))))
+    (if (= 0 nchild)
+        nil
+      (propertize (format " %s" nchild) 'face font-lock-doc-face))))
 
 (defun dendroam--file-p (input)
   (let ((filename (dendroam--expand input)))
