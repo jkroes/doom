@@ -232,10 +232,12 @@ reference files and heading nodes."
   (interactive)
   (org-roam-capture-
    :node (org-roam-node-create :title "")
-   :templates '(("s" "scratch" entry "* %<%Y-%m-%d.%H:%M:%S>\n%?"
+   :templates '(("s" "scratch" entry "* %<%Y-%m-%d.%H:%M:%S>\n"
                  :target (file+head "scratch.org" "#+title: scratch\n\n")
                  :prepend t
-                 :empty-lines-after 1))))
+                 ;;:empty-lines-after 1
+                 :immediate-finish t
+                 :jump-to-captured t))))
 
 
 (defun dendroam-find-scratch ()
@@ -244,9 +246,11 @@ selected node. Initial input defaults to the current node."
   (interactive)
   (dendroam--find
    "scratch"
-   '("s" "scratch" entry "* %<%Y-%m-%d.%H:%M:%S>\n%?"
+   '("s" "scratch" entry "* %<%Y-%m-%d.%H:%M:%S>\n"
      :prepend t
-     :empty-lines-after 1)))
+     ;;:empty-lines-after 1
+     :immediate-finish t
+     :jump-to-captured t)))
 
 (defun dendroam-find-meeting ()
   "Create a meeting file derived from the selected node. Initial
