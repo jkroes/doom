@@ -609,14 +609,16 @@
        (:when (modulep! :lang org +noter)
         :desc "Org noter"                  "e" #'org-noter)
 
-       :desc "Find child node"          "c" #'dendroam-find-children
        :desc "Find node"                "f" #'dendroam-find
-       :desc "Find ref"                 "F" #'org-roam-ref-find
        :desc "Insert link to node"      "i" #'org-roam-node-insert
-       :desc "Toggle backlinks buffer"  "l" #'org-roam-buffer-toggle
+       :desc "Find related nodes"       "h" #'dendroam-find-siblings
+       :desc "Find child node"          "j" #'dendroam-find-children
+       :desc "Find parent node"         "k" #'dendroam-find-parent
+       :desc "Find related nodes"       "l" #'dendroam-find-siblings
        :desc "Find meeting node"        "m" #'dendroam-find-meeting
-       :desc "Find parent node"         "p" #'dendroam-find-parent
-       :desc "Find related nodes"       "r" #'dendroam-find-siblings
+       :desc "Find node"                "o" #'alt-dendroam-open-note
+       :desc "Find ref"                 "r" #'org-roam-ref-find
+       :desc "Toggle backlinks buffer"  "t" #'org-roam-buffer-toggle
        :desc "Find master scratch node" "x" #'dendroam-find-master-scratch
        :desc "Find scratch node"        "X" #'dendroam-find-scratch
        ;;:desc "Rename node"              "r" #'dendroam-rename-note

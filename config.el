@@ -737,6 +737,7 @@ by passing a PREFIX key."
 (autoload #'dendroam-find-children "dendroam")
 (autoload #'dendroam-find-siblings "dendroam")
 (autoload #'dendroam-find-parent "dendroam")
+(autoload #'alt-dendroam-open-note "dendroam")
 
 ;; See the definition of `org-roam-node-dendroam-tags'
 (setq dendroam-hidden-tags nil)

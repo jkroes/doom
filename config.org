@@ -26,7 +26,6 @@ brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-n
 ** TODO Resolve the todo comment within jkroes/org-dwim-at-point
 ** TODO Move this list to a project-level todos file?
 ** TODO Command bindings [0/21]
-- [ ] alt-dendroam-open-note
 - [ ] org-roam-db-sync
 - [ ] org-roam-clear-all
 - [ ] consult-org-roam-search
@@ -1012,6 +1011,7 @@ Originated as a fork of https://github.com/vicrdguez/dendroam. Hierarchical org-
 (autoload #'dendroam-find-children "dendroam")
 (autoload #'dendroam-find-siblings "dendroam")
 (autoload #'dendroam-find-parent "dendroam")
+(autoload #'alt-dendroam-open-note "dendroam")
 
 ;; See the definition of `org-roam-node-dendroam-tags'
 (setq dendroam-hidden-tags nil)
