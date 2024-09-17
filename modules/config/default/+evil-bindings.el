@@ -616,7 +616,7 @@
        :desc "Find parent node"         "k" #'dendroam-find-parent
        :desc "Find related nodes"       "l" #'dendroam-find-siblings
        :desc "Find meeting node"        "m" #'dendroam-find-meeting
-       :desc "Find node"                "o" #'alt-dendroam-open-note
+       :desc "Find node"                "o" #'dendroam-open-note
        :desc "Find ref"                 "r" #'org-roam-ref-find
        :desc "Toggle backlinks buffer"  "t" #'org-roam-buffer-toggle
        :desc "Find master scratch node" "x" #'dendroam-find-master-scratch
