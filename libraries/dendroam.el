@@ -157,7 +157,7 @@ command is part of the dendroam library."
 
 ;; Insert `dendroam-display-separator' when typing `dendroam-separator'
 
-(map! :map vertico-map "." #'dendroam-insert-display-separator)
+(map! :map vertico-map dendroam-separator #'dendroam-insert-display-separator)
 
 (defun dendroam-insert-display-separator ()
   (interactive)
