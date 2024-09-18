@@ -66,6 +66,11 @@
 ;; Don't download any snippets until the bug is fixed
 (package! doom-snippets :ignore t)
 
+;; Workplace has blocked gitlab, so installation of packages whose recipes
+;; specify gitlab blocks doom sync/install.
+(package! shrink-path :recipe (:host github :repo "zbelial/shrink-path.el"))
+(package! gcmh :recipe (:host github :repo "emacsmirror/gcmh"))
+
 ;;; Pre-8/20/24
 
 ;; (package! benchmark-init)

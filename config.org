@@ -2,30 +2,53 @@
 :LOGGING:  nil
 :END:
 #+title: config.org
-#+startup: hideblocks
 
-* Notes on this file
+* Notes
+** About this file
 Instead of commenting out source code, code blocks may be disabled via ~:tangle no~
-* Installation
+** Installation [0/0]
 The current Doom commit is =bf330b405d73757b314cc70e16ce991d2bbd9cc5=.
 
 Place the following in =~/.config/emacs/early-init.el= to echo file loading on startup:
 #+begin_src emacs-lisp :tangle no
 (setq force-load-messages t)
 #+end_src
-** MacOS
+*** MacOS
 #+begin_src sh
 brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-native-comp
 #+end_src
-** TODO WSL (Ubuntu 20.04)
-* File local variables
-#+begin_src emacs-lisp
-;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+*** WSL (Ubuntu 20.04)
+#+begin_src sh
+# For native compilation
+sudo apt-get install build-essential gcc
+gcc --version
+sudo apt-get install libgccjit-9-dev # change this to match gcc --version
+
+# For imagemagick
+sudo apt-get install libmagickwand-dev libmagickcore-dev
+
+# For tree-sitter
+git clone https://github.com/tree-sitter/tree-sitter
+cd tree-sitter
+make make install
+
+# Install emacs
+wget -c https://gnu.mirror.constant.com/emacs/emacs-29.4.tar.gz
+tar -xzvf emacs-29.4.tar.gz
+cd emacs-29.4
+mkdir build && cd build
+# --with-tree-sitter should not be necessary if tree-sitter is installedgit branc
+../configure --with-native-compilation --with-imagemagick
+make -j $(nproc)
+sudo make -j $(nrpoc) install
+
+# Uninstall emacs
+cd ~/emacs-29.4/build
+sudo make uninstall
 #+end_src
-* Todo list [0/5]
-** TODO Resolve the todo comment within jkroes/org-dwim-at-point
-** TODO Move this list to a project-level todos file?
-** TODO Command bindings [0/23]
+** Todo list [0/4]
+*** TODO Move this list to a project-level todos file?
+*** TODO Command bindings [0/23]
 - [ ] citar-*
 - [ ] citar-org-roam-ref-add
 - [ ] modi/org-in-any-block-p
@@ -50,7 +73,7 @@ brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-n
   - Compare this to org-attach-sync with org-attach-sync-delete-empty-dir
 - [ ] consult-org-roam-search
 - [ ] consult-org-roam-forward-links (like ffap-menu for links to nodes)
-** TODO Code reorganization [0/14]
+*** TODO Code reorganization [0/14]
 - [ ] Finish configuring evil module, org-modern
 - [ ] Uncomment and test modifications to embark and marginalia related to org-attach (see marginalia's use-package form)
 - [ ] Process and delete
@@ -65,7 +88,7 @@ brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-n
   - [ ] Functions that are called right away should be part of this file or the module's non-autoload files
 - [ ] Rename user functions/commands
 - [ ] Convert all of my defadvice! to advice-add
-** TODO Bugs and Features [1/20]
+*** TODO Bugs and Features [1/20]
 - [X] Indenting and outdenting for plain list items adds a stats cookie to heading. It should not.
 - [ ] Set up citar and citar-org-roam
 - Tags
@@ -87,6 +110,10 @@ brew install emacs-plus@29 --with-ctags --with-debug --with-imagemagick --with-n
 - [ ] Look into kind-icon for corfu or nerd-icons-corfu
 - [ ] Test built-in corfu + lsp integration
 - [ ] Syntax highlighting still not rendering when you visit e.g. config.org if point was over a src block when you last exited the buffer or emacs. See https://github.com/minad/org-modern/discussions/218. See if it goes away when you scroll far enough.
+* File local variables
+#+begin_src emacs-lisp
+;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+#+end_src
 * Operating system
 #+begin_src emacs-lisp
 ;; Treat command key like control
@@ -216,8 +243,12 @@ See [[file:modules/jkroes/theme/]].
 
 #+begin_src emacs-lisp
 (setq doom-theme 'modus-vivendi)
-(setq doom-font (font-spec :family "JuliaMono"
-                           :size (jkroes/startup-font-size)))
+;; TODO On WSL JuliaMono doesn't render org-modern stars, nor does
+;; startup-font-size return a value for the font size
+(setq doom-font
+      (if IS-WSL
+          (font-spec :family "Hack")
+        (font-spec :family "JuliaMono" :size (jkroes/startup-font-size))))
 #+end_src
 ** Line numbers
 Configure display-line-numbers-mode for modes where it is enabled.
@@ -1450,9 +1481,6 @@ This function is heavily adapted from `org-between-regexps-p'."
 ;; input, rather than launching dired.
 (add-to-list 'find-directory-functions #'jkroes/not-dired)
 
-;; TODO Test that this opens pptx, pdf, docx, etc., in Windows when Emacs is
-;; running on WSL when org-open-at-point and org-attach-open are invoked. If
-;; it does, delete the commented code below
 (setq org-file-apps
       '(("\\.pptx?\\'" . system)
         ("\\.pdf?\\'" . system)
@@ -1729,26 +1757,20 @@ If on a:
       (pcase type
         ((or `citation `citation-reference)
          (org-cite-follow context arg))
-
+        ;; HACK To enable marginalia annotations (and embark-act, which
+        ;; relies on the metadata marginalia sets), we either need to
+        ;; bind this-command to org-attach-open or call it with
+        ;; execute-extended-command
+        (`property-drawer
+           (cond ((let (org-attach-use-inheritance) (org-attach-dir))
+                  (let ((this-command #'org-attach-open)) (org-attach-open)))))
         (`headline
-         ;; TODO Use org-attach-dir with org-attach-use-inheritance bound to
-         ;; nil via let, instead of the code below, to find an attachment
-         ;; directory in the current heading. This would enable operating on
-         ;; file-level property drawers too.
-         ;;
          ;; HACK Avoid errors generated by calling org-update-checkbox-count
          ;; or other functions meant to run in an org buffer after switching to
          ;; an attached file
          (catch 'attach
-           (cond ((or (member "ATTACH" (org-get-tags nil t))
-                      ;; org-attach-set-directory doesn't use an ATTACH tag
-                      (alist-get "DIR" (org-entry-properties) nil nil #'string=))
-                  ;; HACK To enable marginalia annotations (and embark-act, which
-                  ;; relies on the metadata marginalia sets), we either need to
-                  ;; bind this-command to org-attach-open or call it with
-                  ;; execute-extended-command
-                  (let ((this-command #'org-attach-open))
-                    (org-attach-open))
+           (cond ((let (org-attach-use-inheritance) (org-attach-dir))
+                  (let ((this-command #'org-attach-open)) (org-attach-open))
                   (throw 'attach nil))
                  ((memq (bound-and-true-p org-goto-map)
                         (current-active-maps))
