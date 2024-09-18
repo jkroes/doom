@@ -151,31 +151,6 @@ FILTER: if non-nil, should be a predicate function taking
     ;; Create a new note
     (funcall citar-format-note-function key entry file)))
 
-
-;; Like citar-org-format-note-default without #+print_bibliography and
-;; integrated with org-noter
-(defun citar-org-format-note-no-bib (key entry filepath)
-  (let* ((template (citar-get-template 'note))
-         (note-meta
-          (when template
-            (citar--format-entry-no-widths
-             entry
-             template)))
-         (buffer (find-file filepath)))
-    (with-current-buffer buffer
-      ;; This just overrides other template insertion.
-      (erase-buffer)
-      (citar-org-roam-make-preamble key)
-      (insert "#+title: ")
-      (when template (insert note-meta))
-      (insert "\n\n* Notes")
-      (when (assoc "file" entry)
-        ;; TODO This assumes a single file, but the field may have multiple
-        ;; NOTE: Can't use org-roam-property-add because it enquotes paths
-        ;; with spaces in them, which makes org-noter fail
-        (org-set-property "NOTER_DOCUMENT" (wslify-bib-path (cdr (assoc "file" entry))))))))
-
-
 ;; This works with point anywhere in a roam note
 ;;;###autoload
 (defun org-roam-open-refs ()
@@ -249,8 +224,6 @@ FILTER: if non-nil, should be a predicate function taking
              (expand-file-name file dir)) wsl-files))
         dirs)))))
 
-
-
 ;; NOTE Unlike import-zotero-annotations-from-note, which have Zotero open-pdf
 ;; links, this will insert an absolute filepath. The absolute filepath is useful
 ;; if we need to export the org-mode file to another format. We can copy that
@@ -301,7 +274,3 @@ of current note"
                                                :always-prompt citar-open-prompt))))
       (citar--open-resource (cdr selected) (car selected))
     (error "No associated resources: %s" keys)))
-
-;; NOTE This doesn't seem to work when using citar-org-roam. See the :create
-;; key of citar-org-roam-notes-config.
-(setq citar-note-format-function #'citar-org-format-note-no-bib)

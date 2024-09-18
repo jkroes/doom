@@ -883,41 +883,42 @@ heading"
   ;; (forward-line -1)
   ;; Count must be updated before regexp matching occurs
   (org-update-checkbox-count)
-  (save-excursion
-    (org-back-to-heading t)
-    (let* ((cookie-re "\\[\\([0-9]*\\)/\\([0-9]*\\)\\]")
-           (cookie-end (re-search-forward cookie-re (line-end-position) t))
-           (cookie-beginning (when cookie-end (match-beginning 0)))
-           (numerator (when cookie-end (string-to-number (match-string 1))))
-           (denominator (when cookie-end (string-to-number (match-string 2))))
-           (state (org-get-todo-state)))
-      (cond ((not cookie-end)
-             (org-end-of-line)
-             (insert " [/]")
-             (org-toggle-todo-checkboxes))
-            ;; CHOOSE -> CHOSEN
-            ((and (equal state "CHOOSE")
-                  (= numerator 1))
-             ;; See the definition of `org-enforce-todo-checkbox-dependencies'.
-             ;; This is like setting the property NOBLOCKING for the current
-             ;; heading.
-             (let ((org-blocker-hook
-                    (remove #'org-block-todo-from-checkboxes
-                            org-blocker-hook)))
-               (org-todo "CHOSEN")))
-            ;; CHOSEN -> CHOOSE
-            ((and (equal state "CHOSEN")
-                  (= numerator 0)
-                  (eq this-command #'org-toggle-checkbox))
-             (org-todo "CHOOSE"))
-            ;; TODO, NOW -> DONE
-            ((and (member state jkroes/active-todo-states)
-                  (= numerator denominator))
-             (org-todo "DONE"))
-            ;; DONE -> TODO
-            ((and (equal state "DONE")
-                  (not (= numerator denominator)))
-             (org-todo "TODO"))))))
+  (let ((at-checkbox? (org-at-item-checkbox-p)))
+    (save-excursion
+      (org-back-to-heading t)
+      (let* ((cookie-re "\\[\\([0-9]*\\)/\\([0-9]*\\)\\]")
+             (cookie-end (re-search-forward cookie-re (line-end-position) t))
+             (cookie-beginning (when cookie-end (match-beginning 0)))
+             (numerator (when cookie-end (string-to-number (match-string 1))))
+             (denominator (when cookie-end (string-to-number (match-string 2))))
+             (state (org-get-todo-state)))
+        (cond ((and (not cookie-end) at-checkbox?)
+               (org-end-of-line)
+               (insert " [/]")
+               (org-toggle-todo-checkboxes))
+              ;; CHOOSE -> CHOSEN
+              ((and (equal state "CHOOSE")
+                    (= numerator 1))
+               ;; See the definition of `org-enforce-todo-checkbox-dependencies'.
+               ;; This is like setting the property NOBLOCKING for the current
+               ;; heading.
+               (let ((org-blocker-hook
+                      (remove #'org-block-todo-from-checkboxes
+                              org-blocker-hook)))
+                 (org-todo "CHOSEN")))
+              ;; CHOSEN -> CHOOSE
+              ((and (equal state "CHOSEN")
+                    (= numerator 0)
+                    (eq this-command #'org-toggle-checkbox))
+               (org-todo "CHOOSE"))
+              ;; TODO, NOW -> DONE
+              ((and (member state jkroes/active-todo-states)
+                    (= numerator denominator))
+               (org-todo "DONE"))
+              ;; DONE -> TODO
+              ((and (equal state "DONE")
+                    (not (= numerator denominator)))
+               (org-todo "TODO")))))))
 
 (advice-add #'org-toggle-radio-button
             :around (lambda (orig-fun &rest args)
@@ -1493,6 +1494,143 @@ If on a:
       :n "q" #'my/org-edit-src-save-and-exit)
 
 (add-hook! 'org-src-mode-hook #'evil-normalize-keymaps)
+
+;; List of commands:
+;; citar-open
+;; org-cite-insert / citar-insert-citation
+;; citar-insert-reference (for a references section; unused currently)
+;; citar-org-roam-ref-add
+;; org-roam-ref-find (for finding a node by URL)
+;; citar-org-roam-ref-add: Add an additional citation key to roam refs of the
+;;   node at point.
+;; citar-org-roam-cited
+;; - TODO This throws an error "Wrong type argument: org-roam-node, nil" if
+;; there are no citations. The function is fine, but it needs to be rewritten
+;; to return nil rather than attempting to visit a nonexistent node.
+;; TODO +org/dwim erases citations when this is the default action (on WSL,
+;; untested on MacOS):
+;;   (setq citar-default-action #'citar-insert-edit)
+
+(setq citar-bibliography
+      (list (expand-file-name
+             "org-cite.bib"
+             (cond (IS-WSL "/mnt/d")
+                   (t org-directory))))
+      org-cite-global-bibliography citar-bibliography)
+
+;; TODO suffix should be converted to an annotation if possible, similar to dendroam
+(setq citar-templates
+      ;; `main' and `suffix' are used by `citar-open' and other functions to
+      ;; display existing notes
+      '((main . "${date:10} ${title:120}")
+        ;; NOTE Zotero tags are in the better-biblatex field "keywords" within
+        ;; `citar-bibliography'
+        (suffix . " ${tags keywords:*}")
+        ;; The format for reference text inserted by `citar-insert-reference'
+        (preview . "${author editor} (${year issued date}) ${title}, ${journal journaltitle publisher container-title collection-title}.\n")
+        ;; The format for new notes created by `citar-open-notes'
+        (note . "${title}")))
+
+;; Open files (as opposed to notes or URLs) in Zotero
+(setq citar-file-open-functions (list (cons "pdf" #'open-in-zotero)
+                                      (cons "html" #'citar-file-open-external)
+                                      (cons t (cond (IS-WSL #'open-in-windows)
+                                                    (t #'find-file)))))
+
+(defun open-in-zotero (file)
+  "Open file resources in Zotero PDF viewer."
+  (string-match ".*/storage/\\(.*\\)/.*\\.pdf" file)
+  (browse-url
+   ;; NOTE You can also use select instead of open-pdf to see the
+   ;; attachment item in the item pane
+   (replace-match "zotero://open-pdf/library/items/\\1" nil nil file)))
+
+;; Convert Windows to WSL paths when opening PDF files
+(after! citar-file
+  (add-to-list 'citar-file-parser-functions 'citar-file--parser-default-wsl))
+
+;; TODO This will not allow you to open files in the shared Zotero Air Program
+;; library (CDPR Master Zotero Collection), but citar highlights any citation
+;; keys you insert that have bad filepaths
+(defun citar-file--parser-default-wsl (file-field)
+  "Split FILE-FIELD by `;'."
+  (mapcar
+   #'wslify-bib-path
+   (seq-remove
+    #'string-empty-p
+    (mapcar
+     #'string-trim
+     (citar-file--split-escaped-string file-field ?\;)))))
+
+(defun wslify-bib-path (file)
+  "For WSL, convert paths assumed to be Windows files to WSL paths. Otherwise,
+return the path"
+  (if (eq system-type 'gnu/linux)
+      (substring
+       (shell-command-to-string
+        (format
+         "wslpath '%s'"
+         (replace-regexp-in-string
+          "\\\\\\\\"
+          "/"
+          (replace-regexp-in-string "\\\\:" ":" file))))
+       0 -1)
+    file))
+
+;; Whether to use multiple selection
+(setq citar-select-multiple nil)
+
+;; TODO Get this working like in the image in the README. May clash with roam
+;; completion.
+;;
+;; Complete citations keys by typing [@] and the number of letters indicated by
+;; corfu-auto-prefix after the @
+(add-hook 'org-mode-hook #'citar-capf-setup)
+
+(defvar citar-indicator-links-icons
+   (citar-indicator-create
+    :symbol (nerd-icons-octicon "nf-oct-link")
+    :function #'citar-has-links
+    :tag "has:links"))
+
+(defvar citar-indicator-files-icons
+  (citar-indicator-create
+   :symbol (nerd-icons-sucicon "nf-seti-pdf")
+   :function #'citar-has-files
+   :padding "  "
+   :tag "has:files"))
+
+(defvar citar-indicator-notes-icons
+  (citar-indicator-create
+   ;; :symbol (nerd-icons-faicon "nf-fa-sticky_note_o")
+   :symbol (nerd-icons-mdicon "nf-md-file_document_outline")
+   :function #'citar-has-notes
+   :tag "has:notes"))
+
+(defvar citar-indicator-cited
+  (citar-indicator-create
+   :symbol (nerd-icons-octicon "nf-oct-cross_reference")
+   :function #'citar-is-cited
+   :tag "is:cited"))
+
+(defvar citar-indicators
+  (list citar-indicator-links-icons
+        citar-indicator-files-icons
+        citar-indicator-notes-icons
+        citar-indicator-cited))
+
+;; Subdirectory of `org-roam-directory' for citar notes
+(setq citar-org-roam-subdir "references")
+
+;; citar note filetitle, which is the title field from the bibliography
+(setq citar-org-roam-note-title-template "${title}")
+
+(defadvice! citar-org-roam--create-capture-note-a (citekey entry)
+  "Slightly modified function for citar-reference-note creation"
+  :after #'citar-org-roam--create-capture-note
+  (when (fboundp 'evil-insert)
+    (evil-append-line 1)
+    (insert "\n")))
 
 ;; Disable popup management of org-src buffer windows
 (after! org

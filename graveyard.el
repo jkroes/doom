@@ -161,3 +161,26 @@ and is not preceded by content."
           (previous-line)
           ;; And is not separated by content, including blank lines
           (when (org-at-heading-p) t))))))
+
+;; Like citar-org-format-note-default without #+print_bibliography and
+;; integrated with org-noter
+(defun citar-org-format-note-no-bib (key entry filepath)
+  (let* ((template (citar-get-template 'note))
+         (note-meta
+          (when template
+            (citar--format-entry-no-widths
+             entry
+             template)))
+         (buffer (find-file filepath)))
+    (with-current-buffer buffer
+      ;; This just overrides other template insertion.
+      (erase-buffer)
+      (citar-org-roam-make-preamble key)
+      (insert "#+title: ")
+      (when template (insert note-meta))
+      (insert "\n\n* Notes")
+      (when (assoc "file" entry)
+        ;; TODO This assumes a single file, but the field may have multiple
+        ;; NOTE: Can't use org-roam-property-add because it enquotes paths
+        ;; with spaces in them, which makes org-noter fail
+        (org-set-property "NOTER_DOCUMENT" (wslify-bib-path (cdr (assoc "file" entry))))))))
