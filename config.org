@@ -48,7 +48,11 @@ sudo make uninstall
 #+end_src
 ** Todo list [0/4]
 *** TODO Move this list to a project-level todos file?
-*** TODO Command bindings [0/23]
+*** TODO Command bindings [0/26]
+- [ ] dendroam-rename-note
+- [ ] dendroam-refactor-hierarchy
+- [ ] consult-org-roam-backlinks, consult-org-roam-forward-links, consult-org-roam-backlinks-recursive
+  - Useful for navigating links and backlinks, which is the zettel alternative to hierarchical notes. Links could be between notes or within an index file linking notes across different hierarchies.
 - [ ] citar-*
 - [ ] citar-org-roam-ref-add
 - [ ] modi/org-in-any-block-p
@@ -88,7 +92,8 @@ sudo make uninstall
   - [ ] Functions that are called right away should be part of this file or the module's non-autoload files
 - [ ] Rename user functions/commands
 - [ ] Convert all of my defadvice! to advice-add
-*** TODO Bugs and Features [1/20]
+*** TODO Bugs and Features [2/21]
+- [X] Get rid of the shell tag and refactor notes to be under the shell hierarchy. E.g. shell.git. Rewrite dendroam--refactor-hierarchy to read a string for the hierarchy to refactor rather than using the current node, because there is not always a note for an arbitrary hierarchy component.
 - [X] Indenting and outdenting for plain list items adds a stats cookie to heading. It should not.
 - [ ] Set up citar and citar-org-roam
 - Tags
@@ -969,7 +974,7 @@ Files to exclude from, and nodes for inclusion by, org-roam. After changing thes
 
 #+end_src
 
-There's no need to add inherited tags directly to a heading when setting tags via org-roam.
+There's no need to add inherited tags directly to a heading when setting tags via org-roam. If headings are not filtered out (see ~dendroam-find~), ~org-roam-node-find~ will already display inherited tags.
 
 #+begin_src emacs-lisp
 (advice-add #'org-roam-tag-add :override #'jkroes/org-roam-tag-add)
@@ -1301,16 +1306,15 @@ For radio lists, ~org-toggle-checkbox~ calls ~org-toggle-radio-button~, which bo
                         (apply orig-fun args))))
 #+end_src
 ** Attachments
+#+begin_src emacs-lisp
+(setq org-attach-id-dir
+      (cond (IS-WSL "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation (1)/org-attach")
+      ((featurep :system 'macos) "~/Documents/org-attachments")))
+#+end_src
+
 When ~org-attach-use-inheritance~ is enabled, ~org-attach~ will add attachments to the nearest node with an existing attachment directory. This means you can add an attachment to an org-roam file from anywhere in the file if none of the above headings have an attachment dir. To create an attachment dir on the current heading, execute ~org-id-get-create~ once, then run ~org-attach~.
 
 Because ~org-attach-dir~ searches up the entire subtree for a =DIR=, =ATTACH_DIR=, or =ID= property, in that order, when ~org-attach-use-inheritance~ is enabled, an =ID= subheading should not be created underneath e.g. a =DIR= parent heading. In that case, commands like ~org-attach~, ~org-attach-reveal~ and ~org-attach-open~ will always operate on the parent heading.
-
-#+begin_src emacs-lisp
-;; Attachment directory for my work computer.
-(when IS-WSL
-  (setq org-attach-id-dir
-        "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation (1)/org-attach"))
-#+end_src
 
 Resolve attachment links by walking up the entire subtree, then in the file-level properites drawer.
 

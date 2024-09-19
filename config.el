@@ -930,10 +930,9 @@ heading"
                                  #'ignore))
                         (apply orig-fun args))))
 
-;; Attachment directory for my work computer.
-(when IS-WSL
-  (setq org-attach-id-dir
-        "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation (1)/org-attach"))
+(setq org-attach-id-dir
+      (cond (IS-WSL "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation (1)/org-attach")
+      ((featurep :system 'macos) "~/Documents/org-attachments")))
 
 (advice-add #'org-attach-expand :override #'jkroes/org-attach-expand-a)
 

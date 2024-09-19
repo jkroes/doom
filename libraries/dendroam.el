@@ -326,7 +326,9 @@ This is a convenience function that skips a prompt."
          (parent-hierarchy (dendroam-up-hierarchy hierarchy)))
     (if (length= parent-hierarchy 0)
         (error "Top-level nodes have no siblings.")
-      (let* ((prefix (string-replace dendroam-separator "\\." (concat "^" parent-hierarchy dendroam-separator)))
+      (let* ((prefix (string-replace dendroam-separator
+                                     (regexp-quote dendroam-separator)
+                                     (concat "^" parent-hierarchy dendroam-separator)))
              (ncomponents (length (split-string hierarchy (regexp-quote dendroam-separator))))
              (new-node
               (org-roam-node-read
@@ -351,7 +353,9 @@ This is a convenience function that skips a prompt."
 
 (cl-defmethod dendroam--find-children ((node org-roam-node))
   (let* ((hierarchy (org-roam-node-dendroam-hierarchy node))
-         (prefix (string-replace dendroam-separator "\\." (concat "^" hierarchy dendroam-separator)))
+         (prefix (string-replace dendroam-separator
+                                 (regexp-quote dendroam-separator)
+                                 (concat "^" hierarchy dendroam-separator)))
          (new-node
           (org-roam-node-read
            nil
@@ -540,15 +544,14 @@ Return the updated TREE."
 
 ;;; NODE REFACTOR --------------------------------------------------------------------
 
-;; ;; TODO Also refactor citar notes' aliases that are part of the hierarchy
+;; TODO These don't work correctly when the note title differs from the final
+;; filename component
+
 ;; (defun dendroam-refactor-hierarchy ()
 ;;   "Rename current note and all of its children"
 ;;   (interactive)
-;;   (dendroam--refactor-hierarchy (org-roam-node-at-point)))
-
-;; (cl-defmethod dendroam--refactor-hierarchy ((node org-roam-node))
-;;   (let* ((hierarchy (org-roam-node-dendroam-hierarchy node))
-;;          (new-hierarchy (read-string "Refactor: " hierarchy))
+;;   (let* ((hierarchy (read-string "Refactor from: "))
+;;          (new-hierarchy (read-string "Refactor to: " hierarchy))
 ;;          ;; regexp functions ignore case by default (see case-fold-search)
 ;;          (case-fold-search)
 ;;          (files (directory-files-recursively org-roam-directory (concat "^" hierarchy)))
@@ -565,13 +568,11 @@ Return the updated TREE."
 ;;               ;; Update the title of the current node
 ;;               (org-roam-set-keyword "title" new-title)
 ;;               (save-buffer))
-;;           ;; TODO This should update open buffers for all modified files, not
-;;           ;; just the current buffer. See azr/org-roam-modify-title. In the
-;;           ;; meantime, here is my hack.
 ;;           (when buf (kill-buffer buf)))))))
 
-;; ;; TODO Add a warning when the node to rename is a parent node, in case we want
-;; ;; to use refactor instead.
+;; TODO Add a warning when the node to rename is a parent node, in case we want
+;; to use refactor instead.
+
 ;; (defun dendroam-rename-note ()
 ;;   "Rename current note only (i.e., preserve hierarchy) and change title to match."
 ;;   (interactive)
