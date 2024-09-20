@@ -747,9 +747,9 @@ by passing a PREFIX key."
 (setq dendroam-hidden-tags nil)
 
 ;; Sort nodes alphabetically
-(after! vertico-multiform
-  (add-to-list 'vertico-multiform-commands
-               '(dendroam-find (vertico-sort-function . vertico-sort-alpha))))
+;; (after! vertico-multiform
+;;   (add-to-list 'vertico-multiform-commands
+;;                '(dendroam-find (vertico-sort-function . vertico-sort-alpha))))
 
 (after! org-roam
   (map! :map org-mode-map
@@ -1015,6 +1015,14 @@ heading"
 
 (setq org-src-ask-before-returning-to-edit-buffer nil)
 (after! org (setq org-src-window-setup 'current-window))
+
+(setq org-babel-default-header-args:ruby '((:results . "pp")))
+
+(after! org
+  (add-to-list 'org-structure-template-alist '("b" . "src sh"))
+  (add-to-list 'org-structure-template-alist '("i" . "src emacs-lisp"))
+  (add-to-list 'org-structure-template-alist '("p" . "src python"))
+  (add-to-list 'org-structure-template-alist '("r" . "src ruby")))
 
 ;; https://scripter.co/splitting-an-org-block-into-two/
 (defun modi/org-split-block ()

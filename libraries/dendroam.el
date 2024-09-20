@@ -465,7 +465,7 @@ and the file extension is removed before processing."
   ;; Sort filenames without extensions because order matters for propertizing
   ;; intermediate notes
   (let ((names (sort (mapcar #'file-name-sans-extension
-                             (directory-files directory nil "^[^.].*"))
+                             (directory-files directory nil "^[^.].*\\.org"))
                      #'string<))
         hierarchy-tree)
     (dolist (name names)
