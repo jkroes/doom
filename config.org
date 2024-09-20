@@ -92,7 +92,15 @@ sudo make uninstall
   - [ ] Functions that are called right away should be part of this file or the module's non-autoload files
 - [ ] Rename user functions/commands
 - [ ] Convert all of my defadvice! to advice-add
-*** TODO Bugs and Features [2/21]
+- To include code in org-mode from other files (scripts), either:
+  - Use an include statement with ~:lines~ to see the include in any exports. I have configured +org/dwim-at-point to jump to the file.
+  - Use the following to import code as results (and hide the shell code in any exports)
+#+begin_src shell :wrap src python :results output raw :exports results
+sed -n '2,10p' ~/test.py
+#+end_src
+ - Source: https://stackoverflow.com/questions/36605951/include-code-snippet-in-org-file
+*** TODO Bugs and Features [2/22]
+- [ ] On WSL with the current ~org-file-apps-gnu~ settings, ~org-attach-reveal~ open an external folder while ~org-attach-open~ launches ~find-file~ like interface, ~jkroes/org-dwim-at-point~ opens an external folder on directory file links and launches find-file on an attachment heading.  Are these the settings you want? I think headings and links should operate the same, preferably launching find-file. Also, I want to launch find-file when selecting a directory via org-attach-open rather than opening it externally.
 - [X] Get rid of the shell tag and refactor notes to be under the shell hierarchy. E.g. shell.git. Rewrite dendroam--refactor-hierarchy to read a string for the hierarchy to refactor rather than using the current node, because there is not always a note for an arbitrary hierarchy component.
 - [X] Indenting and outdenting for plain list items adds a stats cookie to heading. It should not.
 - [ ] Set up citar and citar-org-roam
@@ -1495,8 +1503,7 @@ This function is heavily adapted from `org-between-regexps-p'."
         ("\\.png?\\'" . system)
         ("\\.html?\\'" . system)
         (remote . emacs)
-        (auto-mode . emacs)
-        (directory . emacs)))
+        (auto-mode . emacs)))
 
 ;; Open files in emacs even if they aren't part of auto-mode-alist
 (after! org
@@ -1508,7 +1515,28 @@ This function is heavily adapted from `org-between-regexps-p'."
   ;; string "wslview %s" if this has issues
   (setq org-file-apps-gnu
         `(,(cons 'system (if IS-WSL #'open-in-windows 'mailcap))
+          ;; For e.g. org-attach-reveal to open the folder in Windows
+          (directory . system)
           (t . emacs))))
+
+(defun jkroes/not-dired (dir)
+  "For use as an element of `find-directory-functions'. If this
+command returns nil, the next function in
+`find-directory-functions' will be tried.
+
+Executes find-file with the file link to a directory as the
+initial input instead of opening in dired. Useful for opening
+links in org and faster than using dired to visit Windows shared
+drives in WSL.
+
+This function is only called if org-file-apps or its OS-specific
+variants are set to open directories in emacs."
+  (when (memq this-command jkroes/org-open-file-link-commands)
+    (let ((default-directory dir))
+      ;; Avoid an endless loop if the initial input directory specfieid in the
+      ;; link is selected as the input to find-file
+      (let ((find-directory-functions (remq #'jkroes/not-dired find-directory-functions)))
+        (call-interactively #'find-file)))))
 #+end_src
 ** Editing
 #+begin_src emacs-lisp
@@ -1615,20 +1643,32 @@ This function is heavily adapted from `org-between-regexps-p'."
 #+end_src
 ** Cycle and Fold
 #+begin_src emacs-lisp
+;; Don't hide drawers on startup
+(setq org-cycle-hide-drawer-startup nil)
+
+;; Don't hide drawers for global cycling
+(advice-add #'org-cycle-overview :around #'jkroes/org-cycle-keep-drawers-open-a)
+(advice-add #'org-cycle-content :around #'jkroes/org-cycle-keep-drawers-open-a)
+
+(defun jkroes/org-cycle-keep-drawers-open-a (orig-fun &rest args)
+
+  (cl-letf (((symbol-function 'org-fold-hide-drawer-all)
+             #'ignore))
+    (apply orig-fun args)))
+
 ;; Don't insert blank lines when creating a heading
 (setq org-blank-before-new-entry '((heading) (plain-list-item))
       ;; Show all empty lines when headings are folded
       org-cycle-separator-lines -1)
 
-(defvar org-global-cyle-shows-blocks nil
+(defvar org-global-cycle-shows-blocks nil
   "Whether org-cycle-global unfolds blocks.")
 
-;; Don't hide blocks unless org-global-cyle-shows-blocks
+;; Don't expand blocks unless org-global-cyle-shows-blocks
 (advice-add #'org-cycle-internal-global
-            :override #'jkroes/org-cycle-internal-global)
+            :override #'jkroes/org-cycle-internal-global-a)
 
-
-(defun jkroes/org-cycle-internal-global ()
+(defun jkroes/org-cycle-internal-global-a ()
   "Do the global cycling action."
   ;; Hack to avoid display of messages for .org  attachments in Gnus
   (let ((ga (string-match-p "\\*fontification" (buffer-name))))
@@ -1650,7 +1690,7 @@ This function is heavily adapted from `org-between-regexps-p'."
       (run-hook-with-args 'org-cycle-pre-hook 'all)
       (org-fold-show-all
        (append (list 'headings)
-               (when org-global-cyle-shows-blocks (list 'blocks))))
+               (when org-global-cycle-shows-blocks (list 'blocks))))
       (unless ga (org-unlogged-message "SHOW ALL"))
       (setq org-cycle-global-status 'all)
       (run-hook-with-args 'org-cycle-hook 'all))

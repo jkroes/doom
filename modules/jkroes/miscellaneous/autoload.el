@@ -135,23 +135,6 @@ Return nil otherwise."
     org-open-at-point-global))
 
 ;;;###autoload
-(defun jkroes/not-dired (dir)
-  "For use as an element of `find-directory-functions'. If this
-command returns nil, the next function in
-`find-directory-functions' will be tried.
-
-Executes find-file with the file link to a directory as the
-initial input instead of opening in dired. Useful for opening
-links in org and faster than using dired to visit Windows shared
-drives in WSL. "
-  (when (memq this-command jkroes/org-open-file-link-commands)
-    (let ((default-directory dir))
-      ;; Avoid an endless loop if the initial input directory specfieid in the
-      ;; link is selected as the input to find-file
-      (let ((find-directory-functions (remq #'jkroes/not-dired find-directory-functions)))
-        (call-interactively #'find-file)))))
-
-;;;###autoload
 (defun insert-org-entity ()
   "A dumb replacement for counsel-org-entity. See `org-pretty-entities'."
   (interactive)

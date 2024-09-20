@@ -1093,8 +1093,7 @@ This function is heavily adapted from `org-between-regexps-p'."
         ("\\.png?\\'" . system)
         ("\\.html?\\'" . system)
         (remote . emacs)
-        (auto-mode . emacs)
-        (directory . emacs)))
+        (auto-mode . emacs)))
 
 ;; Open files in emacs even if they aren't part of auto-mode-alist
 (after! org
@@ -1106,7 +1105,28 @@ This function is heavily adapted from `org-between-regexps-p'."
   ;; string "wslview %s" if this has issues
   (setq org-file-apps-gnu
         `(,(cons 'system (if IS-WSL #'open-in-windows 'mailcap))
+          ;; For e.g. org-attach-reveal to open the folder in Windows
+          (directory . system)
           (t . emacs))))
+
+(defun jkroes/not-dired (dir)
+  "For use as an element of `find-directory-functions'. If this
+command returns nil, the next function in
+`find-directory-functions' will be tried.
+
+Executes find-file with the file link to a directory as the
+initial input instead of opening in dired. Useful for opening
+links in org and faster than using dired to visit Windows shared
+drives in WSL.
+
+This function is only called if org-file-apps or its OS-specific
+variants are set to open directories in emacs."
+  (when (memq this-command jkroes/org-open-file-link-commands)
+    (let ((default-directory dir))
+      ;; Avoid an endless loop if the initial input directory specfieid in the
+      ;; link is selected as the input to find-file
+      (let ((find-directory-functions (remq #'jkroes/not-dired find-directory-functions)))
+        (call-interactively #'find-file)))))
 
 ;; Insert pairs of tildes in org-mode
 (after! smartparens (sp-local-pair 'org-mode "~" "~" ))
@@ -1209,20 +1229,32 @@ This function is heavily adapted from `org-between-regexps-p'."
                (not (evil-emacs-state-p)))
       (evil-insert 1))))
 
+;; Don't hide drawers on startup
+(setq org-cycle-hide-drawer-startup nil)
+
+;; Don't hide drawers for global cycling
+(advice-add #'org-cycle-overview :around #'jkroes/org-cycle-keep-drawers-open-a)
+(advice-add #'org-cycle-content :around #'jkroes/org-cycle-keep-drawers-open-a)
+
+(defun jkroes/org-cycle-keep-drawers-open-a (orig-fun &rest args)
+
+  (cl-letf (((symbol-function 'org-fold-hide-drawer-all)
+             #'ignore))
+    (apply orig-fun args)))
+
 ;; Don't insert blank lines when creating a heading
 (setq org-blank-before-new-entry '((heading) (plain-list-item))
       ;; Show all empty lines when headings are folded
       org-cycle-separator-lines -1)
 
-(defvar org-global-cyle-shows-blocks nil
+(defvar org-global-cycle-shows-blocks nil
   "Whether org-cycle-global unfolds blocks.")
 
-;; Don't hide blocks unless org-global-cyle-shows-blocks
+;; Don't expand blocks unless org-global-cyle-shows-blocks
 (advice-add #'org-cycle-internal-global
-            :override #'jkroes/org-cycle-internal-global)
+            :override #'jkroes/org-cycle-internal-global-a)
 
-
-(defun jkroes/org-cycle-internal-global ()
+(defun jkroes/org-cycle-internal-global-a ()
   "Do the global cycling action."
   ;; Hack to avoid display of messages for .org  attachments in Gnus
   (let ((ga (string-match-p "\\*fontification" (buffer-name))))
@@ -1244,7 +1276,7 @@ This function is heavily adapted from `org-between-regexps-p'."
       (run-hook-with-args 'org-cycle-pre-hook 'all)
       (org-fold-show-all
        (append (list 'headings)
-               (when org-global-cyle-shows-blocks (list 'blocks))))
+               (when org-global-cycle-shows-blocks (list 'blocks))))
       (unless ga (org-unlogged-message "SHOW ALL"))
       (setq org-cycle-global-status 'all)
       (run-hook-with-args 'org-cycle-hook 'all))
