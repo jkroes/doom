@@ -1087,6 +1087,14 @@ This function is heavily adapted from `org-between-regexps-p'."
              ;; Return value.
              (cons beg end))))))
 
+;; TODO Add more commands below as you discover more commands that open links
+;; within org-mode
+(defvar jkroes/org-open-file-link-commands
+  '(+org/dwim-at-point
+    org-open-at-mouse
+    org-open-at-point
+    org-open-at-point-global))
+
 ;; Directory file links launch `find-file' with the directory as initial
 ;; input, rather than launching dired.
 (add-to-list 'find-directory-functions #'jkroes/not-dired)
@@ -1105,6 +1113,9 @@ This function is heavily adapted from `org-between-regexps-p'."
 
 ;; Open files in emacs even if they aren't part of auto-mode-alist
 (after! org
+  ;; Undo Doom customization
+  (setq org-file-apps (assq-delete-all 'directory org-file-apps))
+
   (setq org-file-apps-macos
         '((system . "open %s")
           (t . emacs)))

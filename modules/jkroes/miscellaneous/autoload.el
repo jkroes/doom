@@ -126,14 +126,6 @@ Return nil otherwise."
 ;; between calls using a global variable. This makes the effect of toggling in
 ;; a given buffer unpredictable when you have toggled other buffers previously.
 
-;; TODO Add more commands below as you discover more commands that open links
-;; within org-mode
-(defvar jkroes/org-open-file-link-commands
-  '(+org/dwim-at-point
-    org-open-at-mouse
-    org-open-at-point
-    org-open-at-point-global))
-
 ;;;###autoload
 (defun insert-org-entity ()
   "A dumb replacement for counsel-org-entity. See `org-pretty-entities'."
