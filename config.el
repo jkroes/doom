@@ -1095,10 +1095,6 @@ This function is heavily adapted from `org-between-regexps-p'."
     org-open-at-point
     org-open-at-point-global))
 
-;; Directory file links launch `find-file' with the directory as initial
-;; input, rather than launching dired.
-(add-to-list 'find-directory-functions #'jkroes/not-dired)
-
 (setq org-file-apps
       '(("\\.pptx?\\'" . system)
         ("\\.pdf?\\'" . system)
@@ -1124,28 +1120,70 @@ This function is heavily adapted from `org-between-regexps-p'."
   ;; string "wslview %s" if this has issues
   (setq org-file-apps-gnu
         `(,(cons 'system (if IS-WSL #'open-in-windows 'mailcap))
-          ;; For e.g. org-attach-reveal to open the folder in Windows
-          (directory . system)
+          ;; (directory . system)
           (t . emacs))))
 
-(defun jkroes/not-dired (dir)
-  "For use as an element of `find-directory-functions'. If this
-command returns nil, the next function in
-`find-directory-functions' will be tried.
+;; Stack trace:
+;;
+;; jkroes/org-dwim-at-point (over a heading)
+;;   org-attach-open
+;;
+;; jkroes/org-dwim-at-point (over a link)
+;;   org-link-open (arg determines in-emacs, which replaces org-file-apps entries)
+;;     (org-link-get-parameter :type "follow")
+;;     org-link-parameters ("attachment" :follow)
+;;       org-attach-follow
+;;         org-attach-follow
+;;           org-link-open-as-file
+;;             org-open-file
+;;               org-file-apps
+;;
+;; org-attach-open
+;;   completing-read (select a file or folder)
+;;   org-open-file
+;;
+;; org-attach-reveal
+;;   org-open-file
+;;
+;; org-open-file
+;;   (funcall (cdr (asq 'file (org-link-frame-setup))) file)
+;;     find-file(file)
 
-Executes find-file with the file link to a directory as the
-initial input instead of opening in dired. Useful for opening
-links in org and faster than using dired to visit Windows shared
-drives in WSL.
+;; HACK Override the settings in +org-init-hacks-h
+(add-hook! 'org-load-hook :append #'+org-init-user-h)
 
-This function is only called if org-file-apps or its OS-specific
-variants are set to open directories in emacs."
-  (when (memq this-command jkroes/org-open-file-link-commands)
-    (let ((default-directory dir))
-      ;; Avoid an endless loop if the initial input directory specfieid in the
-      ;; link is selected as the input to find-file
-      (let ((find-directory-functions (remq #'jkroes/not-dired find-directory-functions)))
-        (call-interactively #'find-file)))))
+(defun +org-init-user-h ()
+  (after! ol
+    (setf (alist-get 'file org-link-frame-setup) #'test)))
+
+(defun test (file)
+  (if (file-directory-p file)
+      (let ((default-directory (file-name-as-directory file)))
+        (call-interactively #'find-file))
+    (funcall #'find-file file)))
+
+;; Directory file links launch `find-file' with the directory as initial
+;; input, rather than launching dired.
+;; (add-to-list 'find-directory-functions #'jkroes/not-dired)
+
+;; (defun jkroes/not-dired (dir)
+;;   "For use as an element of `find-directory-functions'. If this
+;; command returns nil, the next function in
+;; `find-directory-functions' will be tried.
+
+;; Executes find-file with the file link to a directory as the
+;; initial input instead of opening in dired. Useful for opening
+;; links in org and faster than using dired to visit Windows shared
+;; drives in WSL.
+
+;; This function is only called if org-file-apps or its OS-specific
+;; variants are set to open directories in emacs."
+;;   (when (memq this-command jkroes/org-open-file-link-commands)
+;;     (let ((default-directory dir))
+;;       ;; Avoid an endless loop if the initial input directory specfieid in the
+;;       ;; link is selected as the input to find-file
+;;       (let ((find-directory-functions (remq #'jkroes/not-dired find-directory-functions)))
+;;         (call-interactively #'find-file)))))
 
 ;; Insert pairs of tildes in org-mode
 (after! smartparens (sp-local-pair 'org-mode "~" "~" ))
