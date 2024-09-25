@@ -17,6 +17,18 @@
 ;; - https://nullprogram.com/blog/2018/02/14/ and
 ;; - https://www.orgroam.com/manual.html#Accessing-and-Modifying-Nodes
 
+;; TODO consult-history shows unpropertized candidates. This command also
+;; breaks any functionality that relies on `my-last-minibuffer-command'. This
+;; is because completing-read strips text properties at some point before
+;; add-to-history is called to update the history variable
+;; org-roam-node-history that is passed to completing-read. Since I'm using
+;; consult-org-roam-mode, it invokes consult--read instead of completing-read.
+;; Is there a difference in how it updates the history? See
+;; read-from-minibuffer and the variable history-add-new-input. You might be
+;; able to call add-to-history yourself with the value of minibuffer-contents
+;; instead of minibuffer-contents-no-properties. You probably need to write your
+;; own functions to replace e.g. org-roam-node-find.
+
 (require 'org-roam)
 (require 'citar)
 (require 'citar-org-roam)
@@ -443,6 +455,8 @@ notes, not other meeting, scratch, or reference notes."
 (defvar dendroam--intermediate-non-note-face font-lock-warning-face)
 (defvar dendroam--intermediate-note-face font-lock-preprocessor-face)
 
+;; TODO The hierarchy of each note should use title instead of the final
+;; component of the filename, like dendroam-find.
 (defun dendroam-open-note ()
   "Interactively navigate the dendroam hierarchy and open the
 selected file. Complete a component of the hierarchy, then type
@@ -517,6 +531,10 @@ Return the updated TREE."
              (annotation-function . dendroam--open-note-annotation)))
           ;; Handles the remaining actions
           (t (complete-with-action action candidates input predicate)))))
+
+;; Debugging:
+;; (dendroam--all-completions (concat "dpr" dendroam-display-separator) nil t)
+;; (org-roam-node-read--completions)
 
 (defun dendroam--open-note-annotation (input)
   "Annotate component with the number of child components"

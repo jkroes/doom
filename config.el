@@ -693,12 +693,19 @@ by passing a PREFIX key."
         (org-set-tags (seq-uniq (append tags (org-get-tags nil t)))))
       tags)))
 
+;; TODO Fork this package and fix it. It doesn't seem like the author is
+;; actively maintaining it or fully understands the arguments to
+;; consult--read
+
 (use-package! consult-org-roam
   :after org-roam
   :init
   ;; BUG https://github.com/jgru/consult-org-roam/issues/32. Vertico sorting is
   ;; only active if consult-org-roam-mode is disabled or enabled in tandem with
   ;; this advice.
+  ;;
+  ;; BUG consult-org-roam disables org-roam's history variable for unknown
+  ;; reasons, which leads to nodes littering `minibuffer-history'.
   (advice-add #'consult-org-roam-node-read
               :override #'jkroes/consult-org-roam-node-read)
   :config
@@ -711,8 +718,7 @@ by passing a PREFIX key."
          (prompt (or prompt "Node: "))
          ;; Sets state-func only when there are nodes to avoid errors
          ;; with empty roam-dirs
-         (state-func (when nodes
-                       (consult-org-roam--node-preview)))
+         (state-func (when nodes (consult-org-roam--node-preview)))
          (node
           (consult--read
            nodes
@@ -723,7 +729,7 @@ by passing a PREFIX key."
            :sort t
            :require-match require-match
            :category 'org-roam-node
-           ;;:history 'org-roam-node-history
+           :history 'org-roam-node-history
            :state state-func
            :annotate (lambda (title)
                        (funcall org-roam-node-annotation-function
