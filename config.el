@@ -672,7 +672,8 @@ by passing a PREFIX key."
 (defun jkroes/org-roam-include-nodes ()
   ;; Exclude attachment headings unless there is another reason to keep them,
   ;; such as a ROAM_REFS property
-  (not (and (member org-attach-auto-tag (org-get-tags))
+  (not (and (org-current-level)
+            (member org-attach-auto-tag (org-get-tags))
             (not (org-entry-get nil "roam_refs" nil)))))
 
 (advice-add #'org-roam-tag-add :override #'jkroes/org-roam-tag-add)
@@ -940,23 +941,69 @@ heading"
       (cond (IS-WSL "/mnt/c/Users/jkroes/OneDrive - California Department of Pesticide Regulation (1)/org-attach")
       ((featurep :system 'macos) "~/Documents/org-attachments")))
 
-(advice-add #'org-attach-expand :override #'jkroes/org-attach-expand-a)
+(advice-add #'org-attach-dir :override #'jkroes/org-attach-dir-a)
 
-;; Stack trace when following attachment links:
-;; org-open-at-point
-;; org-link-open
-;; org-attach-follow
-;; org-link-open-as-file(org-attach-expand)
-;; org-open-file
-;; (user-error "No such file: %s" file))
+(defun jkroes/org-attach-dir-a (&optional create-if-not-exists-p no-fs-check)
+  (let (attach-dir id at-point-min?)
+    (save-excursion
+      (while (and (not attach-dir) (not at-point-min?))
+        (setq at-point-min? (= (point) (point-min)))
+        (cond
+         (create-if-not-exists-p
+          (setq attach-dir (org-attach-dir-get-create)))
+         ((setq attach-dir (org-entry-get nil "DIR"))
+          (org-attach-check-absolute-path attach-dir))
+         ((setq attach-dir (org-entry-get nil "ATTACH_DIR"))
+          (org-attach-check-absolute-path attach-dir))
+         ((setq id (org-entry-get nil "ID" ))
+          (org-attach-check-absolute-path nil)
+          (setq attach-dir (org-attach-dir-from-id id 'existing)))
+         ((not at-point-min?)
+          (org-roam-up-heading-or-point-min)))))
+    (if no-fs-check
+	attach-dir
+      (when (and attach-dir (file-directory-p attach-dir))
+	attach-dir))))
+
+(advice-add #'org-attach-tag :override #'jkroes/org-attach-tag-a)
+
+(defun jkroes/org-attach-tag-a (&optional off)
+  (when org-attach-auto-tag
+    (let (attach-dir id at-point-min?)
+      (save-excursion
+        (while (and (not attach-dir) (not at-point-min?))
+          (setq at-point-min? (= (point) (point-min)))
+          (cond
+           ((setq attach-dir (org-entry-get nil "DIR"))
+            (org-attach-check-absolute-path attach-dir))
+           ;; Deprecated and removed from documentation, but still
+           ;; works. FIXME: Remove after major nr change.
+           ((setq attach-dir (org-entry-get nil "ATTACH_DIR"))
+            (org-attach-check-absolute-path attach-dir))
+           ((setq id (org-entry-get nil "ID" ))
+            (org-attach-check-absolute-path nil)
+            (setq attach-dir (org-attach-dir-from-id id 'existing)))
+           ((not at-point-min?)
+            (org-roam-up-heading-or-point-min))))
+        (when attach-dir
+          (if at-point-min?
+              ;; Filetag
+              (if off
+                  (org-roam-tag-remove (list org-attach-auto-tag))
+                (org-roam-tag-add (list org-attach-auto-tag)))
+            ;; Heading tag
+            (org-toggle-tag org-attach-auto-tag (if off 'off 'on))))))))
+
+(advice-add #'org-attach-expand :override #'jkroes/org-attach-expand-a)
 
 ;; Use this to enable attachment links below subheadings
 (defun jkroes/org-attach-expand-a (file)
   "HACK A version of org-attach-expand that actually will look
- through all parent headings until it finds the linked attachment,
- to quote the docs for `org-attach-use-inheritance'. Normally the
- search stops at the first heading for which there is an
- attachment directory."
+ through all parent headings until it finds the linked
+ attachment, to quote the docs for `org-attach-use-inheritance'.
+ Normally the search stops at the first heading for which there
+ is an attachment directory. This does not require
+ `org-attach-use-inheritance' to be enabled."
   (let ((filepath (expand-file-name file (org-attach-dir))))
     (if (and (org-attach-dir)
              (file-exists-p filepath))
@@ -967,21 +1014,7 @@ heading"
           ;; If no file is found, exit immediately.
           (user-error "No such file: %s" file)
         (org-roam-up-heading-or-point-min)
-        (org-attach-expand file)))))
-
-(advice-add #'org-attach-tag :override #'jkroes/org-attach-tag)
-
-(defun jkroes/org-attach-tag (&optional off)
-  "Turn the autotag on or (if OFF is set) off."
-  (when org-attach-auto-tag
-    ;; FIXME: There is currently no way to set #+FILETAGS
-    ;; programmatically.  Do nothing when before first heading
-    ;; (attaching to file) to avoid blocking error.
-    (unless (org-before-first-heading-p)
-      (save-excursion
-        (org-back-to-heading t)
-        (when (org-entry-get nil "ID")
-                (org-toggle-tag org-attach-auto-tag (if off 'off 'on)))))))
+        (jkroes/org-attach-expand-a file)))))
 
 (after! marginalia
   (add-to-list 'marginalia-command-categories
