@@ -1095,11 +1095,11 @@ This function is heavily adapted from `org-between-regexps-p'."
 
 ;; TODO Add more commands below as you discover more commands that open links
 ;; within org-mode
-(defvar jkroes/org-open-file-link-commands
-  '(+org/dwim-at-point
-    org-open-at-mouse
-    org-open-at-point
-    org-open-at-point-global))
+;; (defvar jkroes/org-open-file-link-commands
+;;   '(+org/dwim-at-point
+;;     org-open-at-mouse
+;;     org-open-at-point
+;;     org-open-at-point-global))
 
 (setq org-file-apps
       '(("\\.pptx?\\'" . system)
