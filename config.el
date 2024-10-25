@@ -1143,6 +1143,8 @@ This function is heavily adapted from `org-between-regexps-p'."
         ("\\.csv?\\'" . system)
         ("\\.png?\\'" . system)
         ("\\.html?\\'" . system)
+        ;; Windows Shortcut files
+        ("\\.lnk\\'" . system)
         (remote . emacs)
         (auto-mode . emacs)))
 
