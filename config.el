@@ -1779,3 +1779,147 @@ return the path"
 ;; the window-select module is active. If we want to circumvent remapping, wrap
 ;; the remapped command in a function call.
 (map! "M-o" (cmd! (call-interactively #'other-window)))
+
+
+;;; zmk utilities -------------------------------------------------------------
+
+;; NOTE works with left-aligned keyamps
+;; place cursor between columns
+;; press spc-ret
+;; edit key
+;; delete spaces to align columns on current line
+;; place cursor between columns
+;; press spc-S-ret
+
+(defun normalize-column-spacing-between-delimiters ()
+  "Normalize spacing between two columns at cursor position to exactly 2 spaces.
+Removes the same amount of space from all lines to preserve column alignment."
+  (interactive)
+  (let (start-pos end-pos)
+    (save-excursion
+      ;; Find the nearest < above
+      (if (re-search-backward "\\s-*<\\s-*$" nil t)
+          (setq start-pos (point))
+        (error "No opening delimiter found above cursor")))
+    (save-excursion
+      ;; Find the nearest > below
+      (if (re-search-forward "^\\s-*>;" nil t)
+          (setq end-pos (point))
+        (error "No closing delimiter found below cursor")))
+    (when (and start-pos end-pos)
+      (normalize-column-spacing-in-region start-pos end-pos (current-column)))))
+
+(defun normalize-column-spacing-in-region (start end cursor-col)
+  "Normalize column spacing in region between START and END at CURSOR-COL."
+  (save-excursion
+    (goto-char start)
+    (let ((start-line (line-number-at-pos))
+          (end-line (line-number-at-pos end))
+          (max-left-col -1)
+          (min-right-distance most-positive-fixnum))
+
+      ;; First pass: find max left column
+      (forward-line 1)
+      (while (< (line-number-at-pos) end-line)
+        (let* ((line-content (buffer-substring-no-properties
+                             (line-beginning-position) (line-end-position)))
+               (line-length (length line-content)))
+
+          ;; Find nearest non-space character to the left of cursor
+          (let ((left-col -1))
+            (let ((i (1- cursor-col)))
+              (while (and (>= i 0) (= left-col -1))
+                (when (and (< i line-length) (not (= (aref line-content i) ?\s)))
+                  (setq left-col i))
+                (setq i (1- i))))
+            (when (>= left-col 0)
+              (setq max-left-col (max max-left-col left-col)))))
+        (forward-line 1))
+
+      ;; Second pass: find min right distance from the rightmost left boundary
+      (goto-char start)
+      (forward-line 1)
+      (while (< (line-number-at-pos) end-line)
+        (let* ((line-content (buffer-substring-no-properties
+                             (line-beginning-position) (line-end-position)))
+               (line-length (length line-content)))
+
+          ;; Find distance from rightmost left boundary to nearest non-space character to the right
+          (let ((right-distance 0)
+                (i (1+ max-left-col)))
+            (while (and (< i line-length) (= (aref line-content i) ?\s))
+              (setq right-distance (1+ right-distance))
+              (setq i (1+ i)))
+            ;; Only count if we found a non-space character
+            (when (< i line-length)
+              (setq min-right-distance (min min-right-distance right-distance)))))
+        (forward-line 1))
+
+      ;; Calculate spaces to remove
+      (let ((spaces-to-remove (- min-right-distance 2)))
+
+        (when (> spaces-to-remove 0)
+          ;; Third pass: remove spaces from after the rightmost left column on all lines
+          (goto-char start)
+          (forward-line 1)
+          (while (< (line-number-at-pos) end-line)
+            (let* ((line-content (buffer-substring-no-properties
+                                 (line-beginning-position) (line-end-position)))
+                   (line-length (length line-content)))
+
+              ;; Find the rightmost left column on this line
+              (let ((left-col -1))
+                (let ((i (1- cursor-col)))
+                  (while (and (>= i 0) (= left-col -1))
+                    (when (and (< i line-length) (not (= (aref line-content i) ?\s)))
+                      (setq left-col i))
+                    (setq i (1- i))))
+
+                ;; Go to position after the left column character and delete spaces
+                (when (>= left-col 0)
+                  (move-to-column (1+ left-col) t)
+                  (dotimes (i spaces-to-remove)
+                    (when (= (char-after) ?\s)
+                      (delete-char 1))))))
+            (forward-line 1)))))))
+
+(defun add-spaces-to-region-lines (start end spaces)
+  "Add SPACES number of spaces to each line between START and END.
+The spaces are inserted at the current cursor column position.
+If called interactively, prompts for number of spaces (default 10)."
+  (interactive
+   (list (region-beginning)
+         (region-end)
+         (read-number "Number of spaces to add: " 10)))
+  (let ((start-col (current-column)))
+    (save-excursion
+      (goto-char start)
+      (let ((start-line (line-number-at-pos))
+            (end-line (line-number-at-pos end)))
+        ;; Skip the first line
+        (forward-line 1)
+        ;; Process each line except the last
+        (while (< (line-number-at-pos) end-line)
+          (move-to-column start-col t)
+          (insert (make-string spaces ?\s))
+          (forward-line 1))))))
+
+;; Alternative version that works without selecting a region
+(defun add-spaces-between-delimiters ()
+  "Add SPACES to lines between delimiters like < and >.
+Finds the nearest < above and > below the cursor."
+  (interactive)
+  (let ((start-col (current-column))
+        start-pos end-pos)
+    (save-excursion
+      ;; Find the nearest < above
+      (if (re-search-backward "\\s-*<\\s-*$" nil t)
+          (setq start-pos (point))
+        (error "No opening delimiter found above cursor")))
+    (save-excursion
+      ;; Find the nearest > below
+      (if (re-search-forward "^\\s-*>;" nil t)
+          (setq end-pos (point))
+        (error "No closing delimiter found below cursor")))
+    (when (and start-pos end-pos)
+      (add-spaces-to-region-lines start-pos end-pos 20))))

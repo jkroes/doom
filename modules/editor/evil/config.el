@@ -584,10 +584,10 @@ directives. By default, this only recognizes C directives.")
       ;; TODO Currently overrides org-down-element mapping to gl.
       ;; How to make org-evil map take priority?
       ;; evil-lion
-      ;; :n "gl" #'evil-lion-left
-      ;; :n "gL" #'evil-lion-right
-      ;; :v "gl" #'evil-lion-left
-      ;; :v "gL" #'evil-lion-right
+      :n "gl" #'evil-lion-left
+      :n "gL" #'evil-lion-right
+      :v "gl" #'evil-lion-left
+      :v "gL" #'evil-lion-right
 
       ;; Emulation of Vim's omni-completion keybinds
       (:prefix "C-x"

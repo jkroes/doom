@@ -141,12 +141,14 @@
       ;; misc
       :n "C-S-f"  #'toggle-frame-fullscreen
       :n "C-+"    #'doom/reset-font-size
+      ;; TODO Saving e.g. zmk keymap files resets text scaling but doesn't seem
+      ;; to affect the doom functions below
       ;; Buffer-local font resizing
-      :n "C-="    #'text-scale-increase
-      :n "C--"    #'text-scale-decrease
+      ;;:n "C-="    #'text-scale-increase
+      ;;:n "C--"    #'text-scale-decrease
       ;; Frame-local font resizing
-      :n "M-C-="  #'doom/increase-font-size
-      :n "M-C--"  #'doom/decrease-font-size)
+      :n "C-="  #'doom/increase-font-size
+      :n "C--"  #'doom/decrease-font-size)
 
 
 ;;
@@ -360,7 +362,10 @@
 
       "DEL" #'evil-switch-to-windows-last-buffer
       "SPC" #'ace-window
-      :desc "Jump to bookmark"      "RET"  #'bookmark-jump
+      ;; TODO Temporary binding to make editing zmk keymaps easier
+      ;; :desc "Jump to bookmark"      "RET"  #'bookmark-jump
+      :desc "Pad ZMK column"   "RET"   #'add-spaces-between-delimiters
+      :desc "Unpad ZMK column" [S-return] #'normalize-column-spacing-between-delimiters
 
       ;;; <leader> TAB --- workspace
       (:when (modulep! :ui workspaces)
